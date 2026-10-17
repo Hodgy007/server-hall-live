@@ -4,6 +4,7 @@ import { W, G, SV, HIST } from './state.js';
 import { racks } from './racks.js';
 import { stepServer, level } from './server.js';
 import { pushAlert } from './alerts.js';
+import { record } from './replay.js';
 
 const wave = (t, p) => 0.5 * Math.sin(t * 0.21 + p) + 0.3 * Math.sin(t * 0.53 + p * 1.7) + 0.2 * Math.sin(t * 1.31 + p * 2.9);
 
@@ -79,6 +80,7 @@ export function step(dt) {
     }
     G.rpsHist.push(G.rps); G.cpuHist.push(G.cpu * 100);
     if (G.rpsHist.length > HIST) { G.rpsHist.shift(); G.cpuHist.shift(); }
+    record();
     W.sampled = true;
   }
   if (SV.sel) stepServer(dt);

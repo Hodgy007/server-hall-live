@@ -11,6 +11,7 @@ import { flyHall, flyRack, flyServer, updateCam, setOrbit, releaseCut } from './
 import { hooks, updateHud, updateSparks, drawCores, renderLegend } from './hud.js';
 import { pushAlert } from './alerts.js';
 import { inject, clearAll } from './faults.js';
+import { replay, recorded, swapIn, swapOut } from './replay.js';
 import { render, resizePost } from './post.js';
 
 // ---------- Selection, doors, pulling servers out ----------
@@ -138,6 +139,20 @@ $('airflow').addEventListener('click', () => {
   $('airflow').textContent = UI.airOn ? 'Hide airflow' : 'Show airflow'; $('airflow').classList.toggle('off', !UI.airOn);
 });
 $('hallView').addEventListener('click', hallView);
+
+// ---------- Replay: the slider runs from 10 minutes ago (left) to live (right) ----------
+const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+function syncReplay() {
+  const el = $('replay'), have = Math.max(0, recorded() - 1);
+  el.min = String(-Math.floor(have / 5) * 5);
+  const ago = replay.ago;
+  $('replayVal').textContent = ago ? `${mmss(ago)} ago` : 'Live';
+  $('liveChip').textContent = ago ? `Replay · ${mmss(ago)} ago` : 'Simulated telemetry';
+  $('liveChip').classList.toggle('past', !!ago);
+  $('replayLive').hidden = !ago;
+}
+$('replay').addEventListener('input', e => { replay.ago = -Number(e.target.value); syncReplay(); updateHud(); });
+$('replayLive').addEventListener('click', () => { replay.ago = 0; $('replay').value = '0'; syncReplay(); updateHud(); });
 $('faultAdd').addEventListener('click', () => { let f = null; for (let n = 0; n < 5 && !f; n++) f = inject(); updateHud(); });
 $('faultClear').addEventListener('click', () => { clearAll(); updateHud(); });
 
@@ -203,11 +218,13 @@ renderLegend();
 UI.selected = byId.A03;
 resize();
 select(UI.selected, false);
+syncReplay();
 
 let last = performance.now(), hudAcc = 0;
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   step(dt);
+  const past = swapIn();          // replaying: draw (and show in the panels) the recorded state, then restore the live one
   updateVisuals(dt);
   updateDoors(dt);
   updateServerModel(dt);
@@ -218,7 +235,8 @@ function frame(now) {
   if (SV.open) drawCores();
   hudAcc += dt;
   if (hudAcc > 0.2) { hudAcc = 0; updateHud(); }
-  if (W.sampled) { W.sampled = false; updateSparks(); }
+  if (W.sampled) { W.sampled = false; updateSparks(); syncReplay(); }
+  if (past) swapOut();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

@@ -18,7 +18,7 @@
     <div class="brand">
       <div class="eyebrow">Hall 2 · Rows A–H · 96 racks · 2 cooling units</div>
       <h1>Server Hall Live</h1>
-      <div class="meta"><span class="chip">Simulated telemetry</span><span class="hint">Drag to orbit · scroll to zoom · click a rack to open its door, then a server</span></div>
+      <div class="meta"><span class="chip" id="liveChip">Simulated telemetry</span><span class="hint">Drag to orbit · scroll to zoom · click a rack to open its door, then a server</span></div>
       <div class="tools">
         <button id="hallView" type="button" title="Back to the whole-hall overview (Esc)">Reset view</button>
         <form id="findForm" class="find" role="search">
@@ -136,6 +136,10 @@
           <div>
             <label for="traffic" class="row"><span>Traffic demand</span><b id="trafficVal">60%</b></label>
             <input type="range" id="traffic" min="10" max="100" value="60">
+          </div>
+          <div>
+            <div class="row"><label for="replay">Replay</label><span><button type="button" class="linkbtn" id="replayLive" hidden>back to live</button> <b id="replayVal">Live</b></span></div>
+            <input type="range" id="replay" min="-120" max="0" step="5" value="0" aria-describedby="replayVal">
           </div>
           <div class="btns">
             <button id="spike">Inject traffic spike</button>

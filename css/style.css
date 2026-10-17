@@ -38,6 +38,8 @@ h1 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 3
 .find input:focus-visible { outline: 2px solid var(--cold); outline-offset: 1px; }
 #hallView { background: var(--panel); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .findmsg { font-size: 10.5px; color: var(--warn); }
+.chip.past { color: var(--warn); border-color: rgba(242, 180, 65, 0.5); background: rgba(242, 180, 65, 0.1); }
+.linkbtn { background: none; border: 0; padding: 0; color: var(--cold); text-decoration: underline; cursor: pointer; font-size: 11px; }
 .chip { border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cold); background: rgba(79, 195, 232, 0.08); }
 
 .kpis { display: grid; grid-template-columns: repeat(6, minmax(112px, 1fr)); gap: 8px; }
