@@ -65,6 +65,7 @@ button { font: inherit; color: var(--fg); background: rgba(255,255,255,0.03); bo
 button:hover { border-color: var(--cold); color: var(--cold); }
 button:focus-visible, input:focus-visible + label, input[type="range"]:focus-visible, input[type="checkbox"]:focus-visible, summary:focus-visible { outline: 2px solid var(--cold); outline-offset: 2px; }
 .nav button { padding: 4px 9px; font-size: 14px; line-height: 1; }
+.rmin { display: none; }
 .meters { display: grid; gap: 8px; }
 .ml { display: flex; justify-content: space-between; margin-bottom: 4px; color: var(--muted); }
 .ml b { color: var(--fg); font-weight: 500; font-variant-numeric: tabular-nums; }
@@ -132,7 +133,9 @@ h3 { margin: 14px 0 6px; font-size: 10px; font-weight: 500; letter-spacing: 0.12
   .kpi .v { font-size: 20px; }
   .kpi .sub, .kpi canvas { display: none; }
   .bottom { flex-direction: column; align-items: stretch; gap: 8px; }
-  .rackp, .ops, .srvp { width: 100%; padding: 10px; }
+  .rackp, .ops, .srvp { width: 100%; box-sizing: border-box; padding: 10px; }
+  .rmin { display: block; }
+  .rackp.min > :not(.ph) { display: none; }
   .cores canvas { height: 48px; }
   .trend { display: none; }
   h2 { font-size: 24px; }
@@ -172,6 +175,7 @@ h3 { margin: 14px 0 6px; font-size: 10px; font-weight: 500; letter-spacing: 0.12
         <div class="nav">
           <button id="prevRack" aria-label="Previous rack">‹</button>
           <button id="nextRack" aria-label="Next rack">›</button>
+          <button class="rmin" id="rackMin" aria-expanded="true" aria-controls="rackPanel" aria-label="Hide rack details">▾</button>
         </div>
       </div>
       <div class="meters">
@@ -1079,6 +1083,13 @@ h3 { margin: 14px 0 6px; font-size: 10px; font-weight: 500; letter-spacing: 0.12
   const stepRack = d => select(racks[(racks.indexOf(selected) + d + racks.length) % racks.length]);
   $('prevRack').addEventListener('click', () => stepRack(-1));
   $('nextRack').addEventListener('click', () => stepRack(1));
+  $('rackMin').addEventListener('click', e => {
+    const min = $('rackPanel').classList.toggle('min'), b = e.currentTarget;
+    b.setAttribute('aria-expanded', String(!min));
+    b.setAttribute('aria-label', min ? 'Show rack details' : 'Hide rack details');
+    b.textContent = min ? '▴' : '▾';
+    if (!min) updateSparks();
+  });
 
   $('traffic').addEventListener('input', e => { W.traffic = e.target.value / 100; $('trafficVal').textContent = e.target.value + '%'; });
   $('spike').addEventListener('click', () => { W.spikeAge = 0; pushAlert('info', 'Traffic spike injected: ~3× web requests for 10 s'); });
