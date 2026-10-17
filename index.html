@@ -349,14 +349,14 @@ h3 { margin: 14px 0 6px; font-size: 10px; font-weight: 500; letter-spacing: 0.12
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
   controls.maxPolarAngle = Math.PI * 0.48;
-  controls.minDistance = 2.5;
+  controls.minDistance = 0.35;
   controls.maxDistance = 20;
   controls.autoRotateSpeed = 0.35;
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   controls.autoRotate = !reduceMotion;
   let orbitOn = controls.autoRotate;
   function setOrbit(on) {
-    orbitOn = on; if (!SV.open) controls.autoRotate = on;
+    orbitOn = on; controls.autoRotate = on && !SV.open;
     $('orbit').textContent = on ? 'Stop rotation' : 'Start rotation'; $('orbit').classList.toggle('off', !on);
   }
 
@@ -1035,8 +1035,7 @@ h3 { margin: 14px 0 6px; font-size: 10px; font-weight: 500; letter-spacing: 0.12
 
   const SV = {
     sel: null, open: false, slide: 0, fOn: false, cores: new Float32Array(64), coreBias: new Float32Array(64),
-    temp: [40, 40], rpm: 4000, mem: 0, iops: 0, netIn: 0, netOut: 0, power: 0, tLvl: 0, cLvl: 0, status: 0,
-    savedP: new THREE.Vector3(), savedT: new THREE.Vector3()
+    temp: [40, 40], rpm: 4000, mem: 0, iops: 0, netIn: 0, netOut: 0, power: 0, tLvl: 0, cLvl: 0, status: 0
   };
   const SLIDE = 0.8;
   const slotPos = (sv, e, out) => out.set(sv.r.x, sv.y, sv.r.z + sv.r.face * (0.05 + SLIDE * e));
@@ -1058,13 +1057,12 @@ h3 { margin: 14px 0 6px; font-size: 10px; font-weight: 500; letter-spacing: 0.12
     CAM.t += dt;
     const u = ease(Math.min(1, CAM.t / CAM.dur));
     camera.position.lerpVectors(CAM.fromP, CAM.toP, u); controls.target.lerpVectors(CAM.fromT, CAM.toT, u);
-    if (CAM.t >= CAM.dur) { CAM.active = false; controls.enabled = true; if (!SV.open) controls.minDistance = 2.5; }
+    if (CAM.t >= CAM.dur) { CAM.active = false; controls.enabled = true; }
   }
 
   const v3 = new THREE.Vector3(), v3b = new THREE.Vector3();
   function openServer(sv) {
     if (SV.sel === sv && SV.open) return;
-    if (!SV.open && !CAM.active) { SV.savedP.copy(camera.position); SV.savedT.copy(controls.target); }
     if (SV.sel && SV.sel !== sv) { setInstance(SV.sel, true); SV.slide = 0; }
     const r = sv.r;
     SV.sel = sv; SV.open = true;
@@ -1074,7 +1072,8 @@ h3 { margin: 14px 0 6px; font-size: 10px; font-weight: 500; letter-spacing: 0.12
     for (let i = 0; i < 64; i++) { SV.coreBias[i] = Math.random(); SV.cores[i] = sv.load; }
     SV.temp = [sv.temp + 1, sv.temp - 1];
     SV.rpm = sv.rpm; SV.tLvl = sv.tLvl; SV.cLvl = sv.cLvl; SV.status = sv.status;
-    controls.autoRotate = false; controls.minDistance = 0.35;
+    // Inspecting a server stops the orbit; it stays stopped until Start rotation is pressed
+    setOrbit(false);
     $('rackPanel').hidden = true; $('srvPanel').hidden = false;
     if (selected !== r) select(r);
     // Camera stays inside the aisle (in front of the opposite row) and looks down into the open chassis
@@ -1085,8 +1084,8 @@ h3 { margin: 14px 0 6px; font-size: 10px; font-weight: 500; letter-spacing: 0.12
   }
   function closeServer() {
     if (!SV.open) return;
+    // Slide the server back in like a drawer; the camera stays put, looking at the rack
     SV.open = false;
-    flyTo(SV.savedP, SV.savedT, 1.1);
     controls.autoRotate = orbitOn;
     $('rackPanel').hidden = false; $('srvPanel').hidden = true;
     updateHud(); updateSparks();
