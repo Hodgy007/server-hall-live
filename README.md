@@ -21,9 +21,9 @@ A three.js animation of a server room that shows how the servers are performing.
 ## Getting around
 
 - **Drag** to orbit, **scroll** to zoom.
-- **Hall view** flies back to the overview from wherever you are.
+- **Reset view** (or <kbd>Esc</kbd> when no server is pulled out) flies back to the whole-hall overview with everything visible.
 - **Find** (or press <kbd>/</kbd>): type a hostname such as `db-c04-07` to fly there and pull that server out, or a rack ID such as `B03` for rack view. Partial names work too, and the field suggests every host and rack.
-- **Click a rack** (front or back) for **rack view**: the camera flies to a spot 2.9 m in front of it so the whole 42U front fits on screen, the door swings open, and everything between you and the rack (the opposite row, containment glass) is cut away so you can see how the rack is filled. Click a server in it to pull it out. In rack view <kbd>←</kbd> / <kbd>→</kbd> walk along the row (in the direction you are facing) and the panel's ‹ › arrows step through every rack; **Hall view** leaves it.
+- **Click a rack** (front or back) for **rack view**: the camera flies to a spot 2.9 m in front of it so the whole 42U front fits on screen, the door swings open, and everything between you and the rack (the opposite row, containment glass) is cut away so you can see how the rack is filled. Click a server in it to pull it out. In rack view <kbd>←</kbd> / <kbd>→</kbd> walk along the row (in the direction you are facing) and the panel's ‹ › arrows step through every rack. Zoom or orbit more than about 4.5 m away from the rack and the cut-away switches off by itself, so the rest of the hall comes back; **Reset view** leaves rack view altogether.
 - Searching for a rack ID also opens rack view.
 
 ## Inspect a single server

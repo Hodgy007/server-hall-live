@@ -7,7 +7,7 @@ import { heat, cold } from './particles.js';
 import { SRV, srvMeshes, air, shim, mountServer, updateServerModel } from './server.js';
 import { step } from './sim.js';
 import { updateVisuals } from './visuals.js';
-import { flyHall, flyRack, flyServer, updateCam, setOrbit } from './camera.js';
+import { flyHall, flyRack, flyServer, updateCam, setOrbit, releaseCut } from './camera.js';
 import { hooks, updateHud, updateSparks, drawCores, renderLegend } from './hud.js';
 import { pushAlert } from './alerts.js';
 import { render, resizePost } from './post.js';
@@ -162,7 +162,8 @@ $('findForm').addEventListener('submit', e => { e.preventDefault(); if (find($('
 $('find').addEventListener('input', e => { $('findMsg').textContent = ''; if (e.inputType === 'insertReplacementText' || !e.inputType) find(e.target.value, true); });
 document.addEventListener('keydown', e => {
   const typing = /INPUT|TEXTAREA/.test(document.activeElement.tagName);
-  if (e.key === 'Escape') { if (typing) document.activeElement.blur(); else closeServer(); }
+  // Esc: leave the search box, push a server back in, or (with nothing open) reset the view
+  if (e.key === 'Escape') { if (typing) document.activeElement.blur(); else if (SV.open) closeServer(); else hallView(); }
   else if (e.key === '/' && !typing) { e.preventDefault(); $('find').focus(); }
   // Rack view: walk along the row; screen-right is +x for front-facing rows and −x for the others
   else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !typing && UI.cutRack && !/BUTTON/.test(document.activeElement.tagName)) {
@@ -209,6 +210,7 @@ function frame(now) {
   updateServerModel(dt);
   updateCam(dt);
   controls.update();
+  if (releaseCut() && !SV.open && UI.selected) setDoor(UI.selected, false);
   render();
   if (SV.open) drawCores();
   hudAcc += dt;
