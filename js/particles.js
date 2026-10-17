@@ -1,5 +1,5 @@
 // Particle systems: hot-aisle exhaust, cold-aisle supply air, network packets on the trays.
-import { THREE, scene, lc, COL, clamp, grad, canvasTex, RACK_H, RACK_D, TRAY_Y, TRAY_X, CORE_X, ROOM, HAC } from './core.js';
+import { THREE, scene, lc, COL, clamp, grad, canvasTex, RACK_H, RACK_D, TRAY_Y, TRAY_X, ROOM, HACS, COLD, ROW_HALF, coolingUnit } from './core.js';
 import { W } from './state.js';
 import { racks } from './racks.js';
 import { RISER_DZ } from './hall.js';
@@ -19,12 +19,13 @@ export function makePoints(n, size, parent) {
   return { geo, pos, col, n, pts };
 }
 const tmp = new THREE.Color();
-const contained = r => r.ri === 1 || r.ri === 2;
+// Each rack whose rear faces a contained hot aisle gets that aisle; the outer rows (A, H) blow towards the end walls
+racks.forEach(r => { const rear = r.z - r.face * RACK_D / 2; r.hac = HACS.find(H => Math.abs(rear - H.zc) < 0.7) || null; });
+const contained = r => r.hac !== null;
 
 // ---------- Hot-aisle exhaust ----------
-// Rows B and C blow into the contained aisle: air rises to the roof, runs to the nearest chimney and leaves upwards.
-// Rows A and D exhaust straight back towards the CRAC returns.
-export const heat = makePoints(900, 0.17); const hp = [];
+// Contained rows: air rises to the roof, runs to the nearest chimney and leaves upwards.
+export const heat = makePoints(2400, 0.17); const hp = [];
 function spawnHeat(i, scatter) {
   const p = hp[i] || (hp[i] = {}); const r = racks[(Math.random() * racks.length) | 0]; p.r = r; p.duct = 0;
   p.life = contained(r) ? 4.5 + Math.random() * 2.5 : 2.4 + Math.random() * 1.8; p.age = scatter ? Math.random() * p.life : 0;
@@ -34,7 +35,7 @@ function spawnHeat(i, scatter) {
   if (scatter) {
     const t = Math.min(p.age, 1.5);
     heat.pos[o + 1] += p.vy * t * 3; heat.pos[o + 2] += p.vz * t * 0.6;
-    if (contained(r)) heat.pos[o + 2] = clamp(heat.pos[o + 2], HAC.z0 + 0.03, HAC.z1 - 0.03);
+    if (contained(r)) heat.pos[o + 2] = clamp(heat.pos[o + 2], r.hac.z0 + 0.03, r.hac.z1 - 0.03);
   }
 }
 for (let i = 0; i < heat.n; i++) spawnHeat(i, true);
@@ -46,42 +47,43 @@ function stepHeat(p, o, dt) {
     P[o] += p.vx * dt; P[o + 1] += p.vy * dt; P[o + 2] += p.vz * dt;
     return;
   }
+  const H = p.r.hac;
   if (p.duct === 0) {
     // mixing in the aisle: momentum from the fans dies off against the opposite row, buoyancy lifts it
     p.vz *= 1 - dt * 1.6; p.vy += dt * 0.35;
     P[o] += p.vx * dt; P[o + 1] += p.vy * dt; P[o + 2] += p.vz * dt;
-    if (P[o + 2] < HAC.z0 + 0.03) { P[o + 2] = HAC.z0 + 0.03; p.vz = Math.abs(p.vz) * 0.3; }
-    if (P[o + 2] > HAC.z1 - 0.03) { P[o + 2] = HAC.z1 - 0.03; p.vz = -Math.abs(p.vz) * 0.3; }
-    if (P[o + 1] > HAC.top - 0.07) { P[o + 1] = HAC.top - 0.07; p.duct = 1; }
+    if (P[o + 2] < H.z0 + 0.03) { P[o + 2] = H.z0 + 0.03; p.vz = Math.abs(p.vz) * 0.3; }
+    if (P[o + 2] > H.z1 - 0.03) { P[o + 2] = H.z1 - 0.03; p.vz = -Math.abs(p.vz) * 0.3; }
+    if (P[o + 1] > H.top - 0.07) { P[o + 1] = H.top - 0.07; p.duct = 1; }
     return;
   }
-  const cx = Math.abs(P[o] - HAC.chimneys[0]) < Math.abs(P[o] - HAC.chimneys[1]) ? HAC.chimneys[0] : HAC.chimneys[1];
+  const cx = H.chimneys.reduce((a, b) => Math.abs(P[o] - b) < Math.abs(P[o] - a) ? b : a);
   const dx = cx - P[o];
   if (p.duct === 1) {   // under the roof, drifting to the chimney
-    P[o] += Math.sign(dx) * Math.min(Math.abs(dx), 0.75 * dt); P[o + 2] *= 1 - dt * 1.5;
+    P[o] += Math.sign(dx) * Math.min(Math.abs(dx), 0.75 * dt); P[o + 2] += (H.zc - P[o + 2]) * dt * 1.5;
     if (Math.abs(dx) < 0.22) p.duct = 2;
   } else {              // up the chimney
-    P[o + 1] += 0.9 * dt; P[o] += dx * dt * 2; P[o + 2] *= 1 - dt * 3;
+    P[o + 1] += 0.9 * dt; P[o] += dx * dt * 2; P[o + 2] += (H.zc - P[o + 2]) * dt * 3;
     if (P[o + 1] > ROOM.h - 0.05) p.age = p.life;
   }
 }
 
 // ---------- Cold-aisle supply air from the perforated tiles ----------
-export const cold = makePoints(360, 0.13); const cp = [];
+export const cold = makePoints(900, 0.13); const cp = [];
 function spawnCold(i, scatter) {
-  const p = cp[i] || (cp[i] = {}); p.aisle = i % 2;
+  const p = cp[i] || (cp[i] = {}); p.aisle = i % COLD.length;
   p.life = 2 + Math.random() * 1.5; p.age = scatter ? Math.random() * p.life : 0;
   p.vy = 0.35 + Math.random() * 0.3; p.vz = (Math.random() < 0.5 ? -1 : 1) * (0.08 + Math.random() * 0.14);
   const o = i * 3;
-  cold.pos[o] = (Math.random() - 0.5) * 3.9; cold.pos[o + 1] = 0.02 + (scatter ? p.vy * p.age : 0); cold.pos[o + 2] = (p.aisle ? 2.3 : -2.3) + (Math.random() - 0.5) * 1.1;
+  cold.pos[o] = (Math.random() - 0.5) * 2 * ROW_HALF; cold.pos[o + 1] = 0.02 + (scatter ? p.vy * p.age : 0); cold.pos[o + 2] = COLD[p.aisle] + (Math.random() - 0.5) * 1.1;
 }
 for (let i = 0; i < cold.n; i++) spawnCold(i, true);
 const coldC = lc(COL.cold);
 
-// ---------- Network packets: rack top → riser → row tray → spine → core switch ----------
+// ---------- Network packets: rack top → riser → row tray → spine → uplink panel in the east wall ----------
 racks.forEach(r => {
   const zr = r.z - r.face * RISER_DZ;
-  const pts = [[r.x, RACK_H, zr], [r.x, TRAY_Y, zr], [r.x, TRAY_Y, r.z], [TRAY_X, TRAY_Y, r.z], [TRAY_X, TRAY_Y, 0], [CORE_X, TRAY_Y, 0], [CORE_X, 2.22, 0]].map(a => new THREE.Vector3(...a));
+  const pts = [[r.x, RACK_H, zr], [r.x, TRAY_Y, zr], [r.x, TRAY_Y, r.z], [TRAY_X, TRAY_Y, r.z], [TRAY_X, TRAY_Y, 0], [ROOM.x - 0.1, TRAY_Y, 0]].map(a => new THREE.Vector3(...a));
   const cum = [0]; for (let k = 1; k < pts.length; k++) cum.push(cum[k - 1] + pts[k].distanceTo(pts[k - 1]));
   r.path = { pts, cum, len: cum[cum.length - 1] };
 });
@@ -92,7 +94,7 @@ function pathAt(path, s, out, o) {
   const a = pts[k - 1], b = pts[k];
   out[o] = a.x + (b.x - a.x) * t; out[o + 1] = a.y + (b.y - a.y) * t; out[o + 2] = a.z + (b.z - a.z) * t;
 }
-const pk = makePoints(700, 0.09); const pkd = []; const free = [];
+const pk = makePoints(1600, 0.09); const pkd = []; const free = [];
 for (let i = 0; i < pk.n; i++) { pkd.push({ on: false }); free.push(i); pk.pos[i * 3 + 1] = -50; }
 const PK_OUT = lc(COL.cold), PK_IN = lc('#eaf6ff');
 
@@ -111,7 +113,8 @@ export function updateParticles(dt, perfMats) {
   heat.geo.attributes.position.needsUpdate = true; heat.geo.attributes.color.needsUpdate = true;
 
   // cold
-  const flow = [1 - W.faultLevel * 0.25, 1 - W.faultLevel * 0.85];
+  // CU-1 feeds the northern cold aisles, CU-2 the southern ones; a CU-2 failure starves its aisles
+  const unitFlow = [1 - W.faultLevel * 0.25, 1 - W.faultLevel * 0.85], flow = COLD.map(z => unitFlow[coolingUnit(z)]);
   for (let i = 0; i < cold.n; i++) {
     const p = cp[i]; p.age += dt;
     if (p.age > p.life) spawnCold(i, false);
@@ -121,7 +124,7 @@ export function updateParticles(dt, perfMats) {
     cold.col[o] = coldC.r * b; cold.col[o + 1] = coldC.g * b; cold.col[o + 2] = coldC.b * b;
   }
   cold.geo.attributes.position.needsUpdate = true; cold.geo.attributes.color.needsUpdate = true;
-  perfMats[0].color.setScalar(0.55 * flow[0] + 0.15); perfMats[1].color.setScalar(0.55 * flow[1] + 0.15);
+  perfMats.forEach((m, i) => m.color.setScalar(0.55 * flow[i] + 0.15));
 
   // packets
   for (const r of racks) {

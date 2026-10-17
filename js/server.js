@@ -105,7 +105,7 @@ export function stepServer(dt) {
   const hot = Math.max(SV.temp[0], SV.temp[1]);
   SV.rpm += (3800 + clamp((hot - 45) / 40, 0, 1) * 9200 - SV.rpm) * Math.min(1, dt * 0.8);
   SV.mem = sv.mem;
-  const ioMax = r.ri === 2 ? 180000 : r.ri === 3 ? 60000 : 22000;
+  const ioMax = r.kind === 2 ? 180000 : r.kind === 3 ? 60000 : 22000;
   SV.iops += (sv.load * ioMax * (0.8 + 0.4 * Math.random()) - SV.iops) * Math.min(1, dt * 3);
   const n = sv.net * (1 - sv.stressAmp * 0.5);
   SV.netIn = n * 0.45 * (0.9 + 0.2 * Math.sin(W.t * 2.1 + sv.phase));

@@ -1,5 +1,5 @@
 // Telemetry simulation: every server runs its own figures; racks and the hall roll them up.
-import { clamp, COLS, SERVERS } from './core.js';
+import { clamp, COLS, SERVERS, coolingUnit } from './core.js';
 import { W, G, SV, HIST } from './state.js';
 import { racks } from './racks.js';
 import { stepServer, level } from './server.js';
@@ -15,7 +15,7 @@ export function step(dt) {
   let rps = 0, cpu = 0, net = 0, it = 0, maxIn = -1, maxR = null;
   for (const r of racks) {
     let target;
-    if (r.ri === 3) target = 0.22 + 0.6 * Math.max(0, Math.sin(W.t * 0.07 + r.phase)) + wave(W.t, r.phase) * 0.08 + spike * r.row.aff * 0.4;
+    if (r.kind === 3) target = 0.22 + 0.6 * Math.max(0, Math.sin(W.t * 0.07 + r.phase)) + wave(W.t, r.phase) * 0.08 + spike * r.row.aff * 0.4;
     else target = r.base * (0.45 + W.traffic * 1.1) + wave(W.t, r.phase) * 0.12 + spike * r.row.aff * 0.42;
     // The load balancer hands the rack a share of the row's demand; every server then runs its own telemetry
     r.demand += (clamp(target, 0.04, 1) - r.demand) * Math.min(1, dt * 1.2);
@@ -45,7 +45,7 @@ export function step(dt) {
     r.net = sNet;
     r.svWarn = nWarn; r.svCrit = nCrit;
     const end = Math.abs(r.c - (COLS - 1) / 2) / ((COLS - 1) / 2);
-    const faultHit = r.ri >= 2 ? 11 : 3.5;
+    const faultHit = coolingUnit(r.z) === 1 ? 11 : 3.5;   // rows fed by CU-2 lose supply air when it fails
     const inT = 19.5 + r.inletOffset + end * 1.8 * r.load + W.faultLevel * faultHit * (0.6 + 0.4 * r.load);
     r.inlet += (inT - r.inlet) * k5;
     r.exhaust = r.inlet + 3 + r.power * 1.6;
@@ -65,7 +65,7 @@ export function step(dt) {
     }
   }
   G.rps = rps * (0.97 + 0.03 * Math.sin(W.t * 2.3)); G.cpu = cpu / racks.length; G.net = net; G.it = it;
-  G.cool = it * (0.3 + W.faultLevel * 0.12); G.pue = (it + G.cool + 9) / it;
+  G.cool = it * (0.3 + W.faultLevel * 0.12); G.pue = (it + G.cool + 36) / it;
   G.maxIn = maxIn; G.maxInRack = maxR;
 
   W.sampleAcc += dt;

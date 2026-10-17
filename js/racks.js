@@ -17,7 +17,7 @@ ROWS.forEach((row, ri) => {
     const mesh = new THREE.Mesh(cabGeo, [sideM, sideM, topM, darkInside, darkInside, darkInside]);
     mesh.position.set(x, RACK_H / 2, row.z); scene.add(mesh);
     const r = {
-      id: row.id + String(c + 1).padStart(2, '0'), ri, c, row, x, z: row.z, face: row.face, mesh, mats: [sideM, topM],
+      id: row.id + String(c + 1).padStart(2, '0'), ri, kind: row.kind, c, row, x, z: row.z, face: row.face, mesh, mats: [sideM, topM],
       phase: rnd() * 20, base: row.base + (rnd() - 0.5) * 0.18, memBase: rnd() * 0.18, inletOffset: (rnd() - 0.5) * 1.2,
       demand: 0.4, load: 0.4, mem: 0.5, inlet: 20, exhaust: 30, power: 0, swPower: 0, net: 0, cpuLvl: 0, tLvl: 0, svLvl: 0, status: 0, svWarn: 0, svCrit: 0,
       hist: [], ihist: [], pktAcc: 0, leds: []
@@ -80,17 +80,18 @@ function mount(mesh, i, r, side, y, dz, x, store) {
     for (let s = 0; s < SERVERS; s++) {
       const u = 1 + s * 2, y = uY(u, 2);
       const sv = {
-        r, s, idx: pi, y, u, host: `${HOST[r.ri]}-${r.id.toLowerCase()}-${String(s + 1).padStart(2, '0')}`,
+        r, s, idx: pi, y, u, host: `${HOST[r.kind]}-${r.id.toLowerCase()}-${String(s + 1).padStart(2, '0')}`,
         bias: 0.75 + rnd() * 0.5, memBias: 0.85 + rnd() * 0.3, phase: rnd() * 20, load: 0.4, stressLeft: 0, stressAmp: 0, hist: [],
         mem: 0.5, temp: 45, rpm: 4000, power: 500, net: 0, cLvl: 0, tLvl: 0, status: 0,
         serial: 'HX' + (2400000 + Math.floor(rnd() * 99999)).toString(36).toUpperCase(),
         installed: `20${22 + Math.floor(rnd() * 4)}-${String(1 + Math.floor(rnd() * 12)).padStart(2, '0')}`,
-        os: OS[r.ri][Math.floor(rnd() * OS[r.ri].length)], diskUsed: 0.25 + rnd() * 0.5,
+        os: OS[r.kind][Math.floor(rnd() * OS[r.kind].length)], diskUsed: 0.25 + rnd() * 0.5,
         // NIC 1 and NIC 2 run to the same port on the rack's A and B top-of-rack switches (LACP bond);
         // the iLO port runs to the rack's out-of-band switch
         port: `Ethernet1/${s + 1}`, oobPort: `Gi1/0/${s + 1}`,
-        vlan: VLAN[r.ri], ip: `10.${VLAN[r.ri]}.${r.c + 1}.${11 + s}`, gw: `10.${VLAN[r.ri]}.${r.c + 1}.1`,
-        ilo: `10.250.${r.ri * 10 + r.c + 1}.${11 + s}`,
+        // one /24 per rack: 10.<VLAN>.<rack>.x, rack numbered within its workload's pair of rows
+        vlan: VLAN[r.kind], ip: `10.${VLAN[r.kind]}.${(r.ri % 2) * 20 + r.c + 1}.${11 + s}`, gw: `10.${VLAN[r.kind]}.${(r.ri % 2) * 20 + r.c + 1}.1`,
+        ilo: `10.250.${r.ri * 16 + r.c + 1}.${11 + s}`,
         mac: [mac(0x3cecef, pi * 4), mac(0x3cecef, pi * 4 + 1)], iloMac: mac(0x94188, pi * 4 + 2)
       };
       r.servers.push(sv);
@@ -164,23 +165,30 @@ const doorGeo = new THREE.BoxGeometry(0.585, DOOR_H, 0.012); doorGeo.translate(0
 const doorMat = new THREE.MeshStandardMaterial({ map: doorTex, alphaMap: doorAlpha, transparent: true, metalness: 0.6, roughness: 0.5, side: THREE.DoubleSide });
 const handleGeo = new THREE.BoxGeometry(0.018, 0.22, 0.03); handleGeo.translate(0.55, 0, 0.018);
 const handleMat = new THREE.MeshStandardMaterial({ color: 0x9aa6b0, metalness: 0.85, roughness: 0.3 });
-racks.forEach(r => {
-  const pivot = new THREE.Group();
-  pivot.position.set(r.x - r.face * 0.2925, DOOR_Y, r.z + r.face * DOOR_Z);
-  const base = r.face > 0 ? 0 : Math.PI; pivot.rotation.y = base;
-  const door = new THREE.Mesh(doorGeo, doorMat); door.renderOrder = 1;
-  pivot.add(door, new THREE.Mesh(handleGeo, handleMat));
-  scene.add(pivot);
-  r.door = { pivot, base, a: 0, target: 0 };
+// Instanced: a door's matrix is only rebuilt while it moves
+const doors = new THREE.InstancedMesh(doorGeo, doorMat, racks.length), handles = new THREE.InstancedMesh(handleGeo, handleMat, racks.length);
+doors.renderOrder = 1;
+const dObj = new THREE.Object3D();
+function placeDoor(r) {
+  const d = r.door;
+  dObj.position.copy(d.hinge); dObj.rotation.set(0, d.base + ease(d.a) * DOOR_OPEN, 0); dObj.updateMatrix();
+  doors.setMatrixAt(d.i, dObj.matrix); handles.setMatrixAt(d.i, dObj.matrix);
+}
+racks.forEach((r, i) => {
+  r.door = { i, hinge: new THREE.Vector3(r.x - r.face * 0.2925, DOOR_Y, r.z + r.face * DOOR_Z), base: r.face > 0 ? 0 : Math.PI, a: 0, target: 0 };
+  placeDoor(r);
 });
+scene.add(doors, handles);
 export const doorOpen = r => r.door.a > 0.85;
 export function setDoor(r, open) { r.door.target = open ? 1 : 0; }
 export function updateDoors(dt) {
+  let moved = false;
   for (const r of racks) {
     const d = r.door; if (d.a === d.target) continue;
     d.a = d.target > d.a ? Math.min(1, d.a + dt / (reduceMotion ? 0.01 : 0.55)) : Math.max(0, d.a - dt / (reduceMotion ? 0.01 : 0.55));
-    d.pivot.rotation.y = d.base + ease(d.a) * DOOR_OPEN;
+    placeDoor(r); moved = true;
   }
+  if (moved) { doors.instanceMatrix.needsUpdate = true; handles.instanceMatrix.needsUpdate = true; doors.computeBoundingSphere(); }
 }
 
 // ---------- Selection outline and inventory highlight ----------

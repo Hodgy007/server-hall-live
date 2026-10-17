@@ -47,9 +47,9 @@ export function updateHud() {
   const cpuL = G.cpu > 0.85 ? 2 : G.cpu > 0.7 ? 1 : 0;
   $('kCpu').textContent = Math.round(G.cpu * 100) + '%'; $('kCpu').className = 'v ' + lvlClass(cpuL);
   $('kNet').innerHTML = Math.round(G.net) + '<small>Gbps</small>';
-  $('kNetSub').textContent = Math.round(G.net / 8) + '% of 800G core uplink';
+  $('kNetSub').textContent = Math.round(G.net / 32) + '% of 3.2T hall uplinks';
   $('kPow').innerHTML = Math.round(G.it) + '<small>kW</small>';
-  $('kPowSub').textContent = 'of 288 kW provisioned';
+  $('kPowSub').textContent = 'of 1,152 kW provisioned';
   $('kPue').textContent = G.pue.toFixed(2);
   $('kPue').className = 'v ' + lvlClass(G.pue > 1.5 ? 1 : 0);
   $('kPueSub').textContent = 'cooling draw ' + Math.round(G.cool) + ' kW';
@@ -61,7 +61,7 @@ export function updateHud() {
     const sv = SV.sel, tl = t => t > 95 ? 2 : t > 85 ? 1 : 0;
     $('sHost').textContent = sv.host;
     $('sMeta').textContent = `Rack ${sv.r.id} · U${sv.u}–${sv.u + 1} · ${sv.r.row.role}`;
-    const ri = sv.r.ri, cpu = CPU[ri], id = sv.r.id.toLowerCase(), tb = DRIVE_TB[ri];
+    const ri = sv.r.kind, cpu = CPU[ri], id = sv.r.id.toLowerCase(), tb = DRIVE_TB[ri];
     $('spHost').innerHTML = `${sv.host}.hall2.local <span>· ${MODEL[ri]} · SN ${sv.serial}</span>`;
     $('spCpu').innerHTML = `2× ${cpu.name} <span>· 32 cores each at ${cpu.ghz} GHz, 64 in total</span>`;
     $('spOs').innerHTML = `${sv.os[0]} <span>· Linux kernel ${sv.os[1]}</span>`;
@@ -168,7 +168,7 @@ Gi1/0/1–${SERVERS} → servers' iLO`, '', () => highlight(r, 39, 1, -1));
   add('U25–38', 'Empty', '14U · blanking panels fitted', 'empty', () => highlight(r, 25, 14, 1));
   for (let s = SERVERS - 1; s >= 0; s--) {
     const sv = r.servers[s];
-    const tr = add(`U${sv.u}–${sv.u + 1}`, sv.host, `${MODEL[r.ri]} · ${DRIVE[r.ri]}\nSN ${sv.serial} · in service ${sv.installed}`, 'sv', () => highlight(r, sv.u, 2, 1));
+    const tr = add(`U${sv.u}–${sv.u + 1}`, sv.host, `${MODEL[r.kind]} · ${DRIVE[r.kind]}\nSN ${sv.serial} · in service ${sv.installed}`, 'sv', () => highlight(r, sv.u, 2, 1));
     tr.tabIndex = 0; tr.setAttribute('aria-label', `Pull out ${sv.host}`);
     tr.addEventListener('click', () => hooks.open(sv));
     tr.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); hooks.open(sv); } });
@@ -178,7 +178,7 @@ Gi1/0/1–${SERVERS} → servers' iLO`, '', () => highlight(r, 39, 1, -1));
   const tot = add('', 'Rack total', `${SERVERS} servers + 2 switches`, 'tot', () => highlight(r, 1, 42, 1));
   tot.querySelector('b').style.color = 'var(--cold)';
   invRows.push({ kind: 'tot', tr: tot });
-  $('invSum').innerHTML = `<b>${SERVERS}</b> servers · <b>${SERVERS * 64}</b> cores · <b>${(SERVERS * 0.512).toFixed(1)} TB</b> RAM · <b>${(SERVERS * DRIVE_TB[r.ri]).toFixed(0)} TB</b> NVMe<br>` +
+  $('invSum').innerHTML = `<b>${SERVERS}</b> servers · <b>${SERVERS * 64}</b> cores · <b>${(SERVERS * 0.512).toFixed(1)} TB</b> RAM · <b>${(SERVERS * DRIVE_TB[r.kind]).toFixed(0)} TB</b> NVMe<br>` +
     `<b>2</b> ToR switches · <b>1</b> OOB switch · <b>2</b> PDUs · <b>1</b> patch panel · <b>14U</b> free of 42U`;
 }
 function updateInv(r) {

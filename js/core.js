@@ -49,9 +49,9 @@ export const cutPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 1e6);
 export const scene = new THREE.Scene();
 const BG = lc(tok('--bg'));
 scene.background = BG;
-scene.fog = new THREE.Fog(BG, 13, 28);
+scene.fog = new THREE.Fog(BG, 24, 50);
 export const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 100);
-export const HALL_VIEW = { pos: new THREE.Vector3(7.4, 5.4, 8.2), target: new THREE.Vector3(0.4, 0.9, 0) };
+export const HALL_VIEW = { pos: new THREE.Vector3(12.5, 10.5, 15.5), target: new THREE.Vector3(0, 0.4, 0) };
 camera.position.copy(HALL_VIEW.pos);
 export const controls = new OrbitControls(camera, canvas);
 controls.target.copy(HALL_VIEW.target);
@@ -59,7 +59,7 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.08;
 controls.maxPolarAngle = Math.PI * 0.48;
 controls.minDistance = 0.35;
-controls.maxDistance = 20;
+controls.maxDistance = 34;
 controls.autoRotateSpeed = 0.35;
 controls.autoRotate = !reduceMotion;
 
@@ -71,20 +71,40 @@ scene.add(new THREE.HemisphereLight(0x9cc4e0, 0x0a0f14, 0.45 * Math.PI));
 const key = new THREE.DirectionalLight(0xdfefff, 0.55 * Math.PI); key.position.set(3, 8, 4); scene.add(key);
 
 // ---------- Hall geometry (metres) ----------
-export const RACK_W = 0.6, RACK_H = 2.08, RACK_D = 1.0, COLS = 6, PITCH = 0.64, SERVERS = 12;
-export const TRAY_Y = 2.75, TRAY_X = 2.55, CORE_X = 3.4;
-export const ROOM = { x: 4.6, z: 6.3, h: 3.7 };
+// 8 rows of 12 racks. Rows face each other in pairs across 1.8 m cold aisles; back to back they share
+// a 1.2 m contained hot aisle. The outer rows exhaust towards the end walls.
+export const RACK_W = 0.6, RACK_H = 2.08, RACK_D = 1.0, COLS = 12, PITCH = 0.64, SERVERS = 12;
+export const ROW_HALF = (COLS - 1) / 2 * PITCH + RACK_W / 2;   // half the length of a row
+export const TRAY_Y = 2.75, TRAY_X = ROW_HALF + 0.55;          // overhead trays; the spine runs along x = TRAY_X
+export const ROOM = { x: 6.0, z: 10.6, h: 3.7 };
 // 42U cabinets at true scale (1U = 44.5 mm): servers U1–24, blanking U25–38, OOB switch U39, patch panel U40, ToR switches U41–42
 export const U = 0.0445, U0 = 0.075, U_TOP = U0 + 42 * U, FRONT = RACK_D / 2;
 export const uY = (u, h) => U0 + (u - 1 + h / 2) * U;   // centre height of a device at U u, h units tall
-export const ROWS = [
-  { id: 'A', z: -3.5, face: 1,  role: 'Web front-end', aff: 1.0,  base: 0.55, net: 36, rps: 3100 },
-  { id: 'B', z: -1.1, face: -1, role: 'API services',  aff: 0.8,  base: 0.5,  net: 30, rps: 1400 },
-  { id: 'C', z: 1.1,  face: 1,  role: 'Database',      aff: 0.45, base: 0.45, net: 22, rps: 0 },
-  { id: 'D', z: 3.5,  face: -1, role: 'Batch and analytics', aff: 0.1, base: 0.5, net: 14, rps: 0 }
+// Workloads, one per pair of rows; arrays elsewhere (hostnames, hardware, VLANs) are indexed by kind
+export const KINDS = [
+  { role: 'Web front-end', aff: 1.0, base: 0.55, net: 36, rps: 3100 },
+  { role: 'API services', aff: 0.8, base: 0.5, net: 30, rps: 1400 },
+  { role: 'Database', aff: 0.45, base: 0.45, net: 22, rps: 0 },
+  { role: 'Batch and analytics', aff: 0.1, base: 0.5, net: 14, rps: 0 }
 ];
-// Rows B and C exhaust into a shared, contained hot aisle; hot air leaves through two chimneys to the ceiling plenum
-export const HAC = { z0: -0.6, z1: 0.6, x0: -1.93, x1: 1.93, top: RACK_H, chimneys: [-0.96, 0.96] };
+const COLD_W = 1.8, HOT_W = 1.2;
+export const ROWS = [], COLD = [], HACS = [];
+{
+  const zs = []; let z = 0;
+  for (let i = 0; i < 8; i++) { zs.push(z); z += RACK_D + (i % 2 === 0 ? COLD_W : HOT_W); }
+  const off = (zs[0] + zs[7]) / 2;
+  zs.forEach((zz, i) => ROWS.push({ ...KINDS[i >> 1], id: 'ABCDEFGH'[i], z: zz - off, face: i % 2 ? -1 : 1, kind: i >> 1 }));
+  for (let i = 0; i < 8; i += 2) COLD.push((ROWS[i].z + ROWS[i + 1].z) / 2);
+  // Hot-aisle containment between back-to-back rows; hot air leaves through chimneys to the ceiling plenum
+  for (let i = 1; i < 7; i += 2) {
+    const zc = (ROWS[i].z + ROWS[i + 1].z) / 2;
+    HACS.push({ zc, z0: zc - HOT_W / 2, z1: zc + HOT_W / 2, x0: -ROW_HALF - 0.03, x1: ROW_HALF + 0.03, top: RACK_H, chimneys: [-2.56, 0, 2.56] });
+  }
+}
+// Cooling units on the west wall: CU-1 feeds the northern cold aisles (z < 0), CU-2 the southern ones
+export const COOLING = [{ name: 'CU-1', z: -5.0 }, { name: 'CU-2', z: 5.0 }];
+const coolsSouth = z => z > 0;
+export const coolingUnit = z => coolsSouth(z) ? 1 : 0;
 
 // ---------- Canvas textures ----------
 let seed = 7;

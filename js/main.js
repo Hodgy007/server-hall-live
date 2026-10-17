@@ -1,5 +1,5 @@
 // Entry point: wires the scene, simulation, HUD and interaction together and runs the frame loop.
-import { THREE, $, canvas, renderer, scene, camera, controls, SERVERS, cutPlane } from './core.js';
+import { THREE, $, canvas, renderer, scene, camera, controls, SERVERS, COLS, cutPlane } from './core.js';
 import { W, UI, SV } from './state.js';
 import { racks, byId, byHost, cabinets, plates, rears, selBox, setDoor, doorOpen, updateDoors } from './racks.js';
 import './hall.js';
@@ -124,8 +124,8 @@ $('traffic').addEventListener('input', e => { W.traffic = e.target.value / 100; 
 $('spike').addEventListener('click', () => { W.spikeAge = 0; pushAlert('info', 'Traffic spike injected: ~3× web requests for 10 s'); });
 $('crac').addEventListener('click', e => {
   W.fault = !W.fault; e.currentTarget.setAttribute('aria-pressed', String(W.fault));
-  e.currentTarget.textContent = W.fault ? 'Restore CRAC-2' : 'Fail CRAC-2';
-  pushAlert(W.fault ? 'crit' : 'ok', W.fault ? 'CRAC-2 compressor tripped; rows C–D losing supply air' : 'CRAC-2 restored; supply air recovering');
+  e.currentTarget.textContent = W.fault ? 'Restore CU-2' : 'Fail cooling CU-2';
+  pushAlert(W.fault ? 'crit' : 'ok', W.fault ? 'CU-2 compressor tripped; rows E–H losing supply air' : 'CU-2 restored; supply air recovering');
 });
 document.querySelectorAll('input[name="mode"]').forEach(el => el.addEventListener('change', e => { W.mode = e.target.value; renderLegend(); }));
 $('orbit').addEventListener('click', () => setOrbit(!UI.orbitOn));
@@ -164,6 +164,11 @@ document.addEventListener('keydown', e => {
   const typing = /INPUT|TEXTAREA/.test(document.activeElement.tagName);
   if (e.key === 'Escape') { if (typing) document.activeElement.blur(); else closeServer(); }
   else if (e.key === '/' && !typing) { e.preventDefault(); $('find').focus(); }
+  // Rack view: walk along the row; screen-right is +x for front-facing rows and −x for the others
+  else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !typing && UI.cutRack && !/BUTTON/.test(document.activeElement.tagName)) {
+    const r = UI.cutRack, c = r.c + (e.key === 'ArrowRight' ? 1 : -1) * r.face;
+    if (c >= 0 && c < COLS) { e.preventDefault(); focusRack(byId[r.row.id + String(c + 1).padStart(2, '0')]); }
+  }
 });
 
 // ---------- Layout ----------
@@ -189,7 +194,7 @@ scene.traverse(o => {
 // ---------- Boot: pre-run two minutes of telemetry so trends are populated ----------
 for (let i = 0; i < 480; i++) step(0.25);
 W.warm = false;
-pushAlert('info', 'Telemetry stream connected · 24 racks reporting');
+pushAlert('info', `Telemetry stream connected · ${racks.length} racks reporting`);
 renderLegend();
 UI.selected = byId.A03;
 resize();
