@@ -110,6 +110,16 @@ $('sStress').addEventListener('click', () => {
 const stepRack = d => { const r = racks[(racks.indexOf(UI.selected) + d + racks.length) % racks.length]; if (UI.cutRack) focusRack(r); else select(r); };
 $('prevRack').addEventListener('click', () => stepRack(-1));
 $('nextRack').addEventListener('click', () => stepRack(1));
+// Phones: the rack panel can be folded down to its header
+function setRackMin(min) {
+  const b = $('rackMin');
+  $('rackPanel').classList.toggle('min', min);
+  b.setAttribute('aria-expanded', String(!min));
+  b.setAttribute('aria-label', min ? 'Show rack details' : 'Hide rack details');
+  b.textContent = min ? '▴' : '▾';
+  if (!min) updateSparks();
+}
+$('rackMin').addEventListener('click', () => setRackMin(!$('rackPanel').classList.contains('min')));
 $('traffic').addEventListener('input', e => { W.traffic = e.target.value / 100; $('trafficVal').textContent = e.target.value + '%'; });
 $('spike').addEventListener('click', () => { W.spikeAge = 0; pushAlert('info', 'Traffic spike injected: ~3× web requests for 10 s'); });
 $('crac').addEventListener('click', e => {
@@ -164,7 +174,7 @@ function resize() {
   updateSparks();
 }
 window.addEventListener('resize', resize);
-if (window.innerWidth <= 720) $('opsBox').open = false;
+if (window.innerWidth <= 720) { $('opsBox').open = false; setRackMin(true); }
 
 // Keep reflections subtle (just enough for steel to read as steel); let the rack-view cut clip everything but the room shell
 scene.traverse(o => {
