@@ -80,7 +80,7 @@ canvas.addEventListener('pointermove', e => {
     const sv = hit.sv, r = UI.hovered;
     tip.innerHTML = hit.close ? `<b>${SV.sel.host}</b>click to push back in`
       : sv && !hit.focus ? `<b>${sv.host}</b>U${sv.u} · CPU ${Math.round(sv.load * 100)}% · click to pull out`
-      : `<b>${r.id}</b>CPU ${Math.round(r.load * 100)}% · inlet ${r.inlet.toFixed(1)} °C · ${r.power.toFixed(1)} kW` + (UI.cutRack === r ? '' : ' · click to view the front');
+      : `<b>${r.id}</b>CPU ${Math.round(r.load * 100)}% · inlet ${r.inlet.toFixed(1)} °C · ${r.power.toFixed(1)} of 12 kW` + (UI.cutRack === r ? '' : ' · click to view the front');
     const x = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 8);
     tip.style.left = x + 'px'; tip.style.top = (e.clientY + 16) + 'px';
   } else tip.hidden = true;

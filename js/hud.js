@@ -112,7 +112,7 @@ export function updateHud() {
   $('rMemBar').style.width = (r.mem * 100).toFixed(1) + '%'; $('rMemBar').style.background = barColor(r.mem * 100, 85, 95);
   $('rIn').textContent = r.inlet.toFixed(1) + ' °C'; $('rIn').className = lvlClass(r.tLvl);
   $('rEx').textContent = r.exhaust.toFixed(1) + ' °C';
-  $('rPow').textContent = r.power.toFixed(1) + ' kW';
+  $('rPow').textContent = r.power.toFixed(1) + ' / 12 kW';
   $('rNet').textContent = r.net.toFixed(1) + ' Gb/s';
   const nOk = SERVERS - r.svWarn - r.svCrit;
   const nf = rackFaults(r).length;
@@ -146,10 +146,10 @@ export function drawCores() {
 
 export function renderLegend() {
   const s = STOPS[W.mode];
-  const [lo, hi] = W.mode === 'load' ? [0, 1] : [18, 33];
+  const pctMode = W.mode !== 'heat', [lo, hi] = pctMode ? [0, 1] : [18, 33];
   const pct = v => ((v - lo) / (hi - lo) * 100).toFixed(1) + '%';
   $('lgBar').style.background = `linear-gradient(90deg, ${s.map(([v, c]) => `${c} ${pct(v)}`).join(', ')})`;
-  const ticks = W.mode === 'load' ? s.map(([v]) => Math.round(v * 100) + '%') : s.map(([v], i) => v + (i === s.length - 1 ? ' °C' : ''));
+  const ticks = pctMode ? s.map(([v], i) => Math.round(v * 100) + '%' + (W.mode === 'power' && i === s.length - 1 ? ' of 12 kW' : '')) : s.map(([v], i) => v + (i === s.length - 1 ? ' °C' : ''));
   $('lgTicks').innerHTML = s.map(([v], i) => `<span style="left:${pct(v)}">${ticks[i]}</span>`).join('');
 }
 

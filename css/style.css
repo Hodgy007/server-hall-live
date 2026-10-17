@@ -90,7 +90,8 @@ input[type="range"] { width: 100%; accent-color: var(--cold); margin: 0; }
 .seg legend { width: 100%; padding: 0; margin-bottom: 4px; color: var(--muted); }
 .seg input { position: absolute; opacity: 0; pointer-events: none; }
 .seg label { flex: 1; text-align: center; padding: 5px 8px; border: 1px solid var(--line); cursor: pointer; color: var(--muted); }
-.seg label:first-of-type { border-radius: 4px 0 0 4px; } .seg label:last-of-type { border-radius: 0 4px 4px 0; border-left: 0; }
+.seg label:first-of-type { border-radius: 4px 0 0 4px; } .seg label:last-of-type { border-radius: 0 4px 4px 0; }
+.seg label:not(:first-of-type) { border-left: 0; }
 .seg input:checked + label { color: var(--bg); background: var(--cold); border-color: var(--cold); }
 .legend { display: grid; gap: 3px; }
 .lgbar { height: 6px; border-radius: 3px; }

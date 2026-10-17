@@ -21,8 +21,14 @@ export const STOPS = {
   heat: [[18, '#2a8fbf'], [23, '#3fcf8e'], [27, '#f2b441'], [32, '#ff5a4f']],
   exh:  [[26, '#34495c'], [36, '#f2b441'], [48, '#ff5a4f']],
   cpu:  [[35, '#2a8fbf'], [55, '#3fcf8e'], [75, '#f2b441'], [92, '#ff5a4f']],
-  air:  [[18, '#4fc3e8'], [32, '#f2b441'], [46, '#ff5a4f']]
+  air:  [[18, '#4fc3e8'], [32, '#f2b441'], [46, '#ff5a4f']],
+  power: [[0.3, '#2a8fbf'], [0.6, '#3fcf8e'], [0.8, '#f2b441'], [0.95, '#ff5a4f']]
 };
+// Each rack's power budget (what its PDUs and the busway tap are provisioned for)
+export const RACK_KW = 12;
+// The value a rack is coloured by, and how tall its light column stands (0–1), for each colour mode
+export const modeValue = (mode, r) => mode === 'load' ? r.load : mode === 'power' ? r.power / RACK_KW : r.inlet;
+export const modeHeight = (mode, r) => mode === 'load' ? r.load : mode === 'power' ? Math.min(1, r.power / RACK_KW) : Math.max(0, Math.min(1, (r.inlet - 16) / 18));
 export const LST = {}; const CST = {};
 for (const k in STOPS) { LST[k] = STOPS[k].map(([v, h]) => [v, lc(h)]); CST[k] = STOPS[k].map(([v, h]) => [v, new THREE.Color(h)]); }
 export function gradIn(s, v, out) {

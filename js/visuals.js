@@ -1,5 +1,5 @@
 // Per-frame visual updates driven by the telemetry: rack tint and light columns, LEDs, particles, cooling-unit fans.
-import { THREE, lc, COL, clamp, grad } from './core.js';
+import { THREE, lc, COL, clamp, grad, modeValue, modeHeight } from './core.js';
 import { W, G, UI } from './state.js';
 import { racks, leds, LED, swLeds } from './racks.js';
 import { perfMats, uplinkStripMat, coolers, tapLeds } from './hall.js';
@@ -9,11 +9,11 @@ const tmp = new THREE.Color(), coldC = lc(COL.cold), TAP_ON = lc('#46ff9a').mult
 export function updateVisuals(dt) {
   const blink = (W.t * 2.5) % 1 < 0.5;
   racks.forEach((r, i) => {
-    grad(W.mode, W.mode === 'load' ? r.load : r.inlet, tmp);
+    grad(W.mode, modeValue(W.mode, r), tmp);
     const ei = r === UI.hovered ? 0.2 : (r === UI.selected ? 0.12 : 0.045);
     for (const m of r.mats) { m.emissive.copy(tmp); m.emissiveIntensity = ei; }
     r.colMesh.material.color.copy(tmp);
-    const h = W.mode === 'load' ? r.load : clamp((r.inlet - 16) / 18, 0, 1);
+    const h = modeHeight(W.mode, r);
     r.colMesh.scale.y = Math.max(0.02, h * 0.9);
     for (const L of r.leds) {
       if (L.k === 0) {
