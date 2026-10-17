@@ -11,6 +11,18 @@ A three.js animation of a server room that shows how the servers are performing.
 - **Cold-aisle particles**: supply air rising from the perforated floor tiles.
 - **Packets on the cable trays**: network traffic to and from the core switch, denser with more traffic.
 
+## Inspect a single server
+
+Click any server in a rack (or a cell in the rack panel's server strip) and it slides out on its rails while the camera flies in. The lid is off, and the hardware animates from that server's own telemetry:
+
+- **Fans** spin faster as the CPUs heat up (3,800 to 13,000 rpm).
+- **Heatsinks** glow from blue to red with CPU temperature, with heat rising off them.
+- **Memory sticks** light up in turn as memory fills (16 DIMMs, 512 GB).
+- **Drive and network LEDs** blink with disk IOPS and network traffic.
+- **Airflow particles** enter cool at the front and warm up as they pass the CPUs.
+
+The server panel shows per-core load for all 64 cores, CPU temperatures, fan speed, memory, IOPS, network and power, plus a 2-minute CPU trend. **Run 20 s stress test** pins the cores at 100% so you can watch the temperatures, fans and alerts respond. **Back** or <kbd>Esc</kbd> returns to the hall.
+
 ## Panels and controls
 
 - KPI strip: requests/s, average CPU, network, IT load, PUE and the hottest inlet temperature.
