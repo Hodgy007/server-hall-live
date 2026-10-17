@@ -7,9 +7,12 @@ import { heat, cold } from './particles.js';
 import { SRV, srvMeshes, air, shim, mountServer, updateServerModel } from './server.js';
 import { step } from './sim.js';
 import { updateVisuals } from './visuals.js';
-import { flyHall, flyRack, flyServer, updateCam, setOrbit } from './camera.js';
+import { flyHall, flyRack, flyServer, updateCam, setOrbit, releaseCut } from './camera.js';
 import { hooks, updateHud, updateSparks, drawCores, renderLegend } from './hud.js';
 import { pushAlert } from './alerts.js';
+import { inject, clearAll } from './faults.js';
+import { replay, recorded, swapIn, swapOut } from './replay.js';
+import { live, fresh } from './live.js';
 import { render, resizePost } from './post.js';
 
 // ---------- Selection, doors, pulling servers out ----------
@@ -79,7 +82,7 @@ canvas.addEventListener('pointermove', e => {
     const sv = hit.sv, r = UI.hovered;
     tip.innerHTML = hit.close ? `<b>${SV.sel.host}</b>click to push back in`
       : sv && !hit.focus ? `<b>${sv.host}</b>U${sv.u} · CPU ${Math.round(sv.load * 100)}% · click to pull out`
-      : `<b>${r.id}</b>CPU ${Math.round(r.load * 100)}% · inlet ${r.inlet.toFixed(1)} °C · ${r.power.toFixed(1)} kW` + (UI.cutRack === r ? '' : ' · click to view the front');
+      : `<b>${r.id}</b>CPU ${Math.round(r.load * 100)}% · inlet ${r.inlet.toFixed(1)} °C · ${r.power.toFixed(1)} of 12 kW` + (UI.cutRack === r ? '' : ' · click to view the front');
     const x = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 8);
     tip.style.left = x + 'px'; tip.style.top = (e.clientY + 16) + 'px';
   } else tip.hidden = true;
@@ -138,6 +141,23 @@ $('airflow').addEventListener('click', () => {
 });
 $('hallView').addEventListener('click', hallView);
 
+// ---------- Replay: the slider runs from 10 minutes ago (left) to live (right) ----------
+const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+function syncReplay() {
+  const el = $('replay'), have = Math.max(0, recorded() - 1);
+  el.min = String(-Math.floor(have / 5) * 5);
+  const ago = replay.ago;
+  $('replayVal').textContent = ago ? `${mmss(ago)} ago` : 'Live';
+  const feed = live.enabled && fresh(live) ? `Live data · ${live.servers} of ${racks.length * SERVERS} servers` : 'Simulated telemetry';
+  $('liveChip').textContent = ago ? `Replay · ${mmss(ago)} ago` : feed;
+  $('liveChip').classList.toggle('past', !!ago);
+  $('replayLive').hidden = !ago;
+}
+$('replay').addEventListener('input', e => { replay.ago = -Number(e.target.value); syncReplay(); updateHud(); });
+$('replayLive').addEventListener('click', () => { replay.ago = 0; $('replay').value = '0'; syncReplay(); updateHud(); });
+$('faultAdd').addEventListener('click', () => { let f = null; for (let n = 0; n < 5 && !f; n++) f = inject(); updateHud(); });
+$('faultClear').addEventListener('click', () => { clearAll(); updateHud(); });
+
 // ---------- Find a host or rack ----------
 {
   const dl = $('hosts');
@@ -162,7 +182,8 @@ $('findForm').addEventListener('submit', e => { e.preventDefault(); if (find($('
 $('find').addEventListener('input', e => { $('findMsg').textContent = ''; if (e.inputType === 'insertReplacementText' || !e.inputType) find(e.target.value, true); });
 document.addEventListener('keydown', e => {
   const typing = /INPUT|TEXTAREA/.test(document.activeElement.tagName);
-  if (e.key === 'Escape') { if (typing) document.activeElement.blur(); else closeServer(); }
+  // Esc: leave the search box, push a server back in, or (with nothing open) reset the view
+  if (e.key === 'Escape') { if (typing) document.activeElement.blur(); else if (SV.open) closeServer(); else hallView(); }
   else if (e.key === '/' && !typing) { e.preventDefault(); $('find').focus(); }
   // Rack view: walk along the row; screen-right is +x for front-facing rows and −x for the others
   else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !typing && UI.cutRack && !/BUTTON/.test(document.activeElement.tagName)) {
@@ -199,21 +220,25 @@ renderLegend();
 UI.selected = byId.A03;
 resize();
 select(UI.selected, false);
+syncReplay();
 
 let last = performance.now(), hudAcc = 0;
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   step(dt);
+  const past = swapIn();          // replaying: draw (and show in the panels) the recorded state, then restore the live one
   updateVisuals(dt);
   updateDoors(dt);
   updateServerModel(dt);
   updateCam(dt);
   controls.update();
+  if (releaseCut() && !SV.open && UI.selected) setDoor(UI.selected, false);
   render();
   if (SV.open) drawCores();
   hudAcc += dt;
   if (hudAcc > 0.2) { hudAcc = 0; updateHud(); }
-  if (W.sampled) { W.sampled = false; updateSparks(); }
+  if (W.sampled) { W.sampled = false; updateSparks(); syncReplay(); }
+  if (past) swapOut();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

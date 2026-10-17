@@ -38,6 +38,8 @@ h1 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 3
 .find input:focus-visible { outline: 2px solid var(--cold); outline-offset: 1px; }
 #hallView { background: var(--panel); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .findmsg { font-size: 10.5px; color: var(--warn); }
+.chip.past { color: var(--warn); border-color: rgba(242, 180, 65, 0.5); background: rgba(242, 180, 65, 0.1); }
+.linkbtn { background: none; border: 0; padding: 0; color: var(--cold); text-decoration: underline; cursor: pointer; font-size: 11px; }
 .chip { border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cold); background: rgba(79, 195, 232, 0.08); }
 
 .kpis { display: grid; grid-template-columns: repeat(6, minmax(112px, 1fr)); gap: 8px; }
@@ -90,7 +92,8 @@ input[type="range"] { width: 100%; accent-color: var(--cold); margin: 0; }
 .seg legend { width: 100%; padding: 0; margin-bottom: 4px; color: var(--muted); }
 .seg input { position: absolute; opacity: 0; pointer-events: none; }
 .seg label { flex: 1; text-align: center; padding: 5px 8px; border: 1px solid var(--line); cursor: pointer; color: var(--muted); }
-.seg label:first-of-type { border-radius: 4px 0 0 4px; } .seg label:last-of-type { border-radius: 0 4px 4px 0; border-left: 0; }
+.seg label:first-of-type { border-radius: 4px 0 0 4px; } .seg label:last-of-type { border-radius: 0 4px 4px 0; }
+.seg label:not(:first-of-type) { border-left: 0; }
 .seg input:checked + label { color: var(--bg); background: var(--cold); border-color: var(--cold); }
 .legend { display: grid; gap: 3px; }
 .lgbar { height: 6px; border-radius: 3px; }
@@ -146,6 +149,11 @@ h3 { margin: 14px 0 6px; font-size: 10px; font-weight: 500; letter-spacing: 0.12
 .specs dt { font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding-top: 1px; }
 .specs dd { margin: 0; font-variant-numeric: tabular-nums; }
 .specs dd span { color: var(--muted); }
+.specs em.bad, .inv em.flt { font-style: normal; color: var(--warn); }
+.inv em.flt { display: block; font-size: 9.5px; }
+.inv em.flt:empty { display: none; }
+.faults { list-style: none; margin: 0; padding: 6px 8px; display: grid; gap: 3px; font-size: 10.5px; color: var(--warn); border: 1px solid rgba(242, 180, 65, 0.4); border-radius: 4px; background: rgba(242, 180, 65, 0.06); }
+.faults li::before { content: "⚠ "; }
 .btnlink { display: block; text-align: center; font-size: 12px; color: var(--cold); text-decoration: none; border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; background: rgba(79, 195, 232, 0.06); }
 .btnlink:hover { border-color: var(--cold); }
 .btnlink:focus-visible { outline: 2px solid var(--cold); outline-offset: 2px; }

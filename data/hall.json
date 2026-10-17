@@ -1,0 +1,6 @@
+{
+  "_about": "Site data for Server Hall Live. With no racks listed everything is generated and simulated. See data/hall.example.json for the full format.",
+  "domain": "hall2.local",
+  "iloUrl": "https://{ip}/",
+  "racks": {}
+}

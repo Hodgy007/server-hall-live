@@ -18,9 +18,9 @@
     <div class="brand">
       <div class="eyebrow">Hall 2 · Rows A–H · 96 racks · 2 cooling units</div>
       <h1>Server Hall Live</h1>
-      <div class="meta"><span class="chip">Simulated telemetry</span><span class="hint">Drag to orbit · scroll to zoom · click a rack to open its door, then a server</span></div>
+      <div class="meta"><span class="chip" id="liveChip">Simulated telemetry</span><span class="hint">Drag to orbit · scroll to zoom · click a rack to open its door, then a server</span></div>
       <div class="tools">
-        <button id="hallView" type="button">Hall view</button>
+        <button id="hallView" type="button" title="Back to the whole-hall overview (Esc)">Reset view</button>
         <form id="findForm" class="find" role="search">
           <input id="find" type="search" list="hosts" placeholder="Find host or rack  ( / )" aria-label="Find a server or rack, for example db-c04-07 or B03" autocomplete="off" spellcheck="false">
           <datalist id="hosts"></datalist>
@@ -106,6 +106,7 @@
         <div><dt>NIC 2</dt><dd id="spNic2">—</dd></div>
         <div><dt>OOB (iLO)</dt><dd id="spIlo">—</dd></div>
       </dl>
+      <ul class="faults" id="sFaults" hidden></ul>
       <a class="btnlink" id="sIlo" href="#" target="_blank" rel="noopener">Open iLO console ↗</a>
       <div class="cores">
         <div class="tl"><span>Per-core load, 64 cores</span><span>CPU0 · CPU1</span></div>
@@ -136,14 +137,23 @@
             <label for="traffic" class="row"><span>Traffic demand</span><b id="trafficVal">60%</b></label>
             <input type="range" id="traffic" min="10" max="100" value="60">
           </div>
+          <div>
+            <div class="row"><label for="replay">Replay</label><span><button type="button" class="linkbtn" id="replayLive" hidden>back to live</button> <b id="replayVal">Live</b></span></div>
+            <input type="range" id="replay" min="-120" max="0" step="5" value="0" aria-describedby="replayVal">
+          </div>
           <div class="btns">
             <button id="spike">Inject traffic spike</button>
             <button id="crac" aria-pressed="false">Fail cooling CU-2</button>
+          </div>
+          <div class="btns">
+            <button id="faultAdd" title="Fail a random PSU, drive, fan or ToR switch somewhere in the hall">Inject hardware fault</button>
+            <button id="faultClear">Repair all faults</button>
           </div>
           <fieldset class="seg">
             <legend>Color racks by</legend>
             <input type="radio" name="mode" id="modeLoad" value="load" checked><label for="modeLoad">CPU load</label>
             <input type="radio" name="mode" id="modeHeat" value="heat"><label for="modeHeat">Inlet temp</label>
+            <input type="radio" name="mode" id="modePower" value="power"><label for="modePower">Power</label>
           </fieldset>
           <div class="legend"><div class="lgbar" id="lgBar"></div><div class="lgticks" id="lgTicks"></div></div>
           <div class="btns">

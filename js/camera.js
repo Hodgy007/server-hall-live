@@ -23,6 +23,14 @@ export function setOrbit(on) {
 
 export const flyHall = () => { setCut(null); flyTo(HALL_VIEW.pos, HALL_VIEW.target, 1.4); };
 
+// The cut-away only makes sense while you stand at the rack: zoom or orbit away and the hall comes back
+const CUT_RANGE = 4.5;
+export function releaseCut() {
+  if (!UI.cutRack || CAM.active) return false;
+  if (camera.position.distanceTo(controls.target) <= CUT_RANGE) return false;
+  setCut(null); return true;
+}
+
 // Rack view: the cold aisle is only 1.4 m wide, too close to see a whole 42U rack, so the camera stands
 // 2.9 m back (beyond the opposite row) and everything between it and the rack is clipped away.
 const CUT_GAP = 0.75;   // the cut sits this far in front of the rack, clear of its open door

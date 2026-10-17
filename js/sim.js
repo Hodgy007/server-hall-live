@@ -4,6 +4,8 @@ import { W, G, SV, HIST } from './state.js';
 import { racks } from './racks.js';
 import { stepServer, level } from './server.js';
 import { pushAlert } from './alerts.js';
+import { record } from './replay.js';
+import { applyServer, applyRack } from './live.js';
 
 const wave = (t, p) => 0.5 * Math.sin(t * 0.21 + p) + 0.3 * Math.sin(t * 0.53 + p * 1.7) + 0.2 * Math.sin(t * 1.31 + p * 2.9);
 
@@ -27,13 +29,15 @@ export function step(dt) {
       const own = clamp(r.demand * sv.bias + wave(W.t * 1.6, sv.phase) * 0.05, 0.02, 1);
       sv.load = own + sv.stressAmp * (1 - own) * 0.98;
       sv.mem += (clamp((0.36 + r.memBase + sv.load * 0.28) * sv.memBias + sv.stressAmp * 0.15, 0.08, 0.97) - sv.mem) * k3;
-      sv.temp += (r.inlet + 13 + sv.load * 55 - sv.temp) * k5;
-      sv.rpm += (3800 + clamp((sv.temp - 45) / 40, 0, 1) * 9200 - sv.rpm) * k8;
+      const fanOut = sv.faults.some(f => f.kind === 'fan');
+      sv.temp += (r.inlet + 13 + sv.load * 55 + (fanOut ? 6 : 0) - sv.temp) * k5;
+      sv.rpm += ((3800 + clamp((sv.temp - 45) / 40, 0, 1) * 9200) * (fanOut ? 1.15 : 1) - sv.rpm) * k8;
       sv.power = 260 + sv.load * 640 + (sv.rpm - 3800) * 0.006;
       sv.net = r.row.net / SERVERS * sv.load * sv.bias * (0.85 + 0.15 * Math.sin(W.t * 1.7 + sv.phase));
+      applyServer(sv);   // live telemetry, when a feed reports this server, replaces the simulated figures
       sv.cLvl = level(sv.load * 100, 85, 95, sv.cLvl, 3);
       sv.tLvl = level(sv.temp, 85, 95, sv.tLvl, 2);
-      sv.status = Math.max(sv.cLvl, sv.tLvl);
+      sv.status = Math.max(sv.cLvl, sv.tLvl, sv.faults.length ? 1 : 0);   // any hardware fault is at least a warning
       if (sv.status === 2) nCrit++; else if (sv.status === 1) nWarn++;
       sLoad += sv.load; sMem += sv.mem; sPow += sv.power; sNet += sv.net;
     }
@@ -48,6 +52,7 @@ export function step(dt) {
     const faultHit = coolingUnit(r.z) === 1 ? 11 : 3.5;   // rows fed by CU-2 lose supply air when it fails
     const inT = 19.5 + r.inletOffset + end * 1.8 * r.load + W.faultLevel * faultHit * (0.6 + 0.4 * r.load);
     r.inlet += (inT - r.inlet) * k5;
+    applyRack(r);
     r.exhaust = r.inlet + 3 + r.power * 1.6;
     rps += r.load * r.row.rps; cpu += r.load; net += r.net; it += r.power;
     if (r.inlet > maxIn) { maxIn = r.inlet; maxR = r; }
@@ -56,7 +61,8 @@ export function step(dt) {
     r.cpuLvl = level(r.load * 100, 85, 95, pc, 3);
     r.tLvl = level(r.inlet, 27, 32, pt, 0.6);
     r.svLvl = nCrit > 0 ? 1 : 0;
-    r.status = Math.max(r.cpuLvl, r.tLvl, r.svLvl);
+    r.faultLvl = r.torDown[0] || r.torDown[1] ? 1 : 0;
+    r.status = Math.max(r.cpuLvl, r.tLvl, r.svLvl, r.faultLvl);
     if (!W.warm) {
       if (r.cpuLvl > pc) pushAlert(r.cpuLvl === 2 ? 'crit' : 'warn', `${r.id} CPU at ${Math.round(r.load * 100)}% across ${SERVERS} servers`);
       if (r.tLvl > pt) pushAlert(r.tLvl === 2 ? 'crit' : 'warn', `${r.id} inlet ${r.inlet.toFixed(1)} °C, over the ${r.tLvl === 2 ? '32 °C allowable' : '27 °C recommended'} limit`);
@@ -77,6 +83,7 @@ export function step(dt) {
     }
     G.rpsHist.push(G.rps); G.cpuHist.push(G.cpu * 100);
     if (G.rpsHist.length > HIST) { G.rpsHist.shift(); G.cpuHist.shift(); }
+    record();
     W.sampled = true;
   }
   if (SV.sel) stepServer(dt);

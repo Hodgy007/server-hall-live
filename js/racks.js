@@ -1,5 +1,6 @@
 // Cabinets and everything mounted in them. Fronts face the cold aisle, rears the hot aisle.
 import { THREE, scene, lc, COL, rnd, labelTex, RACK_W, RACK_H, RACK_D, COLS, PITCH, SERVERS, ROWS, U, U0, U_TOP, FRONT, uY, ease, reduceMotion } from './core.js';
+import { HALL, fill } from './data.js';
 import { sideTex, roughTex, topTex, railTex, bezelTex, plinthTex, contactTex, doorTex, doorAlpha, plateMat, drawFront, drawRear, drawSwFans, drawSwPorts, drawPatch, drawBlank } from './textures.js';
 
 export const racks = [], cabinets = [];
@@ -59,8 +60,9 @@ export const CPU = [
 ];
 const VLAN = [110, 120, 130, 140];
 const mac = (oui, n) => [oui >> 16 & 255, oui >> 8 & 255, oui & 255, 0x20 + (n >> 16 & 15), n >> 8 & 255, n & 255].map(b => b.toString(16).padStart(2, '0')).join(':');
-// Where the iLO (BMC) web console lives; change this to point at real management addresses
-export const iloUrl = ip => `https://${ip}/`;
+// Where the iLO (BMC) web console lives: "iloUrl" in data/hall.json, e.g. "https://{ip}/" or "https://{host}-ilo.example.com/"
+export const iloUrl = sv => fill(HALL.iloUrl || 'https://{ip}/', sv);
+export const DOMAIN = HALL.domain || 'hall2.local';
 const OS = [
   [['Ubuntu 22.04.4 LTS', '5.15'], ['Ubuntu 24.04.1 LTS', '6.8']],
   [['Ubuntu 24.04.1 LTS', '6.8'], ['Debian 12.7', '6.1']],
@@ -86,6 +88,7 @@ function mount(mesh, i, r, side, y, dz, x, store) {
         serial: 'HX' + (2400000 + Math.floor(rnd() * 99999)).toString(36).toUpperCase(),
         installed: `20${22 + Math.floor(rnd() * 4)}-${String(1 + Math.floor(rnd() * 12)).padStart(2, '0')}`,
         os: OS[r.kind][Math.floor(rnd() * OS[r.kind].length)], diskUsed: 0.25 + rnd() * 0.5,
+        model: MODEL[r.kind], drives: DRIVE[r.kind], driveTB: DRIVE_TB[r.kind], cpu: `2× ${CPU[r.kind].name}`, cpuNote: `32 cores each at ${CPU[r.kind].ghz} GHz, 64 in total`,
         // NIC 1 and NIC 2 run to the same port on the rack's A and B top-of-rack switches (LACP bond);
         // the iLO port runs to the rack's out-of-band switch
         port: `Ethernet1/${s + 1}`, oobPort: `Gi1/0/${s + 1}`,
@@ -109,6 +112,21 @@ function mount(mesh, i, r, side, y, dz, x, store) {
   });
 }
 scene.add(plates, rears, leds);
+
+// Real inventory from data/hall.json replaces the generated values slot by slot: racks.<id>.servers.U<n>
+const SET = { host: 'host', serial: 'serial', installed: 'installed', model: 'model', drives: 'drives', driveTB: 'driveTB', cpu: 'cpu', cpuNote: 'cpuNote',
+  ip: 'ip', vlan: 'vlan', gateway: 'gw', ilo: 'ilo', iloMac: 'iloMac', port: 'port', oobPort: 'oobPort' };
+for (const r of racks) {
+  const slots = HALL.racks && HALL.racks[r.id] && HALL.racks[r.id].servers;
+  if (!slots) continue;
+  for (const sv of r.servers) {
+    const o = slots['U' + sv.u]; if (!o) continue;
+    for (const k in SET) if (o[k] !== undefined) sv[SET[k]] = o[k];
+    if (o.os) sv.os = [o.os, o.kernel || sv.os[1]];
+    if (o.mac) sv.mac = o.mac;
+    sv.real = true;
+  }
+}
 export const byHost = new Map(racks.flatMap(r => r.servers.map(sv => [sv.host, sv])));
 
 // Hide or restore a server's plates and LEDs while it is pulled out
@@ -134,6 +152,14 @@ racks.forEach((r, i) => {
   for (let u = 25; u <= 40; u++) mount(blanks, i * 16 + u - 25, r, 1, uY(u, 1), 0.006);
 });
 scene.add(swFans, swPorts, patch, oob, blanks);
+// Switch status LEDs, on the fan side and the port side of both ToR switches: index = rack * 4 + switch * 2 + face
+export const swLeds = new THREE.InstancedMesh(new THREE.BoxGeometry(0.012, 0.012, 0.006), new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }), racks.length * 4);
+racks.forEach((r, i) => [42, 41].forEach((u, k) => [1, -1].forEach((side, j) => {
+  const flip = r.face * side > 0 ? 1 : -1;
+  m4.makeTranslation(r.x - flip * 0.215, uY(u, 1), r.z + r.face * side * (FRONT + 0.015)); swLeds.setMatrixAt(i * 4 + k * 2 + j, m4);
+  swLeds.setColorAt(i * 4 + k * 2 + j, LED.act);
+})));
+scene.add(swLeds);
 
 // ---------- Cabinet frame: mounting rails, top bezel, vented plinth, rear cable looms ----------
 const rails = new THREE.InstancedMesh(new THREE.BoxGeometry(0.034, 42 * U + 0.01, 0.01), new THREE.MeshStandardMaterial({ map: railTex, metalness: 0.75, roughness: 0.45 }), racks.length * 4);
