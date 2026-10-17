@@ -1,0 +1,791 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Server Hall Live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: full-bleed WebGL hall; HUD floats on top — KPI strip across the top, rack detail bottom-left, controls bottom-right. Deliberately single dark theme: it is a lit-from-within machine room. */
+:root {
+  --bg: #0a1017;
+  --panel: rgba(12, 20, 29, 0.84);
+  --line: #233340;
+  --fg: #d9e5ec;
+  --muted: #8299a8;
+  --cold: #4fc3e8;   /* cold-aisle accent: selection, focus, controls */
+  --ok: #3fcf8e;
+  --warn: #f2b441;
+  --crit: #ff5a4f;
+  --font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-mono); font-size: 12px; overflow: hidden; }
+#stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+.hud {
+  position: fixed; inset: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 12px;
+  padding-top: max(14px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(14px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  pointer-events: none;
+}
+.panel, .kpi { pointer-events: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+
+.top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.brand { display: grid; gap: 4px; min-width: 0; }
+.eyebrow { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 34px; line-height: 1; letter-spacing: 0.02em; text-transform: uppercase; text-wrap: balance; }
+.brand .meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--muted); font-size: 11px; }
+.chip { border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cold); background: rgba(79, 195, 232, 0.08); }
+
+.kpis { display: grid; grid-template-columns: repeat(6, minmax(112px, 1fr)); gap: 8px; }
+.kpi { padding: 8px 10px; display: grid; gap: 2px; min-width: 0; }
+.kpi .k { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.kpi .v { font-family: var(--font-display); font-weight: 600; font-size: 26px; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.kpi .v small { font-family: var(--font-mono); font-size: 11px; font-weight: 400; color: var(--muted); margin-left: 3px; }
+.kpi .sub { height: 22px; display: flex; align-items: center; font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi canvas { width: 100%; height: 22px; display: block; }
+.is-warn { color: var(--warn); } .is-crit { color: var(--crit); } .is-ok { color: var(--fg); }
+
+.bottom { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px; }
+.rackp { width: 300px; max-width: 100%; padding: 12px; display: grid; gap: 10px; }
+.ph { display: flex; align-items: flex-start; gap: 8px; }
+.ph > div:first-child { flex: 1; min-width: 0; }
+h2 { margin: 2px 0 0; font-family: var(--font-display); font-weight: 600; font-size: 30px; line-height: 1; letter-spacing: 0.03em; }
+.pill { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; border: 1px solid currentColor; margin-top: 4px; }
+.pill.ok { color: var(--ok); } .pill.warn { color: var(--warn); } .pill.crit { color: var(--crit); }
+.nav { display: flex; gap: 4px; }
+button { font: inherit; color: var(--fg); background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; cursor: pointer; }
+button:hover { border-color: var(--cold); color: var(--cold); }
+button:focus-visible, input:focus-visible + label, input[type="range"]:focus-visible, input[type="checkbox"]:focus-visible, summary:focus-visible { outline: 2px solid var(--cold); outline-offset: 2px; }
+.nav button { padding: 4px 9px; font-size: 14px; line-height: 1; }
+.meters { display: grid; gap: 8px; }
+.ml { display: flex; justify-content: space-between; margin-bottom: 4px; color: var(--muted); }
+.ml b { color: var(--fg); font-weight: 500; font-variant-numeric: tabular-nums; }
+.bar { position: relative; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.06); overflow: hidden; }
+.bar i { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: 3px; background: var(--ok); transition: width .25s linear; }
+.bar em { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--muted); opacity: .7; }
+.facts { margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.facts div { display: grid; gap: 2px; }
+.facts dt { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.facts dd { margin: 0; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.trend { display: grid; gap: 3px; }
+.tl { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); }
+.trend canvas { width: 100%; height: 34px; display: block; }
+
+.ops { width: 300px; max-width: 100%; padding: 12px; }
+summary { cursor: pointer; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); list-style-position: inside; }
+.ctl { display: grid; gap: 10px; margin-top: 10px; }
+.row { display: flex; justify-content: space-between; color: var(--muted); }
+.row b { color: var(--fg); font-weight: 500; font-variant-numeric: tabular-nums; }
+input[type="range"] { width: 100%; accent-color: var(--cold); margin: 0; }
+.btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+#crac[aria-pressed="true"] { color: var(--crit); border-color: var(--crit); }
+.seg { border: 0; margin: 0; padding: 0; display: flex; gap: 0; flex-wrap: wrap; }
+.seg legend { width: 100%; padding: 0; margin-bottom: 4px; color: var(--muted); }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { flex: 1; text-align: center; padding: 5px 8px; border: 1px solid var(--line); cursor: pointer; color: var(--muted); }
+.seg label:first-of-type { border-radius: 4px 0 0 4px; } .seg label:last-of-type { border-radius: 0 4px 4px 0; border-left: 0; }
+.seg input:checked + label { color: var(--bg); background: var(--cold); border-color: var(--cold); }
+.legend { display: grid; gap: 3px; }
+.lgbar { height: 6px; border-radius: 3px; }
+.lgticks { position: relative; height: 14px; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.lgticks span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.lgticks span:first-child { transform: none; }
+.chk { display: flex; gap: 8px; align-items: center; color: var(--muted); cursor: pointer; }
+.chk input { accent-color: var(--cold); margin: 0; }
+h3 { margin: 14px 0 6px; font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+#alerts { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+#alerts li { display: grid; grid-template-columns: 3px auto 1fr; gap: 8px; align-items: start; font-size: 11px; line-height: 1.35; }
+#alerts li::before { content: ""; align-self: stretch; border-radius: 2px; background: var(--muted); }
+#alerts li.warn::before { background: var(--warn); } #alerts li.crit::before { background: var(--crit); } #alerts li.ok::before { background: var(--ok); } #alerts li.info::before { background: var(--cold); }
+#alerts time { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+#tip { position: fixed; z-index: 5; pointer-events: none; padding: 6px 9px; font-size: 11px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+#tip b { font-weight: 500; color: var(--cold); margin-right: 6px; }
+
+@media (max-width: 1180px) { .kpis { grid-template-columns: repeat(3, minmax(100px, 1fr)); } }
+@media (max-width: 720px) {
+  h1 { font-size: 26px; }
+  .top { gap: 8px; }
+  .brand .hint { display: none; }
+  .kpis { width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .kpi { padding: 6px 8px; }
+  .kpi .v { font-size: 20px; }
+  .kpi .sub, .kpi canvas { display: none; }
+  .bottom { flex-direction: column; align-items: stretch; gap: 8px; }
+  .rackp, .ops { width: 100%; padding: 10px; }
+  .trend { display: none; }
+  h2 { font-size: 24px; }
+  #alerts li:nth-child(n+3) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="stage" aria-label="3D view of a server hall with four rows of racks"></canvas>
+
+<div class="hud">
+  <header class="top">
+    <div class="brand">
+      <div class="eyebrow">Hall 2 · Rows A–D · 24 racks · 2 CRAC units</div>
+      <h1>Server Hall Live</h1>
+      <div class="meta"><span class="chip">Simulated telemetry</span><span class="hint">Drag to orbit · scroll to zoom · click a rack</span></div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><span class="k">Requests/s</span><span class="v" id="kRps">—</span><canvas id="sRps"></canvas></div>
+      <div class="kpi"><span class="k">Avg CPU</span><span class="v" id="kCpu">—</span><canvas id="sCpu"></canvas></div>
+      <div class="kpi"><span class="k">Network</span><span class="v" id="kNet">—</span><span class="sub" id="kNetSub">—</span></div>
+      <div class="kpi"><span class="k">IT load</span><span class="v" id="kPow">—</span><span class="sub" id="kPowSub">—</span></div>
+      <div class="kpi"><span class="k">PUE</span><span class="v" id="kPue">—</span><span class="sub" id="kPueSub">—</span></div>
+      <div class="kpi"><span class="k">Max inlet</span><span class="v" id="kIn">—</span><span class="sub" id="kInSub">—</span></div>
+    </div>
+  </header>
+
+  <div class="bottom">
+    <section class="panel rackp" aria-label="Selected rack">
+      <div class="ph">
+        <div>
+          <div class="eyebrow" id="rRole">—</div>
+          <h2 id="rId">—</h2>
+        </div>
+        <span class="pill ok" id="rStatus">OK</span>
+        <div class="nav">
+          <button id="prevRack" aria-label="Previous rack">‹</button>
+          <button id="nextRack" aria-label="Next rack">›</button>
+        </div>
+      </div>
+      <div class="meters">
+        <div><div class="ml"><span>CPU</span><b id="rCpu">—</b></div><div class="bar"><i id="rCpuBar"></i><em style="left:85%"></em></div></div>
+        <div><div class="ml"><span>Memory</span><b id="rMem">—</b></div><div class="bar"><i id="rMemBar"></i></div></div>
+      </div>
+      <dl class="facts">
+        <div><dt>Inlet</dt><dd id="rIn">—</dd></div>
+        <div><dt>Exhaust</dt><dd id="rEx">—</dd></div>
+        <div><dt>Power</dt><dd id="rPow">—</dd></div>
+        <div><dt>Network</dt><dd id="rNet">—</dd></div>
+      </dl>
+      <div class="trend"><div class="tl"><span>CPU, last 2 min</span><span>dashed: 85% warn</span></div><canvas id="rSpark"></canvas></div>
+      <div class="trend"><div class="tl"><span>Inlet °C, last 2 min</span><span>dashed: 27 °C limit</span></div><canvas id="rSparkT"></canvas></div>
+    </section>
+
+    <section class="panel ops" aria-label="Controls and alerts">
+      <details id="opsBox" open>
+        <summary>Controls and alerts</summary>
+        <div class="ctl">
+          <div>
+            <label for="traffic" class="row"><span>Traffic demand</span><b id="trafficVal">60%</b></label>
+            <input type="range" id="traffic" min="10" max="100" value="60">
+          </div>
+          <div class="btns">
+            <button id="spike">Inject traffic spike</button>
+            <button id="crac" aria-pressed="false">Fail CRAC-2</button>
+          </div>
+          <fieldset class="seg">
+            <legend>Color racks by</legend>
+            <input type="radio" name="mode" id="modeLoad" value="load" checked><label for="modeLoad">CPU load</label>
+            <input type="radio" name="mode" id="modeHeat" value="heat"><label for="modeHeat">Inlet temp</label>
+          </fieldset>
+          <div class="legend"><div class="lgbar" id="lgBar"></div><div class="lgticks" id="lgTicks"></div></div>
+          <label class="chk" for="orbit"><input type="checkbox" id="orbit"> Auto-orbit camera</label>
+        </div>
+        <h3>Alerts</h3>
+        <ul id="alerts"></ul>
+      </details>
+    </section>
+  </div>
+</div>
+<div id="tip" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const css = getComputedStyle(document.documentElement);
+  const tok = n => css.getPropertyValue(n).trim();
+  const COL = { ok: tok('--ok'), warn: tok('--warn'), crit: tok('--crit'), cold: tok('--cold'), muted: tok('--muted'), line: tok('--line'), fg: tok('--fg') };
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lc = h => new THREE.Color(h).convertSRGBToLinear();
+
+  // ---------- Color scales (shared by 3D scene and legend) ----------
+  const STOPS = {
+    load: [[0, '#2a8fbf'], [0.5, '#3fcf8e'], [0.8, '#f2b441'], [0.95, '#ff5a4f']],
+    heat: [[18, '#2a8fbf'], [23, '#3fcf8e'], [27, '#f2b441'], [32, '#ff5a4f']],
+    exh:  [[26, '#34495c'], [36, '#f2b441'], [48, '#ff5a4f']]
+  };
+  const LST = {};
+  for (const k in STOPS) LST[k] = STOPS[k].map(([v, h]) => [v, lc(h)]);
+  function grad(k, v, out) {
+    const s = LST[k];
+    if (v <= s[0][0]) return out.copy(s[0][1]);
+    for (let i = 1; i < s.length; i++) {
+      if (v <= s[i][0]) return out.copy(s[i - 1][1]).lerp(s[i][1], (v - s[i - 1][0]) / (s[i][0] - s[i - 1][0]));
+    }
+    return out.copy(s[s.length - 1][1]);
+  }
+
+  // ---------- Renderer, camera ----------
+  const canvas = $('stage');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
+  const scene = new THREE.Scene();
+  const BG = lc(tok('--bg'));
+  scene.background = BG;
+  scene.fog = new THREE.Fog(BG, 13, 28);
+  const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+  camera.position.set(7.4, 5.4, 8.2);
+  const controls = new THREE.OrbitControls(camera, canvas);
+  controls.target.set(0.4, 0.9, 0);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.maxPolarAngle = Math.PI * 0.48;
+  controls.minDistance = 2.5;
+  controls.maxDistance = 20;
+  controls.autoRotateSpeed = 0.35;
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  controls.autoRotate = !reduceMotion;
+  $('orbit').checked = controls.autoRotate;
+
+  scene.add(new THREE.HemisphereLight(0x9cc4e0, 0x0a0f14, 0.55));
+  const key = new THREE.DirectionalLight(0xdfefff, 0.55); key.position.set(3, 8, 4); scene.add(key);
+
+  // ---------- Geometry constants (metres) ----------
+  const RACK_W = 0.6, RACK_H = 2.0, RACK_D = 1.0, COLS = 6, PITCH = 0.64, SERVERS = 12;
+  const TRAY_Y = 2.75, TRAY_X = 2.55, CORE_X = 3.4;
+  const ROWS = [
+    { id: 'A', z: -3.5, face: 1,  role: 'Web front-end', aff: 1.0,  base: 0.55, net: 36, rps: 3100 },
+    { id: 'B', z: -1.1, face: -1, role: 'API services',  aff: 0.8,  base: 0.5,  net: 30, rps: 1400 },
+    { id: 'C', z: 1.1,  face: 1,  role: 'Database',      aff: 0.45, base: 0.45, net: 22, rps: 0 },
+    { id: 'D', z: 3.5,  face: -1, role: 'Batch and analytics', aff: 0.1, base: 0.5, net: 14, rps: 0 }
+  ];
+
+  function canvasTex(w, h, draw) {
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    draw(c.getContext('2d'), w, h);
+    const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
+    return t;
+  }
+  function labelTex(text, color) {
+    return canvasTex(256, 64, (g, w, h) => {
+      g.font = '500 40px "IBM Plex Mono", ui-monospace, monospace';
+      g.fillStyle = color || '#cfe0ea'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(text, w / 2, h / 2 + 2);
+    });
+  }
+
+  // ---------- Floor ----------
+  const floorTex = canvasTex(128, 128, (g) => {
+    g.fillStyle = '#121a22'; g.fillRect(0, 0, 128, 128);
+    g.strokeStyle = '#1f2c37'; g.lineWidth = 4; g.strokeRect(2, 2, 124, 124);
+  });
+  floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping; floorTex.repeat.set(18 / 0.6, 18 / 0.6);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(18, 18), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.85, metalness: 0.2 }));
+  floor.rotation.x = -Math.PI / 2; scene.add(floor);
+
+  const perfTex = canvasTex(128, 128, (g) => {
+    g.fillStyle = '#0e1820'; g.fillRect(0, 0, 128, 128);
+    g.fillStyle = '#7fd6f2';
+    for (let y = 10; y < 128; y += 12) for (let x = 10; x < 128; x += 12) { g.beginPath(); g.arc(x, y, 2.6, 0, Math.PI * 2); g.fill(); }
+    g.strokeStyle = '#26404f'; g.lineWidth = 4; g.strokeRect(2, 2, 124, 124);
+  });
+  perfTex.wrapS = perfTex.wrapT = THREE.RepeatWrapping; perfTex.repeat.set(4.2 / 0.6, 1.2 / 0.6);
+  const perfMats = [];
+  [-2.3, 2.3].forEach(z => {
+    const m = new THREE.MeshBasicMaterial({ map: perfTex, color: lc('#8fb8c8'), toneMapped: false });
+    const p = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 1.2), m);
+    p.rotation.x = -Math.PI / 2; p.position.set(0, 0.003, z); scene.add(p); perfMats.push(m);
+  });
+
+  // Overhead light fixtures
+  [[-1.2, -2.3], [1.2, -2.3], [-1.2, 2.3], [1.2, 2.3]].forEach(([x, z]) => {
+    const fx = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.04, 0.16), new THREE.MeshBasicMaterial({ color: lc('#d8ecff') }));
+    fx.position.set(x, 3.4, z); scene.add(fx);
+    const pl = new THREE.PointLight(0xa8dcff, 0.55, 6.5, 2); pl.position.set(x, 3.2, z); scene.add(pl);
+  });
+
+  // ---------- Racks ----------
+  const racks = [], cabinets = [];
+  const cabGeo = new THREE.BoxGeometry(RACK_W, RACK_H, RACK_D);
+  const colGeo = new THREE.BoxGeometry(0.5, 1, 0.05); colGeo.translate(0, 0.5, 0);
+  const frameGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(0.5, 0.9, 0.05)); frameGeo.translate(0, 0.45, 0);
+  const frameMat = new THREE.LineBasicMaterial({ color: lc('#8299a8'), transparent: true, opacity: 0.18 });
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+  ROWS.forEach((row, ri) => {
+    for (let c = 0; c < COLS; c++) {
+      const x = (c - (COLS - 1) / 2) * PITCH;
+      const mat = new THREE.MeshStandardMaterial({ color: 0x151c24, metalness: 0.6, roughness: 0.42, emissive: 0x000000 });
+      const mesh = new THREE.Mesh(cabGeo, mat);
+      mesh.position.set(x, RACK_H / 2, row.z); scene.add(mesh);
+      const r = {
+        id: row.id + String(c + 1).padStart(2, '0'), ri, c, row, x, z: row.z, face: row.face, mesh, mat,
+        phase: rnd() * 20, base: row.base + (rnd() - 0.5) * 0.18, memBase: rnd() * 0.18, inletOffset: (rnd() - 0.5) * 1.2,
+        load: 0.4, mem: 0.5, inlet: 20, exhaust: 30, power: 0, net: 0, cpuLvl: 0, tLvl: 0, status: 0,
+        hist: [], ihist: [], pktAcc: 0, leds: []
+      };
+      const col = new THREE.Mesh(colGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, toneMapped: false, depthWrite: false }));
+      col.position.set(x, RACK_H + 0.01, row.z + row.face * 0.44); scene.add(col); r.colMesh = col;
+      const frame = new THREE.LineSegments(frameGeo, frameMat); frame.position.copy(col.position); scene.add(frame);
+      const lab = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.1), new THREE.MeshBasicMaterial({ map: labelTex(r.id), transparent: true, toneMapped: false }));
+      lab.position.set(x, 1.9, row.z + row.face * (RACK_D / 2 + 0.006)); lab.rotation.y = row.face > 0 ? 0 : Math.PI; scene.add(lab);
+      mesh.userData.rack = r; cabinets.push(mesh); racks.push(r);
+    }
+  });
+  const byId = Object.fromEntries(racks.map(r => [r.id, r]));
+
+  // Server faceplates + LEDs (instanced)
+  const plateTex = canvasTex(256, 64, (g) => {
+    g.fillStyle = '#26313c'; g.fillRect(0, 0, 256, 64);
+    g.fillStyle = '#18202a';
+    for (let x = 14; x < 150; x += 10) g.fillRect(x, 14, 5, 36);
+    for (let b = 0; b < 3; b++) { g.fillStyle = '#1d2630'; g.fillRect(160 + b * 26, 12, 22, 40); }
+  });
+  const nPlates = racks.length * SERVERS;
+  const plates = new THREE.InstancedMesh(new THREE.BoxGeometry(0.52, 0.12, 0.012), new THREE.MeshStandardMaterial({ map: plateTex, metalness: 0.45, roughness: 0.6 }), nPlates);
+  const leds = new THREE.InstancedMesh(new THREE.BoxGeometry(0.02, 0.02, 0.01), new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }), nPlates * 2);
+  const LED = { act: lc('#5dffa5'), off: lc('#0d1a14'), idle: lc('#2a6e9a'), warn: lc('#ffbe3b'), crit: lc('#ff4a3d'), dark: lc('#1a0d0c') };
+  {
+    const m4 = new THREE.Matrix4(); const rot = new THREE.Matrix4(); let pi = 0, li = 0;
+    racks.forEach(r => {
+      rot.makeRotationY(r.face > 0 ? 0 : Math.PI);
+      for (let s = 0; s < SERVERS; s++) {
+        const y = 0.14 + s * 0.145;
+        m4.copy(rot).setPosition(r.x, y, r.z + r.face * (RACK_D / 2 + 0.007));
+        plates.setMatrixAt(pi++, m4);
+        for (let k = 0; k < 2; k++) {
+          const lx = r.x + r.face * (0.19 + k * 0.035);
+          m4.makeTranslation(lx, y, r.z + r.face * (RACK_D / 2 + 0.016));
+          leds.setMatrixAt(li, m4); leds.setColorAt(li, LED.off);
+          r.leds.push({ i: li, k, on: rnd() < 0.5 }); li++;
+        }
+      }
+    });
+  }
+  scene.add(plates, leds);
+
+  // Cable trays
+  const trayMat = new THREE.MeshStandardMaterial({ color: 0x2a3743, metalness: 0.7, roughness: 0.4 });
+  ROWS.forEach(row => {
+    const len = TRAY_X - (-1.95);
+    const t = new THREE.Mesh(new THREE.BoxGeometry(len, 0.04, 0.3), trayMat);
+    t.position.set((-1.95 + TRAY_X) / 2, TRAY_Y - 0.04, row.z); scene.add(t);
+  });
+  { const t = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.04, 7.3), trayMat); t.position.set(TRAY_X, TRAY_Y - 0.04, 0); scene.add(t);
+    const s = new THREE.Mesh(new THREE.BoxGeometry(CORE_X - TRAY_X, 0.04, 0.3), trayMat); s.position.set((TRAY_X + CORE_X) / 2, TRAY_Y - 0.04, 0); scene.add(s); }
+
+  // Core switch
+  const core = new THREE.Mesh(new THREE.BoxGeometry(0.8, 2.2, 1.0), new THREE.MeshStandardMaterial({ color: 0x141b23, metalness: 0.6, roughness: 0.4 }));
+  core.position.set(CORE_X, 1.1, 0); scene.add(core);
+  const coreStripMat = new THREE.MeshBasicMaterial({ color: lc(COL.cold), toneMapped: false });
+  for (let i = 0; i < 6; i++) {
+    const s = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.05, 0.8), coreStripMat);
+    s.position.set(CORE_X - 0.405, 0.5 + i * 0.25, 0); scene.add(s);
+  }
+  { const l = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.125), new THREE.MeshBasicMaterial({ map: labelTex('CORE', COL.cold), transparent: true, toneMapped: false }));
+    l.position.set(CORE_X - 0.406, 2.0, 0); l.rotation.y = -Math.PI / 2; scene.add(l); }
+
+  // CRAC units
+  const cracs = [];
+  [[-5.3, 'CRAC-1', 1], [5.3, 'CRAC-2', -1]].forEach(([z, name, f]) => {
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.8, 2.1, 0.8), new THREE.MeshStandardMaterial({ color: 0x1b242d, metalness: 0.5, roughness: 0.5 }));
+    body.position.set(0, 1.05, z); scene.add(body);
+    const stripMat = new THREE.MeshBasicMaterial({ color: lc(COL.cold), toneMapped: false });
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.05, 0.01), stripMat);
+    strip.position.set(0, 1.75, z + f * 0.405); scene.add(strip);
+    const l = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 0.18), new THREE.MeshBasicMaterial({ map: labelTex(name), transparent: true, toneMapped: false }));
+    l.position.set(0, 1.5, z + f * 0.406); l.rotation.y = f > 0 ? 0 : Math.PI; scene.add(l);
+    const fans = [];
+    [-0.85, 0, 0.85].forEach(fx => {
+      const g = new THREE.Group(); g.position.set(fx, 2.115, z);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.26, 0.3, 32), new THREE.MeshBasicMaterial({ color: lc('#3a4855'), side: THREE.DoubleSide }));
+      ring.rotation.x = -Math.PI / 2; g.add(ring);
+      for (let b = 0; b < 4; b++) {
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.01, 0.07), new THREE.MeshStandardMaterial({ color: 0x5a6a78, metalness: 0.6 }));
+        blade.position.x = 0.12; const arm = new THREE.Group(); arm.rotation.y = b * Math.PI / 2; arm.add(blade); g.add(arm);
+      }
+      scene.add(g); fans.push(g);
+    });
+    cracs.push({ name, stripMat, fans });
+  });
+
+  // Selection outline
+  const selBox = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(RACK_W + 0.06, RACK_H + 0.06, RACK_D + 0.06)), new THREE.LineBasicMaterial({ color: lc(COL.cold), toneMapped: false }));
+  scene.add(selBox);
+
+  // ---------- Particles ----------
+  const glow = canvasTex(64, 64, (g) => {
+    const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  });
+  glow.encoding = THREE.LinearEncoding;
+  function makePoints(n, size) {
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size, map: glow, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+    pts.frustumCulled = false; scene.add(pts);
+    return { geo, pos, col, n };
+  }
+  const tmp = new THREE.Color();
+
+  // Hot-aisle exhaust
+  const heat = makePoints(900, 0.17); const hp = [];
+  function spawnHeat(i, scatter) {
+    const p = hp[i] || (hp[i] = {}); const r = racks[(Math.random() * racks.length) | 0]; p.r = r;
+    p.life = 2.4 + Math.random() * 1.8; p.age = scatter ? Math.random() * p.life : 0;
+    p.vx = (Math.random() - 0.5) * 0.08; p.vy = 0.04 + Math.random() * 0.08; p.vz = -r.face * (0.25 + r.load * 0.45);
+    const o = i * 3;
+    heat.pos[o] = r.x + (Math.random() - 0.5) * 0.52; heat.pos[o + 1] = 0.15 + Math.random() * 1.75; heat.pos[o + 2] = r.z - r.face * (RACK_D / 2 + 0.02);
+    if (scatter) { heat.pos[o + 1] += p.vy * p.age; heat.pos[o + 2] += p.vz * p.age * 0.6; }
+  }
+  for (let i = 0; i < heat.n; i++) spawnHeat(i, true);
+
+  // Cold-aisle supply air
+  const cold = makePoints(360, 0.13); const cp = [];
+  function spawnCold(i, scatter) {
+    const p = cp[i] || (cp[i] = {}); p.aisle = i % 2;
+    p.life = 2 + Math.random() * 1.5; p.age = scatter ? Math.random() * p.life : 0;
+    p.vy = 0.35 + Math.random() * 0.3; p.vz = (Math.random() < 0.5 ? -1 : 1) * (0.08 + Math.random() * 0.14);
+    const o = i * 3;
+    cold.pos[o] = (Math.random() - 0.5) * 3.9; cold.pos[o + 1] = 0.02 + (scatter ? p.vy * p.age : 0); cold.pos[o + 2] = (p.aisle ? 2.3 : -2.3) + (Math.random() - 0.5) * 1.1;
+  }
+  for (let i = 0; i < cold.n; i++) spawnCold(i, true);
+  const coldC = lc(COL.cold);
+
+  // Network packets along the trays to the core switch
+  racks.forEach(r => {
+    const pts = [[r.x, RACK_H, r.z], [r.x, TRAY_Y, r.z], [TRAY_X, TRAY_Y, r.z], [TRAY_X, TRAY_Y, 0], [CORE_X, TRAY_Y, 0], [CORE_X, 2.22, 0]].map(a => new THREE.Vector3(...a));
+    const cum = [0]; for (let k = 1; k < pts.length; k++) cum.push(cum[k - 1] + pts[k].distanceTo(pts[k - 1]));
+    r.path = { pts, cum, len: cum[cum.length - 1] };
+  });
+  function pathAt(path, s, out, o) {
+    const { pts, cum } = path; let k = 1;
+    while (k < cum.length - 1 && s > cum[k]) k++;
+    const t = clamp((s - cum[k - 1]) / (cum[k] - cum[k - 1] || 1), 0, 1);
+    const a = pts[k - 1], b = pts[k];
+    out[o] = a.x + (b.x - a.x) * t; out[o + 1] = a.y + (b.y - a.y) * t; out[o + 2] = a.z + (b.z - a.z) * t;
+  }
+  const pk = makePoints(700, 0.09); const pkd = []; const free = [];
+  for (let i = 0; i < pk.n; i++) { pkd.push({ on: false }); free.push(i); pk.pos[i * 3 + 1] = -50; }
+  const PK_OUT = lc(COL.cold), PK_IN = lc('#eaf6ff');
+
+  // ---------- Simulation ----------
+  const W = { traffic: 0.6, spikeAge: Infinity, fault: false, faultLevel: 0, mode: 'load', t: 0, sampleAcc: 0, warm: true };
+  const G = { rps: 0, cpu: 0, net: 0, it: 0, cool: 0, pue: 0, maxIn: 0, maxInRack: null, rpsHist: [], cpuHist: [] };
+  const HIST = 120;
+  const wave = (t, p) => 0.5 * Math.sin(t * 0.21 + p) + 0.3 * Math.sin(t * 0.53 + p * 1.7) + 0.2 * Math.sin(t * 1.31 + p * 2.9);
+
+  function level(v, warn, crit, prev, hyst) {
+    let l = v > crit ? 2 : v > warn ? 1 : 0;
+    if (l < prev) {
+      if (prev === 2 && v > crit - hyst) l = 2;
+      else if (prev >= 1 && v > warn - hyst) l = Math.max(l, 1);
+    }
+    return l;
+  }
+
+  function step(dt) {
+    W.t += dt; W.spikeAge += dt;
+    const sa = W.spikeAge;
+    const spike = sa < 1.5 ? sa / 1.5 : Math.exp(-(sa - 1.5) / 4);
+    W.faultLevel += ((W.fault ? 1 : 0) - W.faultLevel) * Math.min(1, dt * 0.25);
+    let rps = 0, cpu = 0, net = 0, it = 0, maxIn = -1, maxR = null;
+    for (const r of racks) {
+      let target;
+      if (r.ri === 3) target = 0.22 + 0.6 * Math.max(0, Math.sin(W.t * 0.07 + r.phase)) + wave(W.t, r.phase) * 0.08 + spike * r.row.aff * 0.4;
+      else target = r.base * (0.45 + W.traffic * 1.1) + wave(W.t, r.phase) * 0.12 + spike * r.row.aff * 0.42;
+      target = clamp(target, 0.04, 1);
+      r.load += (target - r.load) * Math.min(1, dt * 1.2);
+      r.mem += ((0.36 + r.memBase + r.load * 0.28) - r.mem) * Math.min(1, dt * 0.3);
+      const end = Math.abs(r.c - (COLS - 1) / 2) / ((COLS - 1) / 2);
+      const faultHit = r.ri >= 2 ? 11 : 3.5;
+      const inT = 19.5 + r.inletOffset + end * 1.8 * r.load + W.faultLevel * faultHit * (0.6 + 0.4 * r.load);
+      r.inlet += (inT - r.inlet) * Math.min(1, dt * 0.5);
+      r.exhaust = r.inlet + 6 + r.load * 15;
+      r.power = 1.6 + r.load * 6.4;
+      r.net = r.load * r.row.net * (0.85 + 0.15 * Math.sin(W.t * 1.7 + r.phase));
+      rps += r.load * r.row.rps; cpu += r.load; net += r.net; it += r.power;
+      if (r.inlet > maxIn) { maxIn = r.inlet; maxR = r; }
+
+      const pc = r.cpuLvl, pt = r.tLvl, ps = r.status;
+      r.cpuLvl = level(r.load * 100, 85, 95, pc, 3);
+      r.tLvl = level(r.inlet, 27, 32, pt, 0.6);
+      r.status = Math.max(r.cpuLvl, r.tLvl);
+      if (!W.warm) {
+        if (r.cpuLvl > pc) pushAlert(r.cpuLvl === 2 ? 'crit' : 'warn', `${r.id} CPU at ${Math.round(r.load * 100)}%`);
+        if (r.tLvl > pt) pushAlert(r.tLvl === 2 ? 'crit' : 'warn', `${r.id} inlet ${r.inlet.toFixed(1)} °C, over the ${r.tLvl === 2 ? '32 °C allowable' : '27 °C recommended'} limit`);
+        if (ps > 0 && r.status === 0) pushAlert('ok', `${r.id} back within limits`);
+      }
+    }
+    G.rps = rps * (0.97 + 0.03 * Math.sin(W.t * 2.3)); G.cpu = cpu / racks.length; G.net = net; G.it = it;
+    G.cool = it * (0.3 + W.faultLevel * 0.12); G.pue = (it + G.cool + 9) / it;
+    G.maxIn = maxIn; G.maxInRack = maxR;
+
+    W.sampleAcc += dt;
+    if (W.sampleAcc >= 1) {
+      W.sampleAcc -= 1;
+      for (const r of racks) { r.hist.push(r.load * 100); r.ihist.push(r.inlet); if (r.hist.length > HIST) { r.hist.shift(); r.ihist.shift(); } }
+      G.rpsHist.push(G.rps); G.cpuHist.push(G.cpu * 100);
+      if (G.rpsHist.length > HIST) { G.rpsHist.shift(); G.cpuHist.shift(); }
+      W.sampled = true;
+    }
+  }
+
+  // ---------- Visual update ----------
+  const blinkT = { v: 0 };
+  function updateVisuals(dt) {
+    const blink = (W.t * 2.5) % 1 < 0.5;
+    for (const r of racks) {
+      grad(W.mode, W.mode === 'load' ? r.load : r.inlet, tmp);
+      r.mat.emissive.copy(tmp);
+      r.mat.emissiveIntensity = r === hovered ? 0.34 : (r === selected ? 0.22 : 0.11);
+      r.colMesh.material.color.copy(tmp);
+      const h = W.mode === 'load' ? r.load : clamp((r.inlet - 16) / 18, 0, 1);
+      r.colMesh.scale.y = Math.max(0.02, h * 0.9);
+      const flick = dt * (1.5 + r.load * 22);
+      for (const L of r.leds) {
+        if (L.k === 0) {
+          if (Math.random() < flick) L.on = !L.on;
+          leds.setColorAt(L.i, L.on ? LED.act : LED.off);
+        } else {
+          leds.setColorAt(L.i, r.status === 2 ? (blink ? LED.crit : LED.dark) : r.status === 1 ? LED.warn : LED.idle);
+        }
+      }
+    }
+    leds.instanceColor.needsUpdate = true;
+
+    // heat
+    for (let i = 0; i < heat.n; i++) {
+      const p = hp[i]; p.age += dt;
+      if (p.age > p.life) spawnHeat(i, false);
+      const o = i * 3;
+      p.vz *= 1 - dt * 0.9; p.vy += dt * 0.22;
+      heat.pos[o] += p.vx * dt; heat.pos[o + 1] += p.vy * dt; heat.pos[o + 2] += p.vz * dt;
+      const fade = Math.sin(Math.PI * Math.min(1, p.age / p.life));
+      grad('exh', p.r.exhaust, tmp);
+      const b = clamp((p.r.exhaust - 26) / 20, 0.05, 1) * fade * 0.5;
+      heat.col[o] = tmp.r * b; heat.col[o + 1] = tmp.g * b; heat.col[o + 2] = tmp.b * b;
+    }
+    heat.geo.attributes.position.needsUpdate = true; heat.geo.attributes.color.needsUpdate = true;
+
+    // cold
+    const flow = [1 - W.faultLevel * 0.25, 1 - W.faultLevel * 0.85];
+    for (let i = 0; i < cold.n; i++) {
+      const p = cp[i]; p.age += dt;
+      if (p.age > p.life) spawnCold(i, false);
+      const o = i * 3;
+      cold.pos[o + 1] += p.vy * dt * (0.4 + 0.6 * flow[p.aisle]); cold.pos[o + 2] += p.vz * dt;
+      const b = Math.sin(Math.PI * Math.min(1, p.age / p.life)) * 0.3 * flow[p.aisle];
+      cold.col[o] = coldC.r * b; cold.col[o + 1] = coldC.g * b; cold.col[o + 2] = coldC.b * b;
+    }
+    cold.geo.attributes.position.needsUpdate = true; cold.geo.attributes.color.needsUpdate = true;
+    perfMats[0].color.setScalar(0.55 * flow[0] + 0.15); perfMats[1].color.setScalar(0.55 * flow[1] + 0.15);
+
+    // packets
+    for (const r of racks) {
+      r.pktAcc += r.net * dt * 0.28;
+      while (r.pktAcc >= 1 && free.length) {
+        r.pktAcc -= 1; const i = free.pop(); const p = pkd[i];
+        p.on = true; p.r = r; p.s = 0; p.out = Math.random() < 0.6; p.speed = 2.2 + Math.random() * 0.9;
+        const c = p.out ? PK_OUT : PK_IN, o = i * 3;
+        pk.col[o] = c.r * 0.9; pk.col[o + 1] = c.g * 0.9; pk.col[o + 2] = c.b * 0.9;
+      }
+      if (r.pktAcc > 1) r.pktAcc = 1;
+    }
+    for (let i = 0; i < pk.n; i++) {
+      const p = pkd[i]; if (!p.on) continue;
+      p.s += p.speed * dt;
+      if (p.s >= p.r.path.len) { p.on = false; free.push(i); pk.pos[i * 3 + 1] = -50; continue; }
+      pathAt(p.r.path, p.out ? p.s : p.r.path.len - p.s, pk.pos, i * 3);
+    }
+    pk.geo.attributes.position.needsUpdate = true; pk.geo.attributes.color.needsUpdate = true;
+
+    coreStripMat.color.copy(lc(COL.cold)).multiplyScalar(0.35 + 0.9 * clamp(G.net / 800, 0, 1) * (0.85 + 0.15 * Math.sin(W.t * 9)));
+    cracs[0].fans.forEach(f => f.rotation.y += dt * 7 * (1 + W.faultLevel * 0.4));
+    cracs[1].fans.forEach(f => f.rotation.y += dt * 7 * (1 - W.faultLevel));
+    if (W.fault) cracs[1].stripMat.color.copy(blink ? LED.crit : LED.dark);
+    else cracs[1].stripMat.color.copy(lc(COL.cold));
+  }
+
+  // ---------- HUD ----------
+  const fmtK = v => v >= 1000 ? (v / 1000).toFixed(1) + 'k' : Math.round(v).toString();
+  const lvlClass = l => l === 2 ? 'is-crit' : l === 1 ? 'is-warn' : 'is-ok';
+  const statusText = ['OK', 'Warning', 'Critical'], statusClass = ['ok', 'warn', 'crit'];
+  const barColor = (v, w, c) => v > c ? COL.crit : v > w ? COL.warn : COL.ok;
+
+  function drawSpark(cv, data, o) {
+    const w = cv.clientWidth, h = cv.clientHeight;
+    if (!w || !h || data.length < 2) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+    let lo = o.min, hi = o.max;
+    if (lo == null || hi == null) { lo = Math.min(...data); hi = Math.max(...data); const pad = (hi - lo) * 0.2 || 1; lo -= pad; hi += pad; }
+    const X = i => 2 + i / (data.length - 1) * (w - 7);
+    const Y = v => h - 2 - (clamp(v, lo, hi) - lo) / (hi - lo) * (h - 5);
+    g.strokeStyle = COL.line; g.lineWidth = 1; g.beginPath(); g.moveTo(0, h - 0.5); g.lineTo(w, h - 0.5); g.stroke();
+    if (o.thr != null && o.thr >= lo && o.thr <= hi) {
+      g.setLineDash([3, 3]); g.strokeStyle = COL.warn; g.globalAlpha = 0.6;
+      g.beginPath(); g.moveTo(0, Math.round(Y(o.thr)) + 0.5); g.lineTo(w, Math.round(Y(o.thr)) + 0.5); g.stroke();
+      g.setLineDash([]); g.globalAlpha = 1;
+    }
+    const trace = () => { g.beginPath(); data.forEach((v, i) => i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v))); };
+    trace(); g.lineTo(X(data.length - 1), h); g.lineTo(X(0), h); g.closePath();
+    g.fillStyle = o.color; g.globalAlpha = 0.14; g.fill(); g.globalAlpha = 1;
+    trace(); g.strokeStyle = o.color; g.lineWidth = 1.4; g.lineJoin = 'round'; g.stroke();
+    const lx = X(data.length - 1), ly = Y(data[data.length - 1]);
+    g.fillStyle = o.color; g.beginPath(); g.arc(lx, ly, 2.5, 0, Math.PI * 2); g.fill();
+  }
+
+  function updateHud() {
+    $('kRps').textContent = fmtK(G.rps);
+    const cpuL = G.cpu > 0.85 ? 2 : G.cpu > 0.7 ? 1 : 0;
+    $('kCpu').textContent = Math.round(G.cpu * 100) + '%'; $('kCpu').className = 'v ' + lvlClass(cpuL);
+    $('kNet').innerHTML = Math.round(G.net) + '<small>Gbps</small>';
+    $('kNetSub').textContent = Math.round(G.net / 8) + '% of 800G core uplink';
+    $('kPow').innerHTML = Math.round(G.it) + '<small>kW</small>';
+    $('kPowSub').textContent = 'of 192 kW provisioned';
+    $('kPue').textContent = G.pue.toFixed(2);
+    $('kPue').className = 'v ' + lvlClass(G.pue > 1.5 ? 1 : 0);
+    $('kPueSub').textContent = 'cooling draw ' + Math.round(G.cool) + ' kW';
+    const inL = G.maxIn > 32 ? 2 : G.maxIn > 27 ? 1 : 0;
+    $('kIn').innerHTML = G.maxIn.toFixed(1) + '<small>°C</small>'; $('kIn').className = 'v ' + lvlClass(inL);
+    $('kInSub').textContent = 'at ' + G.maxInRack.id + ' · limit 27 °C';
+
+    const r = selected;
+    $('rId').textContent = 'Rack ' + r.id;
+    $('rRole').textContent = `${r.row.role} · Row ${r.row.id}`;
+    $('rStatus').textContent = statusText[r.status]; $('rStatus').className = 'pill ' + statusClass[r.status];
+    const cpu = r.load * 100;
+    $('rCpu').textContent = Math.round(cpu) + '%';
+    $('rCpuBar').style.width = cpu.toFixed(1) + '%'; $('rCpuBar').style.background = barColor(cpu, 85, 95);
+    $('rMem').textContent = Math.round(r.mem * 100) + '% of 3 TB';
+    $('rMemBar').style.width = (r.mem * 100).toFixed(1) + '%'; $('rMemBar').style.background = barColor(r.mem * 100, 85, 95);
+    $('rIn').textContent = r.inlet.toFixed(1) + ' °C'; $('rIn').className = lvlClass(r.tLvl);
+    $('rEx').textContent = r.exhaust.toFixed(1) + ' °C';
+    $('rPow').textContent = r.power.toFixed(1) + ' kW';
+    $('rNet').textContent = r.net.toFixed(1) + ' Gb/s';
+  }
+  function updateSparks() {
+    drawSpark($('sRps'), G.rpsHist, { color: COL.cold });
+    drawSpark($('sCpu'), G.cpuHist, { color: COL.cold, min: 0, max: 100, thr: 85 });
+    drawSpark($('rSpark'), selected.hist, { color: COL.cold, min: 0, max: 100, thr: 85 });
+    drawSpark($('rSparkT'), selected.ihist, { color: COL.cold, min: 17, max: 34, thr: 27 });
+  }
+
+  const alerts = [];
+  function pushAlert(sev, text) {
+    const d = new Date();
+    alerts.unshift({ sev, text, t: d.toTimeString().slice(0, 8) });
+    if (alerts.length > 6) alerts.pop();
+    const ul = $('alerts'); ul.textContent = '';
+    for (const a of alerts) {
+      const li = document.createElement('li'); li.className = a.sev;
+      const tm = document.createElement('time'); tm.textContent = a.t;
+      const sp = document.createElement('span'); sp.textContent = a.text;
+      li.append(tm, sp); ul.append(li);
+    }
+  }
+
+  function renderLegend() {
+    const s = STOPS[W.mode];
+    const [lo, hi] = W.mode === 'load' ? [0, 1] : [18, 33];
+    const pct = v => ((v - lo) / (hi - lo) * 100).toFixed(1) + '%';
+    $('lgBar').style.background = `linear-gradient(90deg, ${s.map(([v, c]) => `${c} ${pct(v)}`).join(', ')})`;
+    const ticks = W.mode === 'load' ? s.map(([v]) => Math.round(v * 100) + '%') : s.map(([v], i) => v + (i === s.length - 1 ? ' °C' : ''));
+    $('lgTicks').innerHTML = s.map(([v], i) => `<span style="left:${pct(v)}">${ticks[i]}</span>`).join('');
+  }
+
+  // ---------- Interaction ----------
+  let selected = byId.A03, hovered = null;
+  function select(r) {
+    selected = r; selBox.position.copy(r.mesh.position);
+    updateHud(); updateSparks();
+  }
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), tip = $('tip');
+  let downAt = null;
+  function pick(e) {
+    const rect = canvas.getBoundingClientRect();
+    ndc.set((e.clientX - rect.left) / rect.width * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const hit = ray.intersectObjects(cabinets, false)[0];
+    return hit ? hit.object.userData.rack : null;
+  }
+  canvas.addEventListener('pointermove', e => {
+    if (e.pointerType === 'touch') return;
+    hovered = pick(e);
+    canvas.style.cursor = hovered ? 'pointer' : 'grab';
+    if (hovered) {
+      tip.hidden = false;
+      tip.innerHTML = `<b>${hovered.id}</b>CPU ${Math.round(hovered.load * 100)}% · inlet ${hovered.inlet.toFixed(1)} °C · ${hovered.power.toFixed(1)} kW`;
+      const x = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 8);
+      tip.style.left = x + 'px'; tip.style.top = (e.clientY + 16) + 'px';
+    } else tip.hidden = true;
+  });
+  canvas.addEventListener('pointerleave', () => { hovered = null; tip.hidden = true; });
+  canvas.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
+  canvas.addEventListener('pointerup', e => {
+    if (!downAt) return;
+    const moved = Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]); downAt = null;
+    if (moved < 6) { const r = pick(e); if (r) select(r); }
+  });
+  const stepRack = d => select(racks[(racks.indexOf(selected) + d + racks.length) % racks.length]);
+  $('prevRack').addEventListener('click', () => stepRack(-1));
+  $('nextRack').addEventListener('click', () => stepRack(1));
+
+  $('traffic').addEventListener('input', e => { W.traffic = e.target.value / 100; $('trafficVal').textContent = e.target.value + '%'; });
+  $('spike').addEventListener('click', () => { W.spikeAge = 0; pushAlert('info', 'Traffic spike injected: ~3× web requests for 10 s'); });
+  $('crac').addEventListener('click', e => {
+    W.fault = !W.fault; e.currentTarget.setAttribute('aria-pressed', String(W.fault));
+    e.currentTarget.textContent = W.fault ? 'Restore CRAC-2' : 'Fail CRAC-2';
+    pushAlert(W.fault ? 'crit' : 'ok', W.fault ? 'CRAC-2 compressor tripped; rows C–D losing supply air' : 'CRAC-2 restored; supply air recovering');
+  });
+  document.querySelectorAll('input[name="mode"]').forEach(el => el.addEventListener('change', e => { W.mode = e.target.value; renderLegend(); }));
+  $('orbit').addEventListener('change', e => { controls.autoRotate = e.target.checked; });
+
+  function resize() {
+    const w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.fov = w / h < 1 ? 64 : 42; camera.updateProjectionMatrix();
+    updateSparks();
+  }
+  window.addEventListener('resize', resize);
+  if (window.innerWidth <= 720) $('opsBox').open = false;
+
+  // ---------- Boot: pre-run two minutes of telemetry so trends are populated ----------
+  for (let i = 0; i < 480; i++) step(0.25);
+  W.warm = false;
+  pushAlert('info', 'Telemetry stream connected · 24 racks reporting');
+  renderLegend();
+  resize();
+  select(selected);
+
+  let last = performance.now(), hudAcc = 0;
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    step(dt);
+    updateVisuals(dt);
+    controls.update();
+    renderer.render(scene, camera);
+    hudAcc += dt;
+    if (hudAcc > 0.2) { hudAcc = 0; updateHud(); }
+    if (W.sampled) { W.sampled = false; updateSparks(); }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
