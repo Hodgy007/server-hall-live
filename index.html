@@ -1083,13 +1083,15 @@ h3 { margin: 14px 0 6px; font-size: 10px; font-weight: 500; letter-spacing: 0.12
   const stepRack = d => select(racks[(racks.indexOf(selected) + d + racks.length) % racks.length]);
   $('prevRack').addEventListener('click', () => stepRack(-1));
   $('nextRack').addEventListener('click', () => stepRack(1));
-  $('rackMin').addEventListener('click', e => {
-    const min = $('rackPanel').classList.toggle('min'), b = e.currentTarget;
+  function setRackMin(min) {
+    const b = $('rackMin');
+    $('rackPanel').classList.toggle('min', min);
     b.setAttribute('aria-expanded', String(!min));
     b.setAttribute('aria-label', min ? 'Show rack details' : 'Hide rack details');
     b.textContent = min ? '▴' : '▾';
     if (!min) updateSparks();
-  });
+  }
+  $('rackMin').addEventListener('click', () => setRackMin(!$('rackPanel').classList.contains('min')));
 
   $('traffic').addEventListener('input', e => { W.traffic = e.target.value / 100; $('trafficVal').textContent = e.target.value + '%'; });
   $('spike').addEventListener('click', () => { W.spikeAge = 0; pushAlert('info', 'Traffic spike injected: ~3× web requests for 10 s'); });
@@ -1108,7 +1110,7 @@ h3 { margin: 14px 0 6px; font-size: 10px; font-weight: 500; letter-spacing: 0.12
     updateSparks();
   }
   window.addEventListener('resize', resize);
-  if (window.innerWidth <= 720) $('opsBox').open = false;
+  if (window.innerWidth <= 720) { $('opsBox').open = false; setRackMin(true); }
 
   // ---------- Boot: pre-run two minutes of telemetry so trends are populated ----------
   for (let i = 0; i < 480; i++) step(0.25);
