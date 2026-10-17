@@ -4,16 +4,31 @@ A three.js animation of a server room that shows how the servers are performing.
 
 ## What you see
 
-- **24 racks in four rows** (web front-end, API services, database, batch and analytics), with cold and hot aisles, two CRAC cooling units, overhead cable trays and a core switch.
+- **96 racks in eight rows of 12** (two rows each of web front-end, API services, database, and batch and analytics). Rows face each other across 1.8 m cold aisles and stand back to back over 1.2 m hot aisles; the outer rows A and H exhaust towards the end walls.
+- **The room**: raised floor, walls and a suspended ceiling with light fixtures. The walls and ceiling face inwards, so from outside the room the near ones drop away and you look in like a dollhouse.
+- **Hot-aisle containment** over the three hot aisles (B/C, D/E, F/G): tinted roof panels on a frame, sliding end doors marked HOT AISLE, and three chimneys each up to the ceiling plenum.
+- **Cooling units** CU-1 and CU-2 on the west wall take warm air from the plenum and feed the floor: CU-1 the northern cold aisles (rows A–D), CU-2 the southern ones (rows E–H).
+- **Uplink panel** in the east wall, where the tray spine leaves the hall for the meet-me room; its strips pulse with hall traffic.
+- **Overhead services**: ladder cable trays with fibre bundles on threaded drop rods, a fibre riser from each rack up into its tray, and a busway over each row with a tap-off box, power drop and status LED per rack (amber above 10 kW).
+- **42U cabinets at true scale**: 12 × 2U servers in U1–24, blanking panels in U25–38, an out-of-band (iLO) switch in U39, a patch panel in U40 and two top-of-rack switches in U41–42. Fronts show NVMe caddies and honeycomb intakes; rears show PSUs, I/O and fibre leads, with cable looms down the hot-aisle side. Each rack has a **perforated front door**, so you see the LEDs through it.
+- **Glow**: LEDs, port lights and light fixtures bloom softly; steel panels, rails and floor pick up reflections from an environment map.
 - **Light column on each rack**: height and colour show CPU load, or inlet air temperature when you switch the colour mode.
 - **Server LEDs**: activity lights blink faster under load; status lights go amber for a warning and flash red when critical.
-- **Hot-aisle particles**: exhaust air, brighter and redder as it heats up.
+- **Hot-aisle particles**: exhaust air, brighter and redder as it heats up. In the contained aisles it rises to the roof, drifts to the nearest chimney and leaves through it; rows A and H exhaust towards the end walls.
 - **Cold-aisle particles**: supply air rising from the perforated floor tiles.
-- **Packets on the cable trays**: network traffic to and from the core switch, denser with more traffic.
+- **Packets**: network traffic climbing each rack's riser and running along the trays to the uplink panel, denser with more traffic.
+
+## Getting around
+
+- **Drag** to orbit, **scroll** to zoom.
+- **Hall view** flies back to the overview from wherever you are.
+- **Find** (or press <kbd>/</kbd>): type a hostname such as `db-c04-07` to fly there and pull that server out, or a rack ID such as `B03` for rack view. Partial names work too, and the field suggests every host and rack.
+- **Click a rack** (front or back) for **rack view**: the camera flies to a spot 2.9 m in front of it so the whole 42U front fits on screen, the door swings open, and everything between you and the rack (the opposite row, containment glass) is cut away so you can see how the rack is filled. Click a server in it to pull it out. In rack view <kbd>←</kbd> / <kbd>→</kbd> walk along the row (in the direction you are facing) and the panel's ‹ › arrows step through every rack; **Hall view** leaves it.
+- Searching for a rack ID also opens rack view.
 
 ## Inspect a single server
 
-Click any server in a rack (or a cell in the rack panel's server strip) and it slides out on its rails while the camera flies in. The lid is off, and the hardware animates from that server's own telemetry:
+Click a server in an open rack (or a cell in the rack panel's server strip, a row in the inventory, or search for it) and it slides out on its rails while the camera flies in. The lid is off, and the hardware animates from that server's own telemetry:
 
 - **Fans** spin faster as the CPUs heat up (3,800 to 13,000 rpm).
 - **Heatsinks** glow from blue to red with CPU temperature, with heat rising off them.
@@ -21,22 +36,54 @@ Click any server in a rack (or a cell in the rack panel's server strip) and it s
 - **Drive and network LEDs** blink with disk IOPS and network traffic.
 - **Airflow particles** enter cool at the front and warm up as they pass the CPUs.
 
-The server panel shows per-core load for all 64 cores, CPU temperatures, fan speed, memory, IOPS, network and power, plus a 2-minute CPU trend. **Run 20 s stress test** pins the cores at 100% so you can watch the temperatures, fans and alerts respond. **Back** or <kbd>Esc</kbd> returns to the hall.
+The server panel starts with the server's specification:
+
+- **Server**: hostname (FQDN), model and serial number.
+- **Processor**: 2 × Intel Xeon Gold 6448Y (web and API rows), AMD EPYC 9354 (database) or AMD EPYC 9334 (batch); 32 cores each.
+- **OS**: Ubuntu, Debian, Red Hat Enterprise Linux or Rocky Linux, with the kernel version.
+- **Memory**: 512 GB DDR5-4800 (16 × 32 GB) and how much is in use.
+- **Storage**: 8 NVMe drives (960 GB to 7.68 TB depending on the row), raw capacity and usage.
+- **Network**: the LACP bond's IP address, VLAN, gateway and MTU; **NIC 1** and **NIC 2** with the ToR switch and port each one is cabled to, and their MAC addresses.
+- **OOB (iLO)**: the management IP, the out-of-band switch port and MAC. **Open iLO console** opens `https://<iLO IP>/` in a new tab. The addresses are simulated, so the link only reaches something once `iloUrl` in `js/racks.js` and the address plan point at real management interfaces.
+
+Below that it shows per-core load for all 64 cores, CPU temperatures, fan speed, memory, IOPS, network and power, plus a 2-minute CPU trend. **Run 20 s stress test** pins the cores at 100% so you can watch the temperatures, fans and alerts respond. Click the pulled-out server again, press **Back** or <kbd>Esc</kbd> to slide it back in like a drawer; the camera stays where it is. Flying to a rack or opening a server stops the camera rotation until you press **Start rotation**.
 
 ## Panels and controls
 
 - KPI strip: requests/s, average CPU, network, IT load, PUE and the hottest inlet temperature.
-- Rack detail: CPU, memory, inlet/exhaust temperature, power, network and 2-minute trends. Click a rack or use the arrow buttons.
-- Controls: traffic demand slider, traffic spike, CRAC-2 failure, colour mode and auto-orbit.
+- Rack detail, **Live** tab: CPU, memory, power and network are rolled up from the rack's 12 servers (power also includes the two switches), with a count of servers in warning or critical state, inlet/exhaust temperature and 2-minute trends. A rack also turns amber when any of its servers is critical. Click a rack or use the arrow buttons.
+- Rack detail, **Inventory** tab: everything in the rack from U42 down (ToR switches, patch panel, OOB switch, free space, each server with model, drives, serial and in-service date, both PDUs), with live load and power per device and a rack total. **Hover a row** to outline that device in the rack; click a server row to pull it out.
+- Controls: traffic demand slider, traffic spike, cooling unit CU-2 failure (its aisles lose supply air and those racks' inlets climb), colour mode, **Stop/Start rotation** for the camera orbit and **Hide/Show airflow** for the air particles.
 - Alerts follow ASHRAE A1 guidance: 27 °C recommended and 32 °C allowable inlet limits, plus 85% / 95% CPU thresholds.
 
 ## Run it
 
-It's a single static file with no build step. Open `index.html` in a browser, or serve the folder:
+No build step, but the page uses ES modules, so it has to be served over HTTP (opening `index.html` straight from disk won't load the modules):
 
 ```sh
 python3 -m http.server 8000
 # then open http://localhost:8000
 ```
 
-three.js 0.147.0 and OrbitControls load from jsDelivr, and the fonts from Google Fonts.
+three.js 0.169.0 and its add-ons (OrbitControls, RoomEnvironment, EffectComposer, UnrealBloomPass, OutputPass) load from jsDelivr through an import map, and the fonts from Google Fonts.
+
+## Code layout
+
+| File | What it does |
+| --- | --- |
+| `index.html` | Markup for the HUD and the import map |
+| `css/style.css` | All styles |
+| `js/core.js` | Renderer, scene, camera, controls, lighting, colour scales, hall geometry constants, canvas helpers |
+| `js/state.js` | Shared mutable state: world inputs, hall totals, selection, the pulled-out server |
+| `js/textures.js` | Canvas-drawn textures for cabinets, doors and rack-mounted hardware |
+| `js/racks.js` | Cabinets, servers, switches, panels, doors, selection outline and inventory highlight |
+| `js/hall.js` | Floor, walls, ceiling, hot-aisle containment, trays, risers, busway, cooling units, uplink panel |
+| `js/particles.js` | Hot and cold air particles, network packets |
+| `js/server.js` | Pulled-out server model and its per-core telemetry |
+| `js/sim.js` | Telemetry simulation and rack/hall roll-ups |
+| `js/visuals.js` | Per-frame visual updates driven by the telemetry |
+| `js/camera.js` | Camera flights and the orbit toggle |
+| `js/hud.js` | KPI strip, rack and server panels, inventory, legend |
+| `js/alerts.js` | Alert feed |
+| `js/post.js` | Bloom post-processing |
+| `js/main.js` | Wiring, picking, search, boot and the frame loop |
