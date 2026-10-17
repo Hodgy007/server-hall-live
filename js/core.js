@@ -74,7 +74,7 @@ const key = new THREE.DirectionalLight(0xdfefff, 0.55 * Math.PI); key.position.s
 export const RACK_W = 0.6, RACK_H = 2.08, RACK_D = 1.0, COLS = 6, PITCH = 0.64, SERVERS = 12;
 export const TRAY_Y = 2.75, TRAY_X = 2.55, CORE_X = 3.4;
 export const ROOM = { x: 4.6, z: 6.3, h: 3.7 };
-// 42U cabinets at true scale (1U = 44.5 mm): servers U1–24, blanking U25–39, patch panel U40, ToR switches U41–42
+// 42U cabinets at true scale (1U = 44.5 mm): servers U1–24, blanking U25–38, OOB switch U39, patch panel U40, ToR switches U41–42
 export const U = 0.0445, U0 = 0.075, U_TOP = U0 + 42 * U, FRONT = RACK_D / 2;
 export const uY = (u, h) => U0 + (u - 1 + h / 2) * U;   // centre height of a device at U u, h units tall
 export const ROWS = [

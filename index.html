@@ -95,7 +95,18 @@
         <span class="pill ok" id="sStatus">OK</span>
         <button id="sBack" aria-label="Back to the hall view">Back</button>
       </div>
-      <div class="spec" id="sSpec">2U · 2× 32-core CPUs · 512 GB RAM · 8 NVMe · 2× 25 GbE</div>
+      <dl class="specs" aria-label="Server specification">
+        <div><dt>Server</dt><dd id="spHost">—</dd></div>
+        <div><dt>Processor</dt><dd id="spCpu">—</dd></div>
+        <div><dt>OS</dt><dd id="spOs">—</dd></div>
+        <div><dt>Memory</dt><dd id="spRam">—</dd></div>
+        <div><dt>Storage</dt><dd id="spDisk">—</dd></div>
+        <div><dt>Network</dt><dd id="spNet">—</dd></div>
+        <div><dt>NIC 1</dt><dd id="spNic1">—</dd></div>
+        <div><dt>NIC 2</dt><dd id="spNic2">—</dd></div>
+        <div><dt>OOB (iLO)</dt><dd id="spIlo">—</dd></div>
+      </dl>
+      <a class="btnlink" id="sIlo" href="#" target="_blank" rel="noopener">Open iLO console ↗</a>
       <div class="cores">
         <div class="tl"><span>Per-core load, 64 cores</span><span>CPU0 · CPU1</span></div>
         <canvas id="sCores"></canvas>

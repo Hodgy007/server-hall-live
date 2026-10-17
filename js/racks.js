@@ -50,6 +50,23 @@ export const HOST = ['web', 'api', 'db', 'batch'];
 export const MODEL = ['2U compute node', '2U compute node', '2U storage node', '2U compute node'];
 export const DRIVE = ['8× 960 GB NVMe', '8× 1.92 TB NVMe', '8× 7.68 TB NVMe', '8× 3.84 TB NVMe'];
 export const DRIVE_TB = [7.68, 15.36, 61.44, 30.72];
+// Two sockets of 32 cores each in every row; the CPU family differs by workload
+export const CPU = [
+  { name: 'Intel Xeon Gold 6448Y', ghz: 2.1 },
+  { name: 'Intel Xeon Gold 6448Y', ghz: 2.1 },
+  { name: 'AMD EPYC 9354', ghz: 3.25 },
+  { name: 'AMD EPYC 9334', ghz: 2.7 }
+];
+const VLAN = [110, 120, 130, 140];
+const mac = (oui, n) => [oui >> 16 & 255, oui >> 8 & 255, oui & 255, 0x20 + (n >> 16 & 15), n >> 8 & 255, n & 255].map(b => b.toString(16).padStart(2, '0')).join(':');
+// Where the iLO (BMC) web console lives; change this to point at real management addresses
+export const iloUrl = ip => `https://${ip}/`;
+const OS = [
+  [['Ubuntu 22.04.4 LTS', '5.15'], ['Ubuntu 24.04.1 LTS', '6.8']],
+  [['Ubuntu 24.04.1 LTS', '6.8'], ['Debian 12.7', '6.1']],
+  [['Red Hat Enterprise Linux 9.4', '5.14']],
+  [['Rocky Linux 9.4', '5.14'], ['Ubuntu 22.04.4 LTS', '5.15']]
+];
 const m4 = new THREE.Matrix4(), tint = new THREE.Color();
 // Place an instance on the front (side = 1) or rear (side = -1) face of rack r
 function mount(mesh, i, r, side, y, dz, x, store) {
@@ -67,7 +84,14 @@ function mount(mesh, i, r, side, y, dz, x, store) {
         bias: 0.75 + rnd() * 0.5, memBias: 0.85 + rnd() * 0.3, phase: rnd() * 20, load: 0.4, stressLeft: 0, stressAmp: 0, hist: [],
         mem: 0.5, temp: 45, rpm: 4000, power: 500, net: 0, cLvl: 0, tLvl: 0, status: 0,
         serial: 'HX' + (2400000 + Math.floor(rnd() * 99999)).toString(36).toUpperCase(),
-        installed: `20${22 + Math.floor(rnd() * 4)}-${String(1 + Math.floor(rnd() * 12)).padStart(2, '0')}`
+        installed: `20${22 + Math.floor(rnd() * 4)}-${String(1 + Math.floor(rnd() * 12)).padStart(2, '0')}`,
+        os: OS[r.ri][Math.floor(rnd() * OS[r.ri].length)], diskUsed: 0.25 + rnd() * 0.5,
+        // NIC 1 and NIC 2 run to the same port on the rack's A and B top-of-rack switches (LACP bond);
+        // the iLO port runs to the rack's out-of-band switch
+        port: `Ethernet1/${s + 1}`, oobPort: `Gi1/0/${s + 1}`,
+        vlan: VLAN[r.ri], ip: `10.${VLAN[r.ri]}.${r.c + 1}.${11 + s}`, gw: `10.${VLAN[r.ri]}.${r.c + 1}.1`,
+        ilo: `10.250.${r.ri * 10 + r.c + 1}.${11 + s}`,
+        mac: [mac(0x3cecef, pi * 4), mac(0x3cecef, pi * 4 + 1)], iloMac: mac(0x94188, pi * 4 + 2)
       };
       r.servers.push(sv);
       mount(plates, pi, r, 1, y, 0.007, 0, plateM);
@@ -94,19 +118,21 @@ export function setInstance(sv, show) {
   plates.instanceMatrix.needsUpdate = true; rears.instanceMatrix.needsUpdate = true; leds.instanceMatrix.needsUpdate = true;
 }
 
-// ---------- Switches, patch panel, blanking panels ----------
+// ---------- Switches, OOB switch, patch panel, blanking panels (front blanks cover U25–40; U39–40 are rear-mounted) ----------
 const swFans = new THREE.InstancedMesh(dev1U, plateMat(512, 44, drawSwFans, { glow: true }), racks.length * 2);
 const swPorts = new THREE.InstancedMesh(dev1U, plateMat(512, 44, drawSwPorts, { glow: true }), racks.length * 2);
 const patch = new THREE.InstancedMesh(dev1U, plateMat(512, 44, drawPatch), racks.length);
+const oob = new THREE.InstancedMesh(dev1U, swPorts.material, racks.length);
 const blankMat = plateMat(512, 44, drawBlank, { metalness: 0.5, roughness: 0.75 });
 blankMat.color.setScalar(0.8);
 const blanks = new THREE.InstancedMesh(dev1U, blankMat, racks.length * 16);
 racks.forEach((r, i) => {
   [41, 42].forEach((u, k) => { mount(swFans, i * 2 + k, r, 1, uY(u, 1), 0.007); mount(swPorts, i * 2 + k, r, -1, uY(u, 1), 0.007); });
   mount(patch, i, r, -1, uY(40, 1), 0.007);
+  mount(oob, i, r, -1, uY(39, 1), 0.007);
   for (let u = 25; u <= 40; u++) mount(blanks, i * 16 + u - 25, r, 1, uY(u, 1), 0.006);
 });
-scene.add(swFans, swPorts, patch, blanks);
+scene.add(swFans, swPorts, patch, oob, blanks);
 
 // ---------- Cabinet frame: mounting rails, top bezel, vented plinth, rear cable looms ----------
 const rails = new THREE.InstancedMesh(new THREE.BoxGeometry(0.034, 42 * U + 0.01, 0.01), new THREE.MeshStandardMaterial({ map: railTex, metalness: 0.75, roughness: 0.45 }), racks.length * 4);
