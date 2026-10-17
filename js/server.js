@@ -55,7 +55,8 @@ for (let i = 0; i < 16; i++) {
   dimmMats.push(m);
   box(0.005, 0.03, 0.13, m, cx + side * (0.064 + (slot % 4) * 0.011), -0.02, 0);
 }
-[-0.017, 0.019].forEach(y => { box(0.085, 0.034, 0.16, darkMetal, 0.195, y, -0.36); box(0.01, 0.01, 0.004, basic(lc(COL.ok)), 0.22, y, -0.442); });
+const psuLeds = [-0.017, 0.019].map(y => { box(0.085, 0.034, 0.16, darkMetal, 0.195, y, -0.36); return box(0.01, 0.01, 0.004, basic(lc(COL.ok)), 0.22, y, -0.442); });
+const PSU_OK = lc(COL.ok).multiplyScalar(2);
 box(0.13, 0.004, 0.09, pcbMat, -0.14, -0.012, -0.38);
 const nicLeds = [-0.17, -0.12].map(x => { box(0.018, 0.014, 0.01, darkMetal, x, -0.01, -0.428); return { m: box(0.006, 0.004, 0.003, basic(), x + 0.012, 0, -0.434), on: false }; });
 
@@ -100,10 +101,11 @@ export function stepServer(dt) {
     if (i < 32) s0 += SV.cores[i]; else s1 += SV.cores[i];
   }
   s0 /= 32; s1 /= 32;
-  SV.temp[0] += (r.inlet + 14 + s0 * 56 - SV.temp[0]) * Math.min(1, dt * 0.5);
-  SV.temp[1] += (r.inlet + 12 + s1 * 54 - SV.temp[1]) * Math.min(1, dt * 0.5);
+  const fanOut = sv.faults.some(f => f.kind === 'fan') ? 6 : 0;
+  SV.temp[0] += (r.inlet + 14 + s0 * 56 + fanOut - SV.temp[0]) * Math.min(1, dt * 0.5);
+  SV.temp[1] += (r.inlet + 12 + s1 * 54 + fanOut - SV.temp[1]) * Math.min(1, dt * 0.5);
   const hot = Math.max(SV.temp[0], SV.temp[1]);
-  SV.rpm += (3800 + clamp((hot - 45) / 40, 0, 1) * 9200 - SV.rpm) * Math.min(1, dt * 0.8);
+  SV.rpm += ((3800 + clamp((hot - 45) / 40, 0, 1) * 9200) * (fanOut ? 1.15 : 1) - SV.rpm) * Math.min(1, dt * 0.8);
   SV.mem = sv.mem;
   const ioMax = r.kind === 2 ? 180000 : r.kind === 3 ? 60000 : 22000;
   SV.iops += (sv.load * ioMax * (0.8 + 0.4 * Math.random()) - SV.iops) * Math.min(1, dt * 3);
@@ -114,7 +116,7 @@ export function stepServer(dt) {
   const pt = SV.tLvl, pc = SV.cLvl, ps = SV.status;
   SV.tLvl = level(hot, 85, 95, pt, 2);
   SV.cLvl = level(sv.load * 100, 85, 95, pc, 3);
-  SV.status = Math.max(SV.tLvl, SV.cLvl);
+  SV.status = Math.max(SV.tLvl, SV.cLvl, sv.faults.length ? 1 : 0);
   if (SV.tLvl > pt) pushAlert(SV.tLvl === 2 ? 'crit' : 'warn', `${sv.host} CPU at ${hot.toFixed(0)} °C, ${SV.tLvl === 2 ? 'thermal throttling' : 'near the 95 °C throttle point'}`);
   if (SV.cLvl > pc) pushAlert(SV.cLvl === 2 ? 'crit' : 'warn', `${sv.host} CPU at ${Math.round(sv.load * 100)}%`);
   if (ps > 0 && SV.status === 0) pushAlert('ok', `${sv.host} back within limits`);
@@ -138,12 +140,16 @@ export function updateServerModel(dt) {
   slotPos(sv, ease(SV.slide), SRV.position);
   if (!SV.open && SV.slide <= 0) { setInstance(sv, true); SV.sel = null; SRV.visible = false; return; }
   const r = sv.r, blink = (W.t * 2.5) % 1 < 0.5;
-  rotors.forEach((f, i) => { f.rotation.z += dt * SV.rpm / 1000 * 2.2 * (1 + i * 0.02); });
+  rotors.forEach((f, i) => { if (!sv.faults.some(x => x.kind === 'fan' && x.k === i)) f.rotation.z += dt * SV.rpm / 1000 * 2.2 * (1 + i * 0.02); });
+  psuLeds.forEach((m, k) => m.material.color.copy(sv.faults.some(x => x.kind === 'psu' && x.k === k) ? (blink ? LED.crit : LED.dark) : PSU_OK));
   SV.temp.forEach((t, k) => { grad('cpu', t, tmp); sinkMats[k].emissive.copy(tmp); sinkMats[k].emissiveIntensity = 0.25 + clamp((t - 40) / 50, 0, 1) * 0.6; });
   const fill = SV.mem * 16;
   dimmMats.forEach((m, i) => { m.emissiveIntensity = clamp(fill - i, 0, 1) * (0.55 + 0.25 * Math.sin(W.t * 9 + i * 1.7)); });
   const ioRate = dt * (2 + SV.iops / 4000);
-  driveLeds.forEach(d => { if (Math.random() < ioRate) d.on = !d.on; d.m.material.color.copy(d.on ? LED.act : LED.off); });
+  driveLeds.forEach((d, i) => {
+    if (sv.faults.some(x => x.kind === 'disk' && x.k === i)) { d.m.material.color.copy(LED.warn); return; }
+    if (Math.random() < ioRate) d.on = !d.on; d.m.material.color.copy(d.on ? LED.act : LED.off);
+  });
   const netRate = dt * (2 + (SV.netIn + SV.netOut) * 8);
   nicLeds.forEach(d => { if (Math.random() < netRate) d.on = !d.on; d.m.material.color.copy(d.on ? LED.warn : LED.off); });
   if (Math.random() < dt * (1.5 + sv.load * 22)) SV.fOn = !SV.fOn;

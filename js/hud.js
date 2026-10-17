@@ -2,6 +2,9 @@
 import { $, COL, STOPS, cssGrad, SERVERS } from './core.js';
 import { W, G, UI, SV } from './state.js';
 import { MODEL, DRIVE, DRIVE_TB, CPU, iloUrl, highlight, unhighlight } from './racks.js';
+import { describe, rackFaults } from './faults.js';
+
+const SHORT = { psu: k => `PSU ${k + 1} failed`, disk: k => `drive ${k + 1} failed`, fan: k => `fan ${k + 1} failed` };
 
 // Set by main.js: open a server (pull it out)
 export const hooks = { open: null };
@@ -66,10 +69,15 @@ export function updateHud() {
     $('spCpu').innerHTML = `2× ${cpu.name} <span>· 32 cores each at ${cpu.ghz} GHz, 64 in total</span>`;
     $('spOs').innerHTML = `${sv.os[0]} <span>· Linux kernel ${sv.os[1]}</span>`;
     $('spRam').innerHTML = `512 GB DDR5-4800 <span>· 16 × 32 GB · ${Math.round(SV.mem * 512)} GB in use</span>`;
-    $('spDisk').innerHTML = `${DRIVE[ri]} <span>· ${tb.toFixed(1)} TB raw · ${(tb * sv.diskUsed).toFixed(1)} TB used (${Math.round(sv.diskUsed * 100)}%)</span>`;
+    const diskF = sv.faults.find(f => f.kind === 'disk');
+    $('spDisk').innerHTML = `${DRIVE[ri]} <span>· ${tb.toFixed(1)} TB raw · ${(tb * sv.diskUsed).toFixed(1)} TB used (${Math.round(sv.diskUsed * 100)}%)</span>` +
+      (diskF ? ` <em class="bad">· drive ${diskF.k + 1} failed, RAID degraded</em>` : '');
     $('spNet').innerHTML = `bond0 ${sv.ip}/24 <span>· VLAN ${sv.vlan} · gateway ${sv.gw} · LACP 802.3ad · MTU 9000</span>`;
-    $('spNic1').innerHTML = `ens1f0 → tor-${id}-a ${sv.port} <span>· 25 GbE · ${sv.mac[0]}</span>`;
-    $('spNic2').innerHTML = `ens1f1 → tor-${id}-b ${sv.port} <span>· 25 GbE · ${sv.mac[1]}</span>`;
+    [0, 1].forEach(k => {
+      $('spNic' + (k + 1)).innerHTML = `ens1f${k} → tor-${id}-${'ab'[k]} ${sv.port} <span>· 25 GbE · ${sv.mac[k]}</span>` + (sv.r.torDown[k] ? ' <em class="bad">· link down</em>' : '');
+    });
+    const fl = $('sFaults'), all = sv.faults.concat(rackFaults(sv.r).filter(f => !f.sv));
+    fl.hidden = !all.length; fl.innerHTML = all.map(f => `<li>${describe(f)}</li>`).join('');
     $('spIlo').innerHTML = `${sv.ilo} <span>· oob-${id} ${sv.oobPort} · 1 GbE · ${sv.iloMac}</span>`;
     const ilo = $('sIlo'); if (ilo.dataset.ip !== sv.ilo) { ilo.dataset.ip = sv.ilo; ilo.href = iloUrl(sv.ilo); ilo.setAttribute('aria-label', `Open the iLO console for ${sv.host} at ${sv.ilo}`); }
     $('sStatus').textContent = statusText[SV.status]; $('sStatus').className = 'pill ' + statusClass[SV.status];
@@ -107,8 +115,10 @@ export function updateHud() {
   $('rPow').textContent = r.power.toFixed(1) + ' kW';
   $('rNet').textContent = r.net.toFixed(1) + ' Gb/s';
   const nOk = SERVERS - r.svWarn - r.svCrit;
+  const nf = rackFaults(r).length;
   $('rRoll').innerHTML = `<span>Rolled up from <b>${SERVERS}</b> servers</span><span><b>${nOk}</b> OK</span>` +
-    (r.svWarn ? `<span class="w">${r.svWarn} warning</span>` : '') + (r.svCrit ? `<span class="c">${r.svCrit} critical</span>` : '');
+    (r.svWarn ? `<span class="w">${r.svWarn} warning</span>` : '') + (r.svCrit ? `<span class="c">${r.svCrit} critical</span>` : '') +
+    (nf ? `<span class="w">${nf} hardware fault${nf > 1 ? 's' : ''}</span>` : '');
   if (!$('rInv').hidden) updateInv(r);
 }
 
@@ -150,7 +160,7 @@ function buildInv(r) {
   const tb = $('invBody'); tb.textContent = '';
   const add = (u, name, sub, cls, spot) => {
     const tr = document.createElement('tr'); if (cls) tr.className = cls;
-    tr.innerHTML = `<td>${u}</td><td><div class="dev"><b></b><span></span></div></td><td class="n"></td><td class="n"></td>`;
+    tr.innerHTML = `<td>${u}</td><td><div class="dev"><b></b><span></span><em class="flt"></em></div></td><td class="n"></td><td class="n"></td>`;
     tr.querySelector('b').textContent = name; tr.querySelector('span').textContent = sub;
     if (spot) {
       const on = () => { spot(); UI.hovered = r; }, off = () => { unhighlight(); UI.hovered = null; };
@@ -160,7 +170,7 @@ function buildInv(r) {
     tb.append(tr); return tr;
   };
   const id = r.id.toLowerCase();
-  ['a', 'b'].forEach((ab, k) => invRows.push({ kind: 'sw', tr: add('U' + (42 - k), `tor-${id}-${ab}`, `ToR switch · 48× 25G + 8× 100G
+  ['a', 'b'].forEach((ab, k) => invRows.push({ kind: 'sw', k, tr: add('U' + (42 - k), `tor-${id}-${ab}`, `ToR switch · 48× 25G + 8× 100G
 Ethernet1/1–${SERVERS} → servers' NIC ${k + 1}`, '', () => highlight(r, 42 - k, 1, -1)) }));
   add('U40', `pp-${id}`, 'Patch panel · 48-port LC fibre (rear)', '', () => highlight(r, 40, 1, -1));
   add('U39', `oob-${id}`, `OOB switch · 48× 1GbE (rear)
@@ -189,9 +199,12 @@ function updateInv(r) {
       const sv = row.sv;
       c[2].innerHTML = `<span class="dot ${statusClass[sv.status]}"></span>${Math.round(sv.load * 100)}%`;
       c[3].textContent = Math.round(sv.power) + ' W';
+      row.tr.querySelector('.flt').textContent = sv.faults.map(f => SHORT[f.kind](f.k)).join(' · ');
     } else if (row.kind === 'sw') {
-      c[2].textContent = (r.net / 2).toFixed(1) + ' Gb/s';
-      c[3].textContent = Math.round(r.swPower / 2 * 1000) + ' W';
+      const down = r.torDown[row.k];
+      c[2].innerHTML = down ? '<span class="dot crit"></span>DOWN' : (r.net / 2).toFixed(1) + ' Gb/s';
+      c[3].textContent = down ? '—' : Math.round(r.swPower / 2 * 1000) + ' W';
+      row.tr.querySelector('.flt').textContent = down ? 'link down · servers on tor-' + r.id.toLowerCase() + '-' + 'ab'[1 - row.k] + ' only' : '';
     } else if (row.kind === 'pdu') {
       c[2].textContent = Math.round(r.power / 2 / 22 * 100) + '%';
       c[3].textContent = (r.power / 2).toFixed(2) + ' kW';

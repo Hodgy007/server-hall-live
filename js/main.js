@@ -10,6 +10,7 @@ import { updateVisuals } from './visuals.js';
 import { flyHall, flyRack, flyServer, updateCam, setOrbit, releaseCut } from './camera.js';
 import { hooks, updateHud, updateSparks, drawCores, renderLegend } from './hud.js';
 import { pushAlert } from './alerts.js';
+import { inject, clearAll } from './faults.js';
 import { render, resizePost } from './post.js';
 
 // ---------- Selection, doors, pulling servers out ----------
@@ -137,6 +138,8 @@ $('airflow').addEventListener('click', () => {
   $('airflow').textContent = UI.airOn ? 'Hide airflow' : 'Show airflow'; $('airflow').classList.toggle('off', !UI.airOn);
 });
 $('hallView').addEventListener('click', hallView);
+$('faultAdd').addEventListener('click', () => { let f = null; for (let n = 0; n < 5 && !f; n++) f = inject(); updateHud(); });
+$('faultClear').addEventListener('click', () => { clearAll(); updateHud(); });
 
 // ---------- Find a host or rack ----------
 {

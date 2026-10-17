@@ -27,13 +27,14 @@ export function step(dt) {
       const own = clamp(r.demand * sv.bias + wave(W.t * 1.6, sv.phase) * 0.05, 0.02, 1);
       sv.load = own + sv.stressAmp * (1 - own) * 0.98;
       sv.mem += (clamp((0.36 + r.memBase + sv.load * 0.28) * sv.memBias + sv.stressAmp * 0.15, 0.08, 0.97) - sv.mem) * k3;
-      sv.temp += (r.inlet + 13 + sv.load * 55 - sv.temp) * k5;
-      sv.rpm += (3800 + clamp((sv.temp - 45) / 40, 0, 1) * 9200 - sv.rpm) * k8;
+      const fanOut = sv.faults.some(f => f.kind === 'fan');
+      sv.temp += (r.inlet + 13 + sv.load * 55 + (fanOut ? 6 : 0) - sv.temp) * k5;
+      sv.rpm += ((3800 + clamp((sv.temp - 45) / 40, 0, 1) * 9200) * (fanOut ? 1.15 : 1) - sv.rpm) * k8;
       sv.power = 260 + sv.load * 640 + (sv.rpm - 3800) * 0.006;
       sv.net = r.row.net / SERVERS * sv.load * sv.bias * (0.85 + 0.15 * Math.sin(W.t * 1.7 + sv.phase));
       sv.cLvl = level(sv.load * 100, 85, 95, sv.cLvl, 3);
       sv.tLvl = level(sv.temp, 85, 95, sv.tLvl, 2);
-      sv.status = Math.max(sv.cLvl, sv.tLvl);
+      sv.status = Math.max(sv.cLvl, sv.tLvl, sv.faults.length ? 1 : 0);   // any hardware fault is at least a warning
       if (sv.status === 2) nCrit++; else if (sv.status === 1) nWarn++;
       sLoad += sv.load; sMem += sv.mem; sPow += sv.power; sNet += sv.net;
     }
@@ -56,7 +57,8 @@ export function step(dt) {
     r.cpuLvl = level(r.load * 100, 85, 95, pc, 3);
     r.tLvl = level(r.inlet, 27, 32, pt, 0.6);
     r.svLvl = nCrit > 0 ? 1 : 0;
-    r.status = Math.max(r.cpuLvl, r.tLvl, r.svLvl);
+    r.faultLvl = r.torDown[0] || r.torDown[1] ? 1 : 0;
+    r.status = Math.max(r.cpuLvl, r.tLvl, r.svLvl, r.faultLvl);
     if (!W.warm) {
       if (r.cpuLvl > pc) pushAlert(r.cpuLvl === 2 ? 'crit' : 'warn', `${r.id} CPU at ${Math.round(r.load * 100)}% across ${SERVERS} servers`);
       if (r.tLvl > pt) pushAlert(r.tLvl === 2 ? 'crit' : 'warn', `${r.id} inlet ${r.inlet.toFixed(1)} °C, over the ${r.tLvl === 2 ? '32 °C allowable' : '27 °C recommended'} limit`);

@@ -106,6 +106,7 @@
         <div><dt>NIC 2</dt><dd id="spNic2">—</dd></div>
         <div><dt>OOB (iLO)</dt><dd id="spIlo">—</dd></div>
       </dl>
+      <ul class="faults" id="sFaults" hidden></ul>
       <a class="btnlink" id="sIlo" href="#" target="_blank" rel="noopener">Open iLO console ↗</a>
       <div class="cores">
         <div class="tl"><span>Per-core load, 64 cores</span><span>CPU0 · CPU1</span></div>
@@ -139,6 +140,10 @@
           <div class="btns">
             <button id="spike">Inject traffic spike</button>
             <button id="crac" aria-pressed="false">Fail cooling CU-2</button>
+          </div>
+          <div class="btns">
+            <button id="faultAdd" title="Fail a random PSU, drive, fan or ToR switch somewhere in the hall">Inject hardware fault</button>
+            <button id="faultClear">Repair all faults</button>
           </div>
           <fieldset class="seg">
             <legend>Color racks by</legend>

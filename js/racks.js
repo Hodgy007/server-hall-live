@@ -134,6 +134,14 @@ racks.forEach((r, i) => {
   for (let u = 25; u <= 40; u++) mount(blanks, i * 16 + u - 25, r, 1, uY(u, 1), 0.006);
 });
 scene.add(swFans, swPorts, patch, oob, blanks);
+// Switch status LEDs, on the fan side and the port side of both ToR switches: index = rack * 4 + switch * 2 + face
+export const swLeds = new THREE.InstancedMesh(new THREE.BoxGeometry(0.012, 0.012, 0.006), new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }), racks.length * 4);
+racks.forEach((r, i) => [42, 41].forEach((u, k) => [1, -1].forEach((side, j) => {
+  const flip = r.face * side > 0 ? 1 : -1;
+  m4.makeTranslation(r.x - flip * 0.215, uY(u, 1), r.z + r.face * side * (FRONT + 0.015)); swLeds.setMatrixAt(i * 4 + k * 2 + j, m4);
+  swLeds.setColorAt(i * 4 + k * 2 + j, LED.act);
+})));
+scene.add(swLeds);
 
 // ---------- Cabinet frame: mounting rails, top bezel, vented plinth, rear cable looms ----------
 const rails = new THREE.InstancedMesh(new THREE.BoxGeometry(0.034, 42 * U + 0.01, 0.01), new THREE.MeshStandardMaterial({ map: railTex, metalness: 0.75, roughness: 0.45 }), racks.length * 4);

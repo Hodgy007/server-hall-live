@@ -1,7 +1,7 @@
 // Per-frame visual updates driven by the telemetry: rack tint and light columns, LEDs, particles, cooling-unit fans.
 import { THREE, lc, COL, clamp, grad } from './core.js';
 import { W, G, UI } from './state.js';
-import { racks, leds, LED } from './racks.js';
+import { racks, leds, LED, swLeds } from './racks.js';
 import { perfMats, uplinkStripMat, coolers, tapLeds } from './hall.js';
 import { updateParticles } from './particles.js';
 
@@ -20,13 +20,15 @@ export function updateVisuals(dt) {
         if (Math.random() < dt * (1.5 + L.sv.load * 22)) L.on = !L.on;
         leds.setColorAt(L.i, L.on ? LED.act : LED.off);
       } else {
-        leds.setColorAt(L.i, r.status === 2 ? (blink ? LED.crit : LED.dark) : r.status === 1 ? LED.warn : LED.idle);
+        const st = L.sv.status;
+        leds.setColorAt(L.i, st === 2 ? (blink ? LED.crit : LED.dark) : st === 1 ? LED.warn : LED.idle);
       }
     }
     // Busway tap-off: green, amber when the rack draws over 10 kW
     tapLeds.setColorAt(i, r.power > 10 ? TAP_WARN : TAP_ON);
+    for (let k = 0; k < 2; k++) for (let j = 0; j < 2; j++) swLeds.setColorAt(i * 4 + k * 2 + j, r.torDown[k] ? (blink ? LED.crit : LED.dark) : LED.act);
   });
-  leds.instanceColor.needsUpdate = true; tapLeds.instanceColor.needsUpdate = true;
+  leds.instanceColor.needsUpdate = true; tapLeds.instanceColor.needsUpdate = true; swLeds.instanceColor.needsUpdate = true;
 
   updateParticles(dt, perfMats);
 

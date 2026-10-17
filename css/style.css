@@ -146,6 +146,11 @@ h3 { margin: 14px 0 6px; font-size: 10px; font-weight: 500; letter-spacing: 0.12
 .specs dt { font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding-top: 1px; }
 .specs dd { margin: 0; font-variant-numeric: tabular-nums; }
 .specs dd span { color: var(--muted); }
+.specs em.bad, .inv em.flt { font-style: normal; color: var(--warn); }
+.inv em.flt { display: block; font-size: 9.5px; }
+.inv em.flt:empty { display: none; }
+.faults { list-style: none; margin: 0; padding: 6px 8px; display: grid; gap: 3px; font-size: 10.5px; color: var(--warn); border: 1px solid rgba(242, 180, 65, 0.4); border-radius: 4px; background: rgba(242, 180, 65, 0.06); }
+.faults li::before { content: "⚠ "; }
 .btnlink { display: block; text-align: center; font-size: 12px; color: var(--cold); text-decoration: none; border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; background: rgba(79, 195, 232, 0.06); }
 .btnlink:hover { border-color: var(--cold); }
 .btnlink:focus-visible { outline: 2px solid var(--cold); outline-offset: 2px; }
