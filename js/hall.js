@@ -13,7 +13,7 @@ const floorTex = canvasTex(256, 256, (g) => {
 });
 floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping; floorTex.repeat.set(2 * ROOM.x / 0.6, 2 * ROOM.z / 0.6);
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(2 * ROOM.x, 2 * ROOM.z), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.5, metalness: 0.3 }));
-floor.rotation.x = -Math.PI / 2; scene.add(floor);
+floor.rotation.x = -Math.PI / 2; floor.material.userData.noClip = true; scene.add(floor);
 
 const perfTex = canvasTex(128, 128, (g) => {
   g.fillStyle = '#0e1820'; g.fillRect(0, 0, 128, 128);
@@ -24,7 +24,7 @@ const perfTex = canvasTex(128, 128, (g) => {
 perfTex.wrapS = perfTex.wrapT = THREE.RepeatWrapping; perfTex.repeat.set(4.2 / 0.6, 1.2 / 0.6);
 export const perfMats = [];
 [-2.3, 2.3].forEach(z => {
-  const m = new THREE.MeshBasicMaterial({ map: perfTex, color: lc('#8fb8c8'), toneMapped: false });
+  const m = new THREE.MeshBasicMaterial({ map: perfTex, color: lc('#8fb8c8'), toneMapped: false }); m.userData.noClip = true;
   const p = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 1.2), m);
   p.rotation.x = -Math.PI / 2; p.position.set(0, 0.003, z); scene.add(p); perfMats.push(m);
 });
@@ -41,7 +41,7 @@ wallTex.wrapS = THREE.RepeatWrapping;
 const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.92, metalness: 0.05 });
 function wall(len, x, z, ry) {
   const t = wallTex.clone(); t.needsUpdate = true; t.repeat.set(len / 4.8, 1);
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(len, ROOM.h), wallMat.clone()); m.material.map = t;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(len, ROOM.h), wallMat.clone()); m.material.map = t; m.material.userData.noClip = true;
   m.position.set(x, ROOM.h / 2, z); m.rotation.y = ry; scene.add(m);
 }
 wall(2 * ROOM.x, 0, -ROOM.z, 0); wall(2 * ROOM.x, 0, ROOM.z, Math.PI);
@@ -55,7 +55,7 @@ const ceilTex = canvasTex(128, 128, (g) => {
 });
 ceilTex.wrapS = ceilTex.wrapT = THREE.RepeatWrapping; ceilTex.repeat.set(2 * ROOM.x / 0.6, 2 * ROOM.z / 0.6);
 const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(2 * ROOM.x, 2 * ROOM.z), new THREE.MeshStandardMaterial({ map: ceilTex, roughness: 0.95 }));
-ceiling.rotation.x = Math.PI / 2; ceiling.position.y = ROOM.h; scene.add(ceiling);
+ceiling.rotation.x = Math.PI / 2; ceiling.position.y = ROOM.h; ceiling.material.userData.noClip = true; scene.add(ceiling);
 
 // Light fixtures over the cold aisles (bright enough to bloom)
 [[-1.2, -2.3], [1.2, -2.3], [-1.2, 2.3], [1.2, 2.3], [-1.2, 0], [1.2, 0]].forEach(([x, z], i) => {

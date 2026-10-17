@@ -43,6 +43,9 @@ renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
+renderer.localClippingEnabled = true;
+// Rack view cut-away: geometry between the camera and the viewed rack is clipped. Far away = off.
+export const cutPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 1e6);
 export const scene = new THREE.Scene();
 const BG = lc(tok('--bg'));
 scene.background = BG;

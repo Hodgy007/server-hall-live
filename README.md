@@ -20,8 +20,9 @@ A three.js animation of a server room that shows how the servers are performing.
 
 - **Drag** to orbit, **scroll** to zoom.
 - **Hall view** flies back to the overview from wherever you are.
-- **Find** (or press <kbd>/</kbd>): type a hostname such as `db-c04-07` to fly there and pull that server out, or a rack ID such as `B03` to fly to the front of that rack. Partial names work too, and the field suggests every host and rack.
-- **Click a rack** to select it and swing its door open (the previously selected rack's door closes). Clicking a server behind a closed door opens the door first; click again to pull the server out.
+- **Find** (or press <kbd>/</kbd>): type a hostname such as `db-c04-07` to fly there and pull that server out, or a rack ID such as `B03` for rack view. Partial names work too, and the field suggests every host and rack.
+- **Click a rack** (front or back) for **rack view**: the camera flies to a spot 2.9 m in front of it so the whole 42U front fits on screen, the door swings open, and everything between you and the rack (the opposite row, containment glass) is cut away so you can see how the rack is filled. Click a server in it to pull it out. In rack view the panel's ‹ › arrows walk from rack to rack; **Hall view** leaves it.
+- Searching for a rack ID also opens rack view.
 
 ## Inspect a single server
 

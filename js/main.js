@@ -1,5 +1,5 @@
 // Entry point: wires the scene, simulation, HUD and interaction together and runs the frame loop.
-import { THREE, $, canvas, renderer, scene, camera, controls, SERVERS } from './core.js';
+import { THREE, $, canvas, renderer, scene, camera, controls, SERVERS, cutPlane } from './core.js';
 import { W, UI, SV } from './state.js';
 import { racks, byId, byHost, cabinets, plates, rears, selBox, setDoor, doorOpen, updateDoors } from './racks.js';
 import './hall.js';
@@ -56,13 +56,14 @@ function pick(e) {
   ray.setFromCamera(ndc, camera);
   const targets = SV.open && SRV.visible ? srvMeshes.concat(pickables) : pickables;
   for (const h of ray.intersectObjects(targets, false)) {
+    if (cutPlane.distanceToPoint(h.point) < 0) continue;   // clipped away in rack view
     if (h.object.userData.srv) return { rack: SV.sel.r, sv: null, close: true };
     if (h.object === plates || h.object === rears) {
       const r = racks[(h.instanceId / SERVERS) | 0], sv = r.servers[h.instanceId % SERVERS];
       if (sv === SV.sel) continue;
-      // Front servers sit behind the door: a closed door opens first
-      const front = h.object === plates;
-      return { rack: r, sv, door: front && !doorOpen(r) && !(SV.open && SV.sel.r === r) };
+      // The first click on a rack shows its front (and opens the door); once there, a click pulls a server out
+      const ready = UI.cutRack === r && h.object === plates && (doorOpen(r) || (SV.open && SV.sel.r === r));
+      return { rack: r, sv, focus: !ready };
     }
     return { rack: h.object.userData.rack, sv: null };
   }
@@ -77,9 +78,8 @@ canvas.addEventListener('pointermove', e => {
     tip.hidden = false;
     const sv = hit.sv, r = UI.hovered;
     tip.innerHTML = hit.close ? `<b>${SV.sel.host}</b>click to push back in`
-      : sv && hit.door ? `<b>${r.id}</b>click to open the door`
-      : sv ? `<b>${sv.host}</b>U${sv.u} · CPU ${Math.round(sv.load * 100)}% · click to pull out`
-      : `<b>${r.id}</b>CPU ${Math.round(r.load * 100)}% · inlet ${r.inlet.toFixed(1)} °C · ${r.power.toFixed(1)} kW`;
+      : sv && !hit.focus ? `<b>${sv.host}</b>U${sv.u} · CPU ${Math.round(sv.load * 100)}% · click to pull out`
+      : `<b>${r.id}</b>CPU ${Math.round(r.load * 100)}% · inlet ${r.inlet.toFixed(1)} °C · ${r.power.toFixed(1)} kW` + (UI.cutRack === r ? '' : ' · click to view the front');
     const x = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 8);
     tip.style.left = x + 'px'; tip.style.top = (e.clientY + 16) + 'px';
   } else tip.hidden = true;
@@ -93,9 +93,8 @@ canvas.addEventListener('pointerup', e => {
   const hit = pick(e);
   if (!hit) return;
   if (hit.close) closeServer();
-  else if (hit.sv && hit.door) select(hit.rack);
-  else if (hit.sv) openServer(hit.sv);
-  else if (!SV.open) select(hit.rack);
+  else if (hit.sv && !hit.focus) openServer(hit.sv);
+  else if (UI.cutRack !== hit.rack || !doorOpen(hit.rack)) focusRack(hit.rack);
 });
 
 // ---------- Panel buttons and controls ----------
@@ -107,7 +106,8 @@ $('sStress').addEventListener('click', () => {
   else { sv.stressLeft = 20; pushAlert('info', `${sv.host} stress test started: all 64 cores for 20 s`); }
   updateHud();
 });
-const stepRack = d => select(racks[(racks.indexOf(UI.selected) + d + racks.length) % racks.length]);
+// In rack view the arrows walk the camera from rack to rack; otherwise they just change the selection
+const stepRack = d => { const r = racks[(racks.indexOf(UI.selected) + d + racks.length) % racks.length]; if (UI.cutRack) focusRack(r); else select(r); };
 $('prevRack').addEventListener('click', () => stepRack(-1));
 $('nextRack').addEventListener('click', () => stepRack(1));
 $('traffic').addEventListener('input', e => { W.traffic = e.target.value / 100; $('trafficVal').textContent = e.target.value + '%'; });
@@ -166,10 +166,14 @@ function resize() {
 window.addEventListener('resize', resize);
 if (window.innerWidth <= 720) $('opsBox').open = false;
 
-// Keep reflections subtle: just enough for steel to read as steel
+// Keep reflections subtle (just enough for steel to read as steel); let the rack-view cut clip everything but the room shell
 scene.traverse(o => {
   const ms = Array.isArray(o.material) ? o.material : [o.material];
-  for (const m of ms) if (m && m.isMeshStandardMaterial) m.envMapIntensity = m.metalness > 0.6 ? 0.22 : 0.12;
+  for (const m of ms) {
+    if (!m) continue;
+    if (m.isMeshStandardMaterial) m.envMapIntensity = m.metalness > 0.6 ? 0.22 : 0.12;
+    if (!m.userData.noClip) m.clippingPlanes = [cutPlane];
+  }
 });
 
 // ---------- Boot: pre-run two minutes of telemetry so trends are populated ----------
