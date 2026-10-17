@@ -5,6 +5,7 @@ import { racks } from './racks.js';
 import { stepServer, level } from './server.js';
 import { pushAlert } from './alerts.js';
 import { record } from './replay.js';
+import { applyServer, applyRack } from './live.js';
 
 const wave = (t, p) => 0.5 * Math.sin(t * 0.21 + p) + 0.3 * Math.sin(t * 0.53 + p * 1.7) + 0.2 * Math.sin(t * 1.31 + p * 2.9);
 
@@ -33,6 +34,7 @@ export function step(dt) {
       sv.rpm += ((3800 + clamp((sv.temp - 45) / 40, 0, 1) * 9200) * (fanOut ? 1.15 : 1) - sv.rpm) * k8;
       sv.power = 260 + sv.load * 640 + (sv.rpm - 3800) * 0.006;
       sv.net = r.row.net / SERVERS * sv.load * sv.bias * (0.85 + 0.15 * Math.sin(W.t * 1.7 + sv.phase));
+      applyServer(sv);   // live telemetry, when a feed reports this server, replaces the simulated figures
       sv.cLvl = level(sv.load * 100, 85, 95, sv.cLvl, 3);
       sv.tLvl = level(sv.temp, 85, 95, sv.tLvl, 2);
       sv.status = Math.max(sv.cLvl, sv.tLvl, sv.faults.length ? 1 : 0);   // any hardware fault is at least a warning
@@ -50,6 +52,7 @@ export function step(dt) {
     const faultHit = coolingUnit(r.z) === 1 ? 11 : 3.5;   // rows fed by CU-2 lose supply air when it fails
     const inT = 19.5 + r.inletOffset + end * 1.8 * r.load + W.faultLevel * faultHit * (0.6 + 0.4 * r.load);
     r.inlet += (inT - r.inlet) * k5;
+    applyRack(r);
     r.exhaust = r.inlet + 3 + r.power * 1.6;
     rps += r.load * r.row.rps; cpu += r.load; net += r.net; it += r.power;
     if (r.inlet > maxIn) { maxIn = r.inlet; maxR = r; }

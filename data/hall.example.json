@@ -1,0 +1,33 @@
+{
+  "_about": "Copy to data/hall.json and fill in. Every field is optional: anything left out keeps its generated value.",
+  "domain": "dc1.example.com",
+  "iloUrl": "https://{host}-ilo.dc1.example.com/",
+  "telemetry": { "url": "data/telemetry.example.json", "intervalSeconds": 10 },
+  "racks": {
+    "A01": {
+      "servers": {
+        "U1": {
+          "host": "web-a01-01",
+          "serial": "CZJ3120ABC",
+          "installed": "2023-06",
+          "model": "HPE ProLiant DL380 Gen11",
+          "cpu": "2× Intel Xeon Gold 6448Y",
+          "cpuNote": "32 cores each at 2.1 GHz, 64 in total",
+          "os": "Ubuntu 22.04.4 LTS",
+          "kernel": "5.15",
+          "drives": "8× 960 GB NVMe",
+          "driveTB": 7.68,
+          "ip": "10.110.1.11",
+          "vlan": 110,
+          "gateway": "10.110.1.1",
+          "port": "Ethernet1/1",
+          "mac": ["3c:ec:ef:20:00:00", "3c:ec:ef:20:00:01"],
+          "ilo": "10.250.1.11",
+          "oobPort": "Gi1/0/1",
+          "iloMac": "94:18:82:20:00:02"
+        },
+        "U3": { "host": "web-a01-02", "serial": "CZJ3120ABD", "ilo": "10.250.1.12" }
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "_about": "Shape of the live telemetry feed. cpu in %, memGB in GB, tempC is the hottest CPU in °C, powerW in W, netGbps in Gb/s, inletC is the rack's inlet air in °C. Hosts and racks not listed stay simulated.",
+  "servers": {
+    "web-a01-01": { "cpu": 42, "memGB": 230, "tempC": 61, "powerW": 540, "netGbps": 2.1 },
+    "web-a01-02": { "cpu": 87, "memGB": 410, "tempC": 79, "powerW": 790, "netGbps": 3.4 }
+  },
+  "racks": {
+    "A01": { "inletC": 22.4 }
+  }
+}

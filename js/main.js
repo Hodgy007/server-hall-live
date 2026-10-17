@@ -12,6 +12,7 @@ import { hooks, updateHud, updateSparks, drawCores, renderLegend } from './hud.j
 import { pushAlert } from './alerts.js';
 import { inject, clearAll } from './faults.js';
 import { replay, recorded, swapIn, swapOut } from './replay.js';
+import { live, fresh } from './live.js';
 import { render, resizePost } from './post.js';
 
 // ---------- Selection, doors, pulling servers out ----------
@@ -147,7 +148,8 @@ function syncReplay() {
   el.min = String(-Math.floor(have / 5) * 5);
   const ago = replay.ago;
   $('replayVal').textContent = ago ? `${mmss(ago)} ago` : 'Live';
-  $('liveChip').textContent = ago ? `Replay · ${mmss(ago)} ago` : 'Simulated telemetry';
+  const feed = live.enabled && fresh(live) ? `Live data · ${live.servers} of ${racks.length * SERVERS} servers` : 'Simulated telemetry';
+  $('liveChip').textContent = ago ? `Replay · ${mmss(ago)} ago` : feed;
   $('liveChip').classList.toggle('past', !!ago);
   $('replayLive').hidden = !ago;
 }

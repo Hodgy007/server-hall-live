@@ -44,7 +44,7 @@ The server panel starts with the server's specification:
 - **Memory**: 512 GB DDR5-4800 (16 × 32 GB) and how much is in use.
 - **Storage**: 8 NVMe drives (960 GB to 7.68 TB depending on the row), raw capacity and usage.
 - **Network**: the LACP bond's IP address, VLAN, gateway and MTU; **NIC 1** and **NIC 2** with the ToR switch and port each one is cabled to, and their MAC addresses.
-- **OOB (iLO)**: the management IP, the out-of-band switch port and MAC. **Open iLO console** opens `https://<iLO IP>/` in a new tab. The addresses are simulated, so the link only reaches something once `iloUrl` in `js/racks.js` and the address plan point at real management interfaces.
+- **OOB (iLO)**: the management IP, the out-of-band switch port and MAC. **Open iLO console** opens `https://<iLO IP>/` in a new tab, or whatever `iloUrl` in `data/hall.json` says. Generated addresses are simulated; real ones come from your site data (below).
 
 Below that it shows per-core load for all 64 cores, CPU temperatures, fan speed, memory, IOPS, network and power, plus a 2-minute CPU trend. **Run 20 s stress test** pins the cores at 100% so you can watch the temperatures, fans and alerts respond. Click the pulled-out server again, press **Back** or <kbd>Esc</kbd> to slide it back in like a drawer; the camera stays where it is. Flying to a rack or opening a server stops the camera rotation until you press **Start rotation**.
 
@@ -53,7 +53,28 @@ Below that it shows per-core load for all 64 cores, CPU temperatures, fan speed,
 - KPI strip: requests/s, average CPU, network, IT load, PUE and the hottest inlet temperature.
 - Rack detail, **Live** tab: CPU, memory, power and network are rolled up from the rack's 12 servers (power also includes the two switches), with a count of servers in warning or critical state, inlet/exhaust temperature and 2-minute trends. A rack also turns amber when any of its servers is critical. Click a rack or use the arrow buttons.
 - Rack detail, **Inventory** tab: everything in the rack from U42 down (ToR switches, patch panel, OOB switch, free space, each server with model, drives, serial and in-service date, both PDUs), with live load and power per device and a rack total. **Hover a row** to outline that device in the rack; click a server row to pull it out.
-- Controls: traffic demand slider, traffic spike, cooling unit CU-2 failure (its aisles lose supply air and those racks' inlets climb), colour mode, **Stop/Start rotation** for the camera orbit and **Hide/Show airflow** for the air particles.
+- Controls: traffic demand slider, **Replay**, traffic spike, **Inject hardware fault** / **Repair all faults**, cooling unit CU-2 failure (its aisles lose supply air and those racks' inlets climb), colour mode, **Stop/Start rotation** for the camera orbit and **Hide/Show airflow** for the air particles.
+- **Colour racks by** CPU load, inlet temperature or **power** (draw against each rack's 12 kW budget, which shows where there is capacity to add servers).
+- **Replay** scrubs back up to 10 minutes: the 3D view, rack panel and KPIs show the hall as it was (one snapshot a second) while the simulation keeps running; the header chip shows how far back you are and **back to live** returns. Sparklines and the pulled-out server stay live.
+
+## Hardware faults
+
+**Inject hardware fault** fails something at random somewhere in the hall:
+
+- **PSU**: the server keeps running on its second supply. In the pulled-out view the failed PSU's LED flashes red.
+- **NVMe drive**: RAID runs degraded while it rebuilds onto the hot spare; the drive's LED stays amber and the storage line says so.
+- **Fan**: that fan stops, the other five spin about 15% faster and the CPUs run about 6 °C hotter.
+- **ToR switch**: one of the rack's two switches goes down; its status LEDs flash red, every server's bond runs on the other link, and the NIC line for that switch says *link down*.
+
+Any fault makes its server a warning (amber status LED), which rolls up into the rack's counts; a switch outage makes the whole rack a warning. Each fault raises an alert, is listed in the server panel, and is named on the server's row in the inventory. **Repair all faults** clears them.
+
+## Your own data
+
+`data/hall.json` is read at start-up. Out of the box it lists no racks, so everything is generated and simulated. Copy `data/hall.example.json` over it to see the format:
+
+- `domain` for the FQDNs and `iloUrl` for the console link (`{ip}` is the iLO address, `{host}` the hostname).
+- `racks.<rack>.servers.U<n>` gives a server's real `host`, `serial`, `installed`, `model`, `cpu`, `cpuNote`, `os`, `kernel`, `drives`, `driveTB`, `ip`, `vlan`, `gateway`, `port`, `mac`, `ilo`, `oobPort` and `iloMac`. Every field is optional; slots and fields you leave out keep their generated values. Servers sit at U1, U3, … U23.
+- `telemetry` points at a live feed (`url`, `intervalSeconds`). It is polled, and every server and rack it reports shows its real figures instead of simulated ones: `cpu` in %, `memGB`, `tempC` (hottest CPU), `powerW`, `netGbps`, and a rack's `inletC`. `data/telemetry.example.json` shows the shape. Anything the feed stops reporting for three intervals falls back to the simulation; the header chip shows how many servers are live.
 - Alerts follow ASHRAE A1 guidance: 27 °C recommended and 32 °C allowable inlet limits, plus 85% / 95% CPU thresholds.
 
 ## Run it
@@ -86,4 +107,8 @@ three.js 0.169.0 and its add-ons (OrbitControls, RoomEnvironment, EffectComposer
 | `js/hud.js` | KPI strip, rack and server panels, inventory, legend |
 | `js/alerts.js` | Alert feed |
 | `js/post.js` | Bloom post-processing |
+| `js/faults.js` | Hardware faults: inject, repair, describe |
+| `js/replay.js` | Ten-minute snapshot ring buffer and the swap used while replaying |
+| `js/data.js` | Loads `data/hall.json` |
+| `js/live.js` | Polls the optional telemetry feed and applies it over the simulation |
 | `js/main.js` | Wiring, picking, search, boot and the frame loop |

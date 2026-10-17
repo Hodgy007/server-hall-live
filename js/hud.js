@@ -1,7 +1,7 @@
 // HUD: KPI strip, rack panel (Live and Inventory tabs), server panel, legend.
 import { $, COL, STOPS, cssGrad, SERVERS } from './core.js';
 import { W, G, UI, SV } from './state.js';
-import { MODEL, DRIVE, DRIVE_TB, CPU, iloUrl, highlight, unhighlight } from './racks.js';
+import { iloUrl, DOMAIN, highlight, unhighlight } from './racks.js';
 import { describe, rackFaults } from './faults.js';
 
 const SHORT = { psu: k => `PSU ${k + 1} failed`, disk: k => `drive ${k + 1} failed`, fan: k => `fan ${k + 1} failed` };
@@ -64,13 +64,13 @@ export function updateHud() {
     const sv = SV.sel, tl = t => t > 95 ? 2 : t > 85 ? 1 : 0;
     $('sHost').textContent = sv.host;
     $('sMeta').textContent = `Rack ${sv.r.id} · U${sv.u}–${sv.u + 1} · ${sv.r.row.role}`;
-    const ri = sv.r.kind, cpu = CPU[ri], id = sv.r.id.toLowerCase(), tb = DRIVE_TB[ri];
-    $('spHost').innerHTML = `${sv.host}.hall2.local <span>· ${MODEL[ri]} · SN ${sv.serial}</span>`;
-    $('spCpu').innerHTML = `2× ${cpu.name} <span>· 32 cores each at ${cpu.ghz} GHz, 64 in total</span>`;
+    const id = sv.r.id.toLowerCase(), tb = sv.driveTB;
+    $('spHost').innerHTML = `${sv.host}.${DOMAIN} <span>· ${sv.model} · SN ${sv.serial}</span>`;
+    $('spCpu').innerHTML = `${sv.cpu} <span>· ${sv.cpuNote}</span>`;
     $('spOs').innerHTML = `${sv.os[0]} <span>· Linux kernel ${sv.os[1]}</span>`;
     $('spRam').innerHTML = `512 GB DDR5-4800 <span>· 16 × 32 GB · ${Math.round(SV.mem * 512)} GB in use</span>`;
     const diskF = sv.faults.find(f => f.kind === 'disk');
-    $('spDisk').innerHTML = `${DRIVE[ri]} <span>· ${tb.toFixed(1)} TB raw · ${(tb * sv.diskUsed).toFixed(1)} TB used (${Math.round(sv.diskUsed * 100)}%)</span>` +
+    $('spDisk').innerHTML = `${sv.drives} <span>· ${tb.toFixed(1)} TB raw · ${(tb * sv.diskUsed).toFixed(1)} TB used (${Math.round(sv.diskUsed * 100)}%)</span>` +
       (diskF ? ` <em class="bad">· drive ${diskF.k + 1} failed, RAID degraded</em>` : '');
     $('spNet').innerHTML = `bond0 ${sv.ip}/24 <span>· VLAN ${sv.vlan} · gateway ${sv.gw} · LACP 802.3ad · MTU 9000</span>`;
     [0, 1].forEach(k => {
@@ -79,7 +79,7 @@ export function updateHud() {
     const fl = $('sFaults'), all = sv.faults.concat(rackFaults(sv.r).filter(f => !f.sv));
     fl.hidden = !all.length; fl.innerHTML = all.map(f => `<li>${describe(f)}</li>`).join('');
     $('spIlo').innerHTML = `${sv.ilo} <span>· oob-${id} ${sv.oobPort} · 1 GbE · ${sv.iloMac}</span>`;
-    const ilo = $('sIlo'); if (ilo.dataset.ip !== sv.ilo) { ilo.dataset.ip = sv.ilo; ilo.href = iloUrl(sv.ilo); ilo.setAttribute('aria-label', `Open the iLO console for ${sv.host} at ${sv.ilo}`); }
+    const ilo = $('sIlo'); if (ilo.dataset.ip !== sv.ilo) { ilo.dataset.ip = sv.ilo; ilo.href = iloUrl(sv); ilo.setAttribute('aria-label', `Open the iLO console for ${sv.host} at ${sv.ilo}`); }
     $('sStatus').textContent = statusText[SV.status]; $('sStatus').className = 'pill ' + statusClass[SV.status];
     $('sCpuV').textContent = Math.round(sv.load * 100) + '%'; $('sCpuV').className = lvlClass(SV.cLvl);
     $('sT0').textContent = SV.temp[0].toFixed(0) + ' °C'; $('sT0').className = lvlClass(tl(SV.temp[0]));
@@ -178,7 +178,7 @@ Gi1/0/1–${SERVERS} → servers' iLO`, '', () => highlight(r, 39, 1, -1));
   add('U25–38', 'Empty', '14U · blanking panels fitted', 'empty', () => highlight(r, 25, 14, 1));
   for (let s = SERVERS - 1; s >= 0; s--) {
     const sv = r.servers[s];
-    const tr = add(`U${sv.u}–${sv.u + 1}`, sv.host, `${MODEL[r.kind]} · ${DRIVE[r.kind]}\nSN ${sv.serial} · in service ${sv.installed}`, 'sv', () => highlight(r, sv.u, 2, 1));
+    const tr = add(`U${sv.u}–${sv.u + 1}`, sv.host, `${sv.model} · ${sv.drives}\nSN ${sv.serial} · in service ${sv.installed}`, 'sv', () => highlight(r, sv.u, 2, 1));
     tr.tabIndex = 0; tr.setAttribute('aria-label', `Pull out ${sv.host}`);
     tr.addEventListener('click', () => hooks.open(sv));
     tr.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); hooks.open(sv); } });
@@ -188,7 +188,7 @@ Gi1/0/1–${SERVERS} → servers' iLO`, '', () => highlight(r, 39, 1, -1));
   const tot = add('', 'Rack total', `${SERVERS} servers + 2 switches`, 'tot', () => highlight(r, 1, 42, 1));
   tot.querySelector('b').style.color = 'var(--cold)';
   invRows.push({ kind: 'tot', tr: tot });
-  $('invSum').innerHTML = `<b>${SERVERS}</b> servers · <b>${SERVERS * 64}</b> cores · <b>${(SERVERS * 0.512).toFixed(1)} TB</b> RAM · <b>${(SERVERS * DRIVE_TB[r.kind]).toFixed(0)} TB</b> NVMe<br>` +
+  $('invSum').innerHTML = `<b>${SERVERS}</b> servers · <b>${SERVERS * 64}</b> cores · <b>${(SERVERS * 0.512).toFixed(1)} TB</b> RAM · <b>${r.servers.reduce((a, sv) => a + sv.driveTB, 0).toFixed(0)} TB</b> NVMe<br>` +
     `<b>2</b> ToR switches · <b>1</b> OOB switch · <b>2</b> PDUs · <b>1</b> patch panel · <b>14U</b> free of 42U`;
 }
 function updateInv(r) {
