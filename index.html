@@ -1365,6 +1365,9 @@ h3 { margin: 14px 0 6px; font-size: 10px; font-weight: 500; letter-spacing: 0.12
     $('rElev').append(b); return b;
   });
   const pickables = [plates, rears, ...cabinets];
+  // Every solid part of the pulled-out server (not its air particles): clicking it pushes the server back in
+  const srvMeshes = [];
+  SRV.traverse(o => { if (o.isMesh) { o.userData.srv = true; srvMeshes.push(o); } });
   function select(r) {
     selected = r; selBox.position.copy(r.mesh.position);
     updateHud(); updateSparks();
@@ -1375,7 +1378,9 @@ h3 { margin: 14px 0 6px; font-size: 10px; font-weight: 500; letter-spacing: 0.12
     const rect = canvas.getBoundingClientRect();
     ndc.set((e.clientX - rect.left) / rect.width * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
     ray.setFromCamera(ndc, camera);
-    for (const h of ray.intersectObjects(pickables, false)) {
+    const targets = SV.open && SRV.visible ? srvMeshes.concat(pickables) : pickables;
+    for (const h of ray.intersectObjects(targets, false)) {
+      if (h.object.userData.srv) return { rack: SV.sel.r, sv: null, close: true };
       if (h.object === plates || h.object === rears) {
         const r = racks[(h.instanceId / SERVERS) | 0], sv = r.servers[h.instanceId % SERVERS];
         if (sv === SV.sel) continue;
@@ -1389,11 +1394,13 @@ h3 { margin: 14px 0 6px; font-size: 10px; font-weight: 500; letter-spacing: 0.12
     if (e.pointerType === 'touch') return;
     const hit = pick(e);
     hovered = hit ? hit.rack : null;
-    canvas.style.cursor = hit && (hit.sv || !SV.open) ? 'pointer' : 'grab';
+    canvas.style.cursor = hit && (hit.sv || hit.close || !SV.open) ? 'pointer' : 'grab';
     if (hit) {
       tip.hidden = false;
       const sv = hit.sv;
-      tip.innerHTML = sv
+      tip.innerHTML = hit.close
+        ? `<b>${SV.sel.host}</b>click to push back in`
+        : sv
         ? `<b>${sv.host}</b>U${sv.u} · CPU ${Math.round(sv.load * 100)}% · click to pull out`
         : `<b>${hovered.id}</b>CPU ${Math.round(hovered.load * 100)}% · inlet ${hovered.inlet.toFixed(1)} °C · ${hovered.power.toFixed(1)} kW`;
       const x = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 8);
@@ -1407,7 +1414,8 @@ h3 { margin: 14px 0 6px; font-size: 10px; font-weight: 500; letter-spacing: 0.12
     const moved = Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]); downAt = null;
     if (moved < 6) {
       const hit = pick(e);
-      if (hit && hit.sv) openServer(hit.sv);
+      if (hit && hit.close) closeServer();
+      else if (hit && hit.sv) openServer(hit.sv);
       else if (hit && !SV.open) select(hit.rack);
     }
   });

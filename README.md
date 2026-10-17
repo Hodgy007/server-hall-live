@@ -22,7 +22,7 @@ Click any server in a rack (or a cell in the rack panel's server strip) and it s
 - **Drive and network LEDs** blink with disk IOPS and network traffic.
 - **Airflow particles** enter cool at the front and warm up as they pass the CPUs.
 
-The server panel shows per-core load for all 64 cores, CPU temperatures, fan speed, memory, IOPS, network and power, plus a 2-minute CPU trend. **Run 20 s stress test** pins the cores at 100% so you can watch the temperatures, fans and alerts respond. **Back** or <kbd>Esc</kbd> returns to the hall.
+The server panel shows per-core load for all 64 cores, CPU temperatures, fan speed, memory, IOPS, network and power, plus a 2-minute CPU trend. **Run 20 s stress test** pins the cores at 100% so you can watch the temperatures, fans and alerts respond. Click the pulled-out server again, press **Back** or <kbd>Esc</kbd> to slide it back in and return to the hall.
 
 ## Panels and controls
 
