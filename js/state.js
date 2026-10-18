@@ -4,7 +4,7 @@ export const HIST = 120;   // seconds of trend history
 // World: demand inputs, faults, colour mode, clock
 export const W = { traffic: 0.6, spikeAge: Infinity, fault: false, faultLevel: 0, mode: 'load', t: 0, sampleAcc: 0, warm: true, sampled: false };
 // Hall-wide totals for the KPI strip
-export const G = { rps: 0, cpu: 0, net: 0, it: 0, cool: 0, pue: 0, maxIn: 0, maxInRack: null, rpsHist: [], cpuHist: [] };
+export const G = { cpu: 0, net: 0, it: 0, maxIn: 0, maxInRack: null, cpuHist: [] };
 // Selection, hover, camera orbit
 export const UI = { selected: null, hovered: null, orbitOn: true, airOn: true, cutRack: null, thermal: false };
 // The pulled-out server

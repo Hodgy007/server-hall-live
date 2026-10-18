@@ -48,16 +48,12 @@ const elevBtns = Array.from({ length: SERVERS }, (_, s) => {
 });
 
 export function updateHud() {
-  $('kRps').textContent = fmtK(G.rps);
   const cpuL = G.cpu > 0.85 ? 2 : G.cpu > 0.7 ? 1 : 0;
   $('kCpu').textContent = Math.round(G.cpu * 100) + '%'; $('kCpu').className = 'v ' + lvlClass(cpuL);
   $('kNet').innerHTML = Math.round(G.net) + '<small>Gbps</small>';
   $('kNetSub').textContent = Math.round(G.net / 32) + '% of 3.2T hall uplinks';
   $('kPow').innerHTML = Math.round(G.it) + '<small>kW</small>';
   $('kPowSub').textContent = 'of 1,152 kW provisioned';
-  $('kPue').textContent = G.pue.toFixed(2);
-  $('kPue').className = 'v ' + lvlClass(G.pue > 1.5 ? 1 : 0);
-  $('kPueSub').textContent = 'cooling draw ' + Math.round(G.cool) + ' kW';
   const inL = G.maxIn > 32 ? 2 : G.maxIn > 27 ? 1 : 0;
   $('kIn').innerHTML = G.maxIn.toFixed(1) + '<small>°C</small>'; $('kIn').className = 'v ' + lvlClass(inL);
   $('kInSub').textContent = 'at ' + G.maxInRack.id + ' · limit 27 °C';
@@ -130,7 +126,6 @@ export function updateHud() {
 }
 
 export function updateSparks() {
-  drawSpark($('sRps'), G.rpsHist, { color: COL.cold });
   drawSpark($('sCpu'), G.cpuHist, { color: COL.cold, min: 0, max: 100, thr: 85 });
   if (SV.open && SV.sel) { drawSpark($('sSpark'), SV.sel.hist, { color: COL.cold, min: 0, max: 100, thr: 85 }); return; }
   drawSpark($('rSpark'), UI.selected.hist, { color: COL.cold, min: 0, max: 100, thr: 85 });

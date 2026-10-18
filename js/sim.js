@@ -14,7 +14,7 @@ export function step(dt) {
   const sa = W.spikeAge;
   const spike = sa < 1.5 ? sa / 1.5 : Math.exp(-(sa - 1.5) / 4);
   W.faultLevel += ((W.fault ? 1 : 0) - W.faultLevel) * Math.min(1, dt * 0.25);
-  let rps = 0, cpu = 0, net = 0, it = 0, maxIn = -1, maxR = null;
+  let cpu = 0, net = 0, it = 0, maxIn = -1, maxR = null;
   for (const r of racks) {
     let target;
     if (r.kind === 3) target = 0.22 + 0.6 * Math.max(0, Math.sin(W.t * 0.07 + r.phase)) + wave(W.t, r.phase) * 0.08 + spike * r.row.aff * 0.4;
@@ -54,7 +54,7 @@ export function step(dt) {
     r.inlet += (inT - r.inlet) * k5;
     applyRack(r);
     r.exhaust = r.inlet + 3 + r.power * 1.6;
-    rps += r.load * r.row.rps; cpu += r.load; net += r.net; it += r.power;
+    cpu += r.load; net += r.net; it += r.power;
     if (r.inlet > maxIn) { maxIn = r.inlet; maxR = r; }
 
     const pc = r.cpuLvl, pt = r.tLvl, ps = r.status, pv = r.svLvl;
@@ -70,8 +70,7 @@ export function step(dt) {
       if (ps > 0 && r.status === 0) pushAlert('ok', `${r.id} back within limits`);
     }
   }
-  G.rps = rps * (0.97 + 0.03 * Math.sin(W.t * 2.3)); G.cpu = cpu / racks.length; G.net = net; G.it = it;
-  G.cool = it * (0.3 + W.faultLevel * 0.12); G.pue = (it + G.cool + 36) / it;
+  G.cpu = cpu / racks.length; G.net = net; G.it = it;
   G.maxIn = maxIn; G.maxInRack = maxR;
 
   W.sampleAcc += dt;
@@ -81,8 +80,8 @@ export function step(dt) {
       r.hist.push(r.load * 100); r.ihist.push(r.inlet); if (r.hist.length > HIST) { r.hist.shift(); r.ihist.shift(); }
       for (const sv of r.servers) { sv.hist.push(sv.load * 100); if (sv.hist.length > HIST) sv.hist.shift(); }
     }
-    G.rpsHist.push(G.rps); G.cpuHist.push(G.cpu * 100);
-    if (G.rpsHist.length > HIST) { G.rpsHist.shift(); G.cpuHist.shift(); }
+    G.cpuHist.push(G.cpu * 100);
+    if (G.cpuHist.length > HIST) G.cpuHist.shift();
     record();
     W.sampled = true;
   }
