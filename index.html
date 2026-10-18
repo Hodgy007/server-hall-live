@@ -134,20 +134,8 @@
         <summary>Controls and alerts</summary>
         <div class="ctl">
           <div>
-            <label for="traffic" class="row"><span>Traffic demand</span><b id="trafficVal">60%</b></label>
-            <input type="range" id="traffic" min="10" max="100" value="60">
-          </div>
-          <div>
             <div class="row"><label for="replay">Replay</label><span><button type="button" class="linkbtn" id="replayLive" hidden>back to live</button> <b id="replayVal">Live</b></span></div>
             <input type="range" id="replay" min="-120" max="0" step="5" value="0" aria-describedby="replayVal">
-          </div>
-          <div class="btns">
-            <button id="spike">Inject traffic spike</button>
-            <button id="crac" aria-pressed="false">Fail cooling CU-2</button>
-          </div>
-          <div class="btns">
-            <button id="faultAdd" title="Fail a random PSU, drive, fan or ToR switch somewhere in the hall">Inject hardware fault</button>
-            <button id="faultClear">Repair all faults</button>
           </div>
           <fieldset class="seg">
             <legend>Color racks by</legend>
