@@ -6,15 +6,15 @@ import { racks } from './racks.js';
 const m4 = new THREE.Matrix4();
 
 // ---------- Raised floor ----------
-// Satin anti-static tiles, 0.6 m square. One texture covers 4 × 4 tiles so neighbours differ a little in
-// tint, sheen and wear; the seams are rough and sunk so they break up the highlights.
+// Matt anti-static tiles, 0.6 m square. One texture covers 4 × 4 tiles so neighbours differ a little in
+// tint and wear; the seams are sunk.
 const TILE_PX = 256, TILES = 4;
 const tileVar = Array.from({ length: TILES * TILES }, () => ({ l: vrnd(), r: vrnd(), s: vrnd() }));
 function floorTiles(g, w, h, kind) {
   tileVar.forEach((t, i) => {
     const x = (i % TILES) * TILE_PX, y = ((i / TILES) | 0) * TILE_PX;
     if (kind === 'map') { const v = 19 + t.l * 4; g.fillStyle = `rgb(${v - 3},${v + 3},${v + 9})`; }
-    else if (kind === 'rough') { const v = 95 + t.r * 25; g.fillStyle = `rgb(${v},${v},${v})`; }
+    else if (kind === 'rough') { const v = 190 + t.r * 25; g.fillStyle = `rgb(${v},${v},${v})`; }
     else g.fillStyle = '#c0c0c0';
     g.fillRect(x, y, TILE_PX, TILE_PX);
     // scuffs: chair and trolley marks, rougher and slightly lighter than the finish around them
@@ -39,9 +39,8 @@ const floorTex = canvasTex(FLOOR_PX, FLOOR_PX, (g, w, h) => floorTiles(g, w, h, 
 const floorRough = canvasTex(FLOOR_PX, FLOOR_PX, (g, w, h) => floorTiles(g, w, h, 'rough'), true);
 const floorBump = canvasTex(FLOOR_PX, FLOOR_PX, (g, w, h) => floorTiles(g, w, h, 'bump'), true);
 for (const t of [floorTex, floorRough, floorBump]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...FLOOR_REP); t.anisotropy = 8; }
-const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughnessMap: floorRough, bumpMap: floorBump, bumpScale: 1.2, roughness: 1, metalness: 0.15 });
+const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughnessMap: floorRough, bumpMap: floorBump, bumpScale: 1.2, roughness: 1, metalness: 0.05 });
 floorMat.userData.noClip = true;
-floorMat.onBeforeCompile = sh => broadPunctualSpec(sh, 0.55);
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(2 * ROOM.x, 2 * ROOM.z), floorMat);
 floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
 
