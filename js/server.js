@@ -6,7 +6,6 @@ import { THREE, scene, lc, COL, clamp, grad, gradIn, LST, U, ease, reduceMotion,
 import { W, SV } from './state.js';
 import { racks, FACE, LED, setInstance, doorOpen } from './racks.js';
 import { makePoints } from './particles.js';
-import { pushAlert } from './alerts.js';
 
 export const SRV = new THREE.Group(); SRV.visible = false; scene.add(SRV);
 // Hex colours here are sRGB, as picked; converted to the linear values the renderer works in
@@ -236,13 +235,9 @@ export function stepServer(dt) {
   SV.netIn = nt * 0.45 * (0.9 + 0.2 * Math.sin(W.t * 2.1 + sv.phase));
   SV.netOut = nt * 0.55 * (0.9 + 0.2 * Math.sin(W.t * 1.7 + sv.phase));
   SV.power = sv.power;
-  const pt = SV.tLvl, pc = SV.cLvl, ps = SV.status;
-  SV.tLvl = level(hot, 85, 95, pt, 2);
-  SV.cLvl = level(sv.load * 100, 85, 95, pc, 3);
+  SV.tLvl = level(hot, 85, 95, SV.tLvl, 2);
+  SV.cLvl = level(sv.load * 100, 85, 95, SV.cLvl, 3);
   SV.status = Math.max(SV.tLvl, SV.cLvl, sv.faults.length ? 1 : 0);
-  if (SV.tLvl > pt) pushAlert(SV.tLvl === 2 ? 'crit' : 'warn', `${sv.host} CPU at ${hot.toFixed(0)} °C, ${SV.tLvl === 2 ? 'thermal throttling' : 'near the 95 °C throttle point'}`);
-  if (SV.cLvl > pc) pushAlert(SV.cLvl === 2 ? 'crit' : 'warn', `${sv.host} CPU at ${Math.round(sv.load * 100)}%`);
-  if (ps > 0 && SV.status === 0) pushAlert('ok', `${sv.host} back within limits`);
 }
 
 // Threshold level with hysteresis: 0 ok, 1 warning, 2 critical

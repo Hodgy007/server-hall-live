@@ -2,7 +2,7 @@
 export const HIST = 120;   // seconds of trend history
 
 // World: demand inputs, faults, colour mode, clock
-export const W = { traffic: 0.6, spikeAge: Infinity, fault: false, faultLevel: 0, mode: 'load', t: 0, sampleAcc: 0, warm: true, sampled: false };
+export const W = { traffic: 0.6, spikeAge: Infinity, fault: false, faultLevel: 0, mode: 'load', t: 0, sampleAcc: 0, sampled: false };
 // Hall-wide totals for the KPI strip
 export const G = { cpu: 0, net: 0, it: 0, maxIn: 0, maxInRack: null, cpuHist: [] };
 // Selection, hover, camera orbit

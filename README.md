@@ -67,17 +67,16 @@ Each rack holds twelve servers of one model, picked at random from these Dell Po
 
 Power draw follows the model, from idle to flat out. The rack panel names the rack's model, and the inventory lists 1U servers at single rack units.
 
-Below that it shows per-core load for every core (one block per socket), CPU temperatures, fan speed, memory, IOPS, network and power, plus a 2-minute CPU trend. **Run 20 s stress test** pins the cores at 100% so you can watch the temperatures, fans and alerts respond. Click the pulled-out server again, press **Back** or <kbd>Esc</kbd> to slide it back in like a drawer; the camera stays where it is. Flying to a rack or opening a server stops the camera rotation until you press **Start rotation**.
+Below that it shows per-core load for every core (one block per socket), CPU temperatures, fan speed, memory, IOPS, network and power, plus a 2-minute CPU trend. **Run 20 s stress test** pins the cores at 100% so you can watch the temperatures and fans respond. Click the pulled-out server again, press **Back** or <kbd>Esc</kbd> to slide it back in like a drawer; the camera stays where it is. Flying to a rack or opening a server stops the camera rotation until you press **Start rotation**.
 
 ## Panels and controls
 
 - KPI strip: average CPU, network, IT load and the hottest inlet temperature.
 - Rack detail, **Live** tab: CPU, memory, power and network are rolled up from the rack's 12 servers (power also includes the two switches), with a count of servers in warning or critical state, inlet/exhaust temperature and 2-minute trends. A rack also turns amber when any of its servers is critical. Click a rack or use the arrow buttons.
 - Rack detail, **Inventory** tab: everything in the rack from U42 down (ToR switches, patch panel, OOB switch, free space, each server with model, drives, serial and in-service date, both PDUs), with live load and power per device and a rack total. **Hover a row** to outline that device in the rack; click a server row to pull it out.
-- Controls: **Replay**, colour mode, **Thermal camera**, **Stop/Start rotation** for the camera orbit and **Hide/Show airflow** for the air particles. The simulation runs at a steady 60% traffic demand with both cooling units healthy.
+- Controls: colour mode, **Thermal camera**, **Stop/Start rotation** for the camera orbit and **Hide/Show airflow** for the air particles. The simulation runs at a steady 60% traffic demand with both cooling units healthy.
 - **Colour racks by** CPU load, inlet temperature or **power** (draw against each rack's 12 kW budget, which shows where there is capacity to add servers).
-- **Thermal camera** switches the hall to a false-colour infrared view (the ironbow palette, 16–46 °C): every surface takes the colour of the air where it stands, so cold aisles, rack fronts at their inlet temperature, rears and hot aisles at their exhaust and the warm ceiling plenum all read at a glance, and each server's face shows its own inlet and exhaust. Glass, the perforated doors, labels and the light columns drop out so the racks behind them show. It works with Replay.
-- **Replay** scrubs back up to 10 minutes: the 3D view, rack panel and KPIs show the hall as it was (one snapshot a second) while the simulation keeps running; the header chip shows how far back you are and **back to live** returns. Sparklines and the pulled-out server stay live.
+- **Thermal camera** switches the hall to a false-colour infrared view (the ironbow palette, 16–46 °C): every surface takes the colour of the air where it stands, so cold aisles, rack fronts at their inlet temperature, rears and hot aisles at their exhaust and the warm ceiling plenum all read at a glance, and each server's face shows its own inlet and exhaust. Glass, the perforated doors, labels and the light columns drop out so the racks behind them show.
 
 ## Your own data
 
@@ -86,7 +85,7 @@ Below that it shows per-core load for every core (one block per socket), CPU tem
 - `domain` for the FQDNs and `idracUrl` for the console link (`{ip}` is the iDRAC address, `{host}` the hostname).
 - `racks.<rack>.servers.U<n>` gives a server's real `host`, `serial`, `installed`, `model`, `cpu`, `cpuNote`, `os`, `kernel`, `drives`, `driveTB`, `ip`, `vlan`, `gateway`, `port`, `mac`, `idrac`, `oobPort` and `idracMac` (the older `iloUrl`, `ilo` and `iloMac` names still work). Every field is optional; slots and fields you leave out keep their generated values. Servers in racks of 2U models sit at U1, U3, … U23; in racks of 1U models at U1, U2, … U12.
 - `telemetry` points at a live feed (`url`, `intervalSeconds`). It is polled, and every server and rack it reports shows its real figures instead of simulated ones: `cpu` in %, `memGB`, `tempC` (hottest CPU), `powerW`, `netGbps`, and a rack's `inletC`. Values can be numbers or numeric strings; anything else is ignored and that figure stays simulated. `data/telemetry.example.json` shows the shape. Anything the feed stops reporting for three intervals falls back to the simulation; the header chip shows how many servers are live.
-- Alerts follow ASHRAE A1 guidance: 27 °C recommended and 32 °C allowable inlet limits, plus 85% / 95% CPU thresholds.
+- Warning and critical states follow ASHRAE A1 guidance: 27 °C recommended and 32 °C allowable inlet limits, plus 85% / 95% CPU thresholds.
 
 ## Run it
 
@@ -120,10 +119,8 @@ Ambient occlusion runs at half resolution. Phones and tablets (narrow screens or
 | `js/visuals.js` | Per-frame visual updates driven by the telemetry |
 | `js/camera.js` | Camera flights and the orbit toggle |
 | `js/hud.js` | KPI strip, rack and server panels, inventory, legend |
-| `js/alerts.js` | Alert feed |
 | `js/post.js` | Post-processing: ambient occlusion and bloom |
 | `js/faults.js` | Hardware fault state and descriptions read by the panels |
-| `js/replay.js` | Ten-minute snapshot ring buffer and the swap used while replaying |
 | `js/data.js` | Loads `data/hall.json` |
 | `js/live.js` | Polls the optional telemetry feed and applies it over the simulation |
 | `js/main.js` | Wiring, picking, search, deep links, boot and the frame loop |

@@ -3,8 +3,6 @@ import { clamp, COLS, SERVERS, coolingUnit } from './core.js';
 import { W, G, SV, HIST } from './state.js';
 import { racks } from './racks.js';
 import { stepServer, level } from './server.js';
-import { pushAlert } from './alerts.js';
-import { record } from './replay.js';
 import { applyServer, applyRack } from './live.js';
 
 const wave = (t, p) => 0.5 * Math.sin(t * 0.21 + p) + 0.3 * Math.sin(t * 0.53 + p * 1.7) + 0.2 * Math.sin(t * 1.31 + p * 2.9);
@@ -57,18 +55,11 @@ export function step(dt) {
     cpu += r.load; net += r.net; it += r.power;
     if (r.inlet > maxIn) { maxIn = r.inlet; maxR = r; }
 
-    const pc = r.cpuLvl, pt = r.tLvl, ps = r.status, pv = r.svLvl;
-    r.cpuLvl = level(r.load * 100, 85, 95, pc, 3);
-    r.tLvl = level(r.inlet, 27, 32, pt, 0.6);
+    r.cpuLvl = level(r.load * 100, 85, 95, r.cpuLvl, 3);
+    r.tLvl = level(r.inlet, 27, 32, r.tLvl, 0.6);
     r.svLvl = nCrit > 0 ? 1 : 0;
     r.faultLvl = r.torDown[0] || r.torDown[1] ? 1 : 0;
     r.status = Math.max(r.cpuLvl, r.tLvl, r.svLvl, r.faultLvl);
-    if (!W.warm) {
-      if (r.cpuLvl > pc) pushAlert(r.cpuLvl === 2 ? 'crit' : 'warn', `${r.id} CPU at ${Math.round(r.load * 100)}% across ${SERVERS} servers`);
-      if (r.tLvl > pt) pushAlert(r.tLvl === 2 ? 'crit' : 'warn', `${r.id} inlet ${r.inlet.toFixed(1)} °C, over the ${r.tLvl === 2 ? '32 °C allowable' : '27 °C recommended'} limit`);
-      if (r.svLvl > pv && r.cpuLvl < 2) pushAlert('warn', `${r.id}: ${nCrit} server${nCrit > 1 ? 's' : ''} critical`);
-      if (ps > 0 && r.status === 0) pushAlert('ok', `${r.id} back within limits`);
-    }
   }
   G.cpu = cpu / racks.length; G.net = net; G.it = it;
   G.maxIn = maxIn; G.maxInRack = maxR;
@@ -82,7 +73,6 @@ export function step(dt) {
     }
     G.cpuHist.push(G.cpu * 100);
     if (G.cpuHist.length > HIST) G.cpuHist.shift();
-    record();
     W.sampled = true;
   }
   if (SV.sel) stepServer(dt);

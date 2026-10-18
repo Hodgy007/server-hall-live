@@ -11,8 +11,6 @@ import { step } from './sim.js';
 import { updateVisuals } from './visuals.js';
 import { flyHall, flyRack, flyServer, updateCam, setOrbit, releaseCut } from './camera.js';
 import { hooks, updateHud, updateSparks, drawCores, renderLegend } from './hud.js';
-import { pushAlert } from './alerts.js';
-import { replay, recorded, swapIn, swapOut } from './replay.js';
 import { live, fresh } from './live.js';
 import { render, resizePost } from './post.js';
 
@@ -124,8 +122,7 @@ $('sBack').addEventListener('click', closeServer);
 $('sNext').addEventListener('click', () => { const sv = SV.sel; if (sv) openServer(sv.r.servers[(sv.s + 1) % SERVERS]); });
 $('sStress').addEventListener('click', () => {
   const sv = SV.sel; if (!sv) return;
-  if (sv.stressLeft > 0) { sv.stressLeft = 0; pushAlert('info', `${sv.host} stress test stopped`); }
-  else { sv.stressLeft = 20; pushAlert('info', `${sv.host} stress test started: all 64 cores for 20 s`); }
+  sv.stressLeft = sv.stressLeft > 0 ? 0 : 20;
   updateHud();
 });
 // In rack view the arrows walk the camera from rack to rack; otherwise they just change the selection
@@ -160,20 +157,10 @@ $('thermal').addEventListener('click', () => {
 });
 $('hallView').addEventListener('click', hallView);
 
-// ---------- Replay: the slider runs from 10 minutes ago (left) to live (right) ----------
-const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-function syncReplay() {
-  const el = $('replay'), have = Math.max(0, recorded() - 1);
-  el.min = String(-Math.floor(have / 5) * 5);
-  const ago = replay.ago;
-  $('replayVal').textContent = ago ? `${mmss(ago)} ago` : 'Live';
-  const feed = live.enabled && fresh(live) ? `Live data · ${live.servers} of ${racks.length * SERVERS} servers` : 'Simulated telemetry';
-  $('liveChip').textContent = ago ? `Replay · ${mmss(ago)} ago` : feed;
-  $('liveChip').classList.toggle('past', !!ago);
-  $('replayLive').hidden = !ago;
+// ---------- Header chip: live feed or simulation ----------
+function syncChip() {
+  $('liveChip').textContent = live.enabled && fresh(live) ? `Live data · ${live.servers} of ${racks.length * SERVERS} servers` : 'Simulated telemetry';
 }
-$('replay').addEventListener('input', e => { replay.ago = -Number(e.target.value); syncReplay(); updateHud(); });
-$('replayLive').addEventListener('click', () => { replay.ago = 0; $('replay').value = '0'; syncReplay(); updateHud(); });
 
 // ---------- Find a host or rack ----------
 {
@@ -262,13 +249,11 @@ scene.traverse(o => {
 
 // ---------- Boot: pre-run two minutes of telemetry so trends are populated ----------
 for (let i = 0; i < 480; i++) step(0.25);
-W.warm = false;
-pushAlert('info', `Telemetry stream connected · ${racks.length} racks reporting`);
 renderLegend();
 UI.selected = byId.A03;
 resize();
 select(UI.selected, false);
-syncReplay();
+syncChip();
 followLink();
 
 let last = performance.now(), hudAcc = 0;
@@ -276,7 +261,6 @@ function frame(now) {
   // a frame's timestamp can precede the previous performance.now() (slow first frames), so never step backwards
   const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now;
   step(dt);
-  const past = swapIn();          // replaying: draw (and show in the panels) the recorded state, then restore the live one
   updateVisuals(dt);
   updateThermal(dt);
   updateDoors(dt);
@@ -291,8 +275,7 @@ function frame(now) {
   if (SV.open) drawCores();
   hudAcc += dt;
   if (hudAcc > 0.2) { hudAcc = 0; updateHud(); }
-  if (W.sampled) { W.sampled = false; updateSparks(); syncReplay(); }
-  if (past) swapOut();
+  if (W.sampled) { W.sampled = false; updateSparks(); syncChip(); }
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
