@@ -2,7 +2,7 @@
 import { THREE, $, canvas, renderer, scene, camera, controls, SERVERS, COLS, cutPlane } from './core.js';
 import { W, UI, SV } from './state.js';
 import { racks, byId, byHost, cabinets, plates, rears, selBox, setDoor, doorOpen, updateDoors } from './racks.js';
-import { resizeFloor } from './hall.js';
+import './hall.js';
 import { updateLights } from './lights.js';
 import { heat, cold } from './particles.js';
 import { SRV, srvMeshes, air, shim, mountServer, updateServerModel } from './server.js';
@@ -197,14 +197,13 @@ document.addEventListener('keydown', e => {
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   renderer.setSize(w, h, false); resizePost(w, h);
-  const pr = renderer.getPixelRatio(); resizeFloor(w * pr, h * pr);
   camera.aspect = w / h; camera.fov = w / h < 1 ? 64 : 42; camera.updateProjectionMatrix();
   updateSparks();
 }
 window.addEventListener('resize', resize);
 if (window.innerWidth <= 720) { $('opsBox').open = false; setRackMin(true); }
 
-// Keep reflections subtle (just enough for steel to read as steel; the floor has its own planar reflection); let the rack-view cut clip everything but the room shell
+// Keep reflections subtle (just enough for steel to read as steel); let the rack-view cut clip everything but the room shell
 scene.traverse(o => {
   const ms = Array.isArray(o.material) ? o.material : [o.material];
   for (const m of ms) {

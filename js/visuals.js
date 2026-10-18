@@ -1,8 +1,8 @@
-// Per-frame visual updates driven by the telemetry: rack tint and light columns, LEDs, particles, cooling-unit fans.
+// Per-frame visual updates driven by the telemetry: rack tint and light columns, LEDs, particles.
 import { THREE, lc, COL, clamp, grad, modeValue, modeHeight } from './core.js';
 import { W, G, UI } from './state.js';
 import { racks, leds, LED, swLeds } from './racks.js';
-import { perfMats, uplinkStripMat, coolers, tapLeds } from './hall.js';
+import { perfMats, uplinkStripMat, tapLeds } from './hall.js';
 import { updateParticles } from './particles.js';
 
 const tmp = new THREE.Color(), coldC = lc(COL.cold), TAP_ON = lc('#46ff9a').multiplyScalar(2), TAP_WARN = LED.warn;
@@ -33,8 +33,4 @@ export function updateVisuals(dt) {
   updateParticles(dt, perfMats);
 
   uplinkStripMat.color.copy(coldC).multiplyScalar(0.35 + 0.9 * clamp(G.net / 3200, 0, 1) * (0.85 + 0.15 * Math.sin(W.t * 9)));
-  coolers[0].fans.forEach(f => f.rotation.y += dt * 7 * (1 + W.faultLevel * 0.4));
-  coolers[1].fans.forEach(f => f.rotation.y += dt * 7 * (1 - W.faultLevel));
-  if (W.fault) coolers[1].stripMat.color.copy(blink ? LED.crit : LED.dark);
-  else coolers[1].stripMat.color.copy(coldC);
 }

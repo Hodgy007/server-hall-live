@@ -14,7 +14,7 @@ export const COL = { ok: tok('--ok'), warn: tok('--warn'), crit: tok('--crit'), 
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const lc = h => new THREE.Color(h).convertSRGBToLinear();
 export const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-// Phones skip the floor reflection and ambient occlusion and use smaller shadow maps; ?quality=low or high overrides
+// Phones skip ambient occlusion and use smaller shadow maps; ?quality=low or high overrides
 const QUALITY = new URLSearchParams(location.search).get('quality');
 export const LOW_POWER = QUALITY ? QUALITY === 'low' : matchMedia('(max-width: 720px), (pointer: coarse)').matches;
 
@@ -128,8 +128,7 @@ export const ROWS = [], COLD = [], HACS = [];
     HACS.push({ zc, z0: zc - HOT_W / 2, z1: zc + HOT_W / 2, x0: -ROW_HALF - 0.03, x1: ROW_HALF + 0.03, top: RACK_H, chimneys: [-2.56, 0, 2.56] });
   }
 }
-// Cooling units on the west wall: CU-1 feeds the northern cold aisles (z < 0), CU-2 the southern ones
-export const COOLING = [{ name: 'CU-1', z: -5.0 }, { name: 'CU-2', z: 5.0 }];
+// Cooling units (outside the hall): CU-1 feeds the northern cold aisles (z < 0), CU-2 the southern ones
 const coolsSouth = z => z > 0;
 export const coolingUnit = z => coolsSouth(z) ? 1 : 0;
 
