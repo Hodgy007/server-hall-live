@@ -68,7 +68,7 @@ export const CPU = [
 const VLAN = [110, 120, 130, 140];
 const mac = (oui, n) => [oui >> 16 & 255, oui >> 8 & 255, oui & 255, 0x20 + (n >> 16 & 15), n >> 8 & 255, n & 255].map(b => b.toString(16).padStart(2, '0')).join(':');
 // Where the iLO (BMC) web console lives: "iloUrl" in data/hall.json, e.g. "https://{ip}/" or "https://{host}-ilo.example.com/"
-export const iloUrl = sv => fill(HALL.iloUrl || 'https://{ip}/', sv);
+export const iloUrl = sv => { const u = fill(HALL.iloUrl || 'https://{ip}/', sv); return /^https?:\/\//i.test(u) ? u : '#'; };
 export const DOMAIN = HALL.domain || 'hall2.local';
 const OS = [
   [['Ubuntu 22.04.4 LTS', '5.15'], ['Ubuntu 24.04.1 LTS', '6.8']],
@@ -129,6 +129,7 @@ for (const r of racks) {
   for (const sv of r.servers) {
     const o = slots['U' + sv.u]; if (!o) continue;
     for (const k in SET) if (o[k] !== undefined) sv[SET[k]] = o[k];
+    if (o.driveTB !== undefined) sv.driveTB = Number(o.driveTB) || DRIVE_TB[r.kind];
     if (o.os) sv.os = [o.os, o.kernel || sv.os[1]];
     if (o.mac) sv.mac = o.mac;
     sv.real = true;
@@ -206,6 +207,7 @@ const doorMeshes = doorTexes.map((map, k) => {
   return m;
 });
 const handles = new THREE.InstancedMesh(handleGeo, handleMat, racks.length);
+handles.userData.irHide = true;   // the thermal camera hides the doors, and their handles with them
 const dObj = new THREE.Object3D(), HANDLE = [lc('#9aa6b0'), lc('#2a2f34')];
 function placeDoor(r) {
   const d = r.door;

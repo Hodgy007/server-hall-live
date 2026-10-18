@@ -14,7 +14,9 @@ composer.addPass(new RenderPass(scene, camera));
 
 // Ambient occlusion darkens where racks meet the floor, the gaps between them, and under trays and busways.
 // Glass, perforated doors, light columns and shadow decals are left out of its depth pass so it sees what is behind them.
+// It runs at half resolution: the occlusion is soft and the denoise pass hides the difference.
 class HallAO extends GTAOPass {
+  setSize(w, h) { super.setSize(Math.ceil(w / 2), Math.ceil(h / 2)); }
   overrideVisibility() {
     super.overrideVisibility();
     this.scene.traverse(o => { if (o.isMesh && (Array.isArray(o.material) ? o.material[0] : o.material).transparent) o.visible = false; });

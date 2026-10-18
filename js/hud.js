@@ -1,5 +1,5 @@
 // HUD: KPI strip, rack panel (Live and Inventory tabs), server panel, legend.
-import { $, COL, STOPS, cssGrad, SERVERS } from './core.js';
+import { $, COL, STOPS, cssGrad, SERVERS, esc } from './core.js';
 import { W, G, UI, SV } from './state.js';
 import { iloUrl, DOMAIN, highlight, unhighlight } from './racks.js';
 import { describe, rackFaults } from './faults.js';
@@ -65,20 +65,20 @@ export function updateHud() {
     $('sHost').textContent = sv.host;
     $('sMeta').textContent = `Rack ${sv.r.id} · U${sv.u}–${sv.u + 1} · ${sv.r.row.role}`;
     const id = sv.r.id.toLowerCase(), tb = sv.driveTB;
-    $('spHost').innerHTML = `${sv.host}.${DOMAIN} <span>· ${sv.model} · SN ${sv.serial}</span>`;
-    $('spCpu').innerHTML = `${sv.cpu} <span>· ${sv.cpuNote}</span>`;
-    $('spOs').innerHTML = `${sv.os[0]} <span>· Linux kernel ${sv.os[1]}</span>`;
+    $('spHost').innerHTML = `${esc(sv.host)}.${esc(DOMAIN)} <span>· ${esc(sv.model)} · SN ${esc(sv.serial)}</span>`;
+    $('spCpu').innerHTML = `${esc(sv.cpu)} <span>· ${esc(sv.cpuNote)}</span>`;
+    $('spOs').innerHTML = `${esc(sv.os[0])} <span>· Linux kernel ${esc(sv.os[1])}</span>`;
     $('spRam').innerHTML = `512 GB DDR5-4800 <span>· 16 × 32 GB · ${Math.round(SV.mem * 512)} GB in use</span>`;
     const diskF = sv.faults.find(f => f.kind === 'disk');
-    $('spDisk').innerHTML = `${sv.drives} <span>· ${tb.toFixed(1)} TB raw · ${(tb * sv.diskUsed).toFixed(1)} TB used (${Math.round(sv.diskUsed * 100)}%)</span>` +
+    $('spDisk').innerHTML = `${esc(sv.drives)} <span>· ${tb.toFixed(1)} TB raw · ${(tb * sv.diskUsed).toFixed(1)} TB used (${Math.round(sv.diskUsed * 100)}%)</span>` +
       (diskF ? ` <em class="bad">· drive ${diskF.k + 1} failed, RAID degraded</em>` : '');
-    $('spNet').innerHTML = `bond0 ${sv.ip}/24 <span>· VLAN ${sv.vlan} · gateway ${sv.gw} · LACP 802.3ad · MTU 9000</span>`;
+    $('spNet').innerHTML = `bond0 ${esc(sv.ip)}/24 <span>· VLAN ${esc(sv.vlan)} · gateway ${esc(sv.gw)} · LACP 802.3ad · MTU 9000</span>`;
     [0, 1].forEach(k => {
-      $('spNic' + (k + 1)).innerHTML = `ens1f${k} → tor-${id}-${'ab'[k]} ${sv.port} <span>· 25 GbE · ${sv.mac[k]}</span>` + (sv.r.torDown[k] ? ' <em class="bad">· link down</em>' : '');
+      $('spNic' + (k + 1)).innerHTML = `ens1f${k} → tor-${id}-${'ab'[k]} ${esc(sv.port)} <span>· 25 GbE · ${esc(sv.mac[k])}</span>` + (sv.r.torDown[k] ? ' <em class="bad">· link down</em>' : '');
     });
     const fl = $('sFaults'), all = sv.faults.concat(rackFaults(sv.r).filter(f => !f.sv));
     fl.hidden = !all.length; fl.innerHTML = all.map(f => `<li>${describe(f)}</li>`).join('');
-    $('spIlo').innerHTML = `${sv.ilo} <span>· oob-${id} ${sv.oobPort} · 1 GbE · ${sv.iloMac}</span>`;
+    $('spIlo').innerHTML = `${esc(sv.ilo)} <span>· oob-${id} ${esc(sv.oobPort)} · 1 GbE · ${esc(sv.iloMac)}</span>`;
     const ilo = $('sIlo'); if (ilo.dataset.ip !== sv.ilo) { ilo.dataset.ip = sv.ilo; ilo.href = iloUrl(sv); ilo.setAttribute('aria-label', `Open the iLO console for ${sv.host} at ${sv.ilo}`); }
     $('sStatus').textContent = statusText[SV.status]; $('sStatus').className = 'pill ' + statusClass[SV.status];
     $('sCpuV').textContent = Math.round(sv.load * 100) + '%'; $('sCpuV').className = lvlClass(SV.cLvl);
@@ -145,6 +145,12 @@ export function drawCores() {
 }
 
 export function renderLegend() {
+  if (UI.thermal) {
+    const s = STOPS.ir, lo = s[0][0], hi = s[s.length - 1][0], pct = v => ((v - lo) / (hi - lo) * 100).toFixed(1) + '%';
+    $('lgBar').style.background = `linear-gradient(90deg, ${s.map(([v, c]) => `${c} ${pct(v)}`).join(', ')})`;
+    $('lgTicks').innerHTML = [16, 26, 36, 46].map((v, i) => `<span style="left:${pct(v)}">${v}${i === 3 ? ' °C' : ''}</span>`).join('');
+    return;
+  }
   const s = STOPS[W.mode];
   const pctMode = W.mode !== 'heat', [lo, hi] = pctMode ? [0, 1] : [18, 33];
   const pct = v => ((v - lo) / (hi - lo) * 100).toFixed(1) + '%';

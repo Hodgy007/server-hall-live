@@ -10,6 +10,9 @@ export { THREE };
 export const $ = id => document.getElementById(id);
 const css = getComputedStyle(document.documentElement);
 export const tok = n => css.getPropertyValue(n).trim();
+// Site data (data/hall.json) can contain anything, so it is escaped wherever it goes into HTML
+const ENT = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+export const esc = v => String(v).replace(/[&<>"']/g, c => ENT[c]);
 export const COL = { ok: tok('--ok'), warn: tok('--warn'), crit: tok('--crit'), cold: tok('--cold'), muted: tok('--muted'), line: tok('--line'), fg: tok('--fg') };
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const lc = h => new THREE.Color(h).convertSRGBToLinear();
@@ -25,7 +28,9 @@ export const STOPS = {
   exh:  [[26, '#34495c'], [36, '#f2b441'], [48, '#ff5a4f']],
   cpu:  [[35, '#2a8fbf'], [55, '#3fcf8e'], [75, '#f2b441'], [92, '#ff5a4f']],
   air:  [[18, '#4fc3e8'], [32, '#f2b441'], [46, '#ff5a4f']],
-  power: [[0.3, '#2a8fbf'], [0.6, '#3fcf8e'], [0.8, '#f2b441'], [0.95, '#ff5a4f']]
+  power: [[0.3, '#2a8fbf'], [0.6, '#3fcf8e'], [0.8, '#f2b441'], [0.95, '#ff5a4f']],
+  // thermal camera, °C: the "ironbow" palette of infrared cameras
+  ir: [[16, '#08001a'], [20.5, '#2d0b6b'], [26.5, '#8a1c84'], [32.5, '#d8433b'], [38.5, '#f89a1c'], [43, '#fde16a'], [46, '#fffbe6']]
 };
 // Each rack's power budget (what its PDUs and the busway tap are provisioned for)
 export const RACK_KW = 12;

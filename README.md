@@ -6,7 +6,7 @@ A three.js animation of a server room that shows how the servers are performing.
 
 - **96 racks in eight rows of 12** (two rows each of web front-end, API services, database, and batch and analytics). Rows face each other across 1.8 m cold aisles and stand back to back over 1.2 m hot aisles; the outer rows A and H exhaust towards the end walls.
 - **The room**: raised floor, walls and a suspended ceiling with light fixtures. The walls and ceiling face inwards, so from outside the room the near ones drop away and you look in like a dollhouse.
-- **Lighting**: each ceiling fixture is a rectangular area light the size of the panel, so the floor and rack tops get soft pools of light down every aisle (the hot-aisle fixtures sit between the chimneys and run dimmer). In the cold aisle nearest where you are looking, shadow-casting lights take over most of each fixture's output, so racks, trays, busways and drop rods throw real shadows; move to another aisle and the shadows fade across with you. Ambient occlusion darkens where racks meet the floor, the gaps between them and the undersides of trays and busways. A faint cool haze makes fixtures, LEDs and far racks fall off with distance, with soft shafts of light under the cold-aisle fixtures.
+- **Lighting**: the ceiling fixtures light the floor and rack tops in soft pools down every aisle (the hot-aisle fixtures sit between the chimneys and run dimmer). Because the fixtures never move or dim, their light is worked out once at start-up into a grid through the hall that every surface looks up, rather than recalculated for every pixel of every frame. In the cold aisle nearest where you are looking, shadow-casting lights take over most of each fixture's output, so racks, trays, busways and drop rods throw real shadows; move to another aisle and the shadows fade across with you. Ambient occlusion darkens where racks meet the floor, the gaps between them and the undersides of trays and busways. A faint cool haze makes fixtures, LEDs and far racks fall off with distance, with soft shafts of light under the cold-aisle fixtures.
 - **Floor**: matt anti-static tiles with sunk seams; neighbouring tiles differ slightly in tint and wear. The vented tiles down the cold aisles are bare steel grates that catch the light, with supply air glowing faintly through the holes.
 - **Hot-aisle containment** over the three hot aisles (B/C, D/E, F/G): tinted roof panels on a frame, sliding end doors marked HOT AISLE, and three chimneys each up to the ceiling plenum.
 - **Cooling units** CU-1 and CU-2 sit outside the hall; they take warm air from the ceiling plenum and feed the floor: CU-1 the northern cold aisles (rows A–D), CU-2 the southern ones (rows E–H).
@@ -24,9 +24,10 @@ A three.js animation of a server room that shows how the servers are performing.
 
 - **Drag** to orbit, **scroll** to zoom.
 - **Reset view** (or <kbd>Esc</kbd> when no server is pulled out) flies back to the whole-hall overview with everything visible.
-- **Find** (or press <kbd>/</kbd>): type a hostname such as `db-c04-07` to fly there and pull that server out, or a rack ID such as `B03` for rack view. Partial names work too, and the field suggests every host and rack.
+- **Find** (or press <kbd>/</kbd>): type a hostname such as `db-e04-07` to fly there and pull that server out, or a rack ID such as `B03` for rack view. Partial names work too, and the field suggests every host and rack.
 - **Click a rack** (front or back) for **rack view**: the camera flies to a spot 2.9 m in front of it so the whole 42U front fits on screen, the door swings open, and everything between you and the rack (the opposite row, containment glass) is cut away so you can see how the rack is filled. Click a server in it to pull it out. In rack view <kbd>←</kbd> / <kbd>→</kbd> walk along the row (in the direction you are facing) and the panel's ‹ › arrows step through every rack. Zoom or orbit more than about 4.5 m away from the rack and the cut-away switches off by itself, so the rest of the hall comes back; **Reset view** leaves rack view altogether.
 - Searching for a rack ID also opens rack view.
+- **Links**: the address follows what you are looking at, so it can be copied and shared. `#rack=B03` opens rack view for B03 and `#host=db-e04-07` pulls that server out; Reset view clears it.
 
 ## Inspect a single server
 
@@ -55,8 +56,9 @@ Below that it shows per-core load for all 64 cores, CPU temperatures, fan speed,
 - KPI strip: requests/s, average CPU, network, IT load, PUE and the hottest inlet temperature.
 - Rack detail, **Live** tab: CPU, memory, power and network are rolled up from the rack's 12 servers (power also includes the two switches), with a count of servers in warning or critical state, inlet/exhaust temperature and 2-minute trends. A rack also turns amber when any of its servers is critical. Click a rack or use the arrow buttons.
 - Rack detail, **Inventory** tab: everything in the rack from U42 down (ToR switches, patch panel, OOB switch, free space, each server with model, drives, serial and in-service date, both PDUs), with live load and power per device and a rack total. **Hover a row** to outline that device in the rack; click a server row to pull it out.
-- Controls: **Replay**, colour mode, **Stop/Start rotation** for the camera orbit and **Hide/Show airflow** for the air particles. The simulation runs at a steady 60% traffic demand with both cooling units healthy.
+- Controls: **Replay**, colour mode, **Thermal camera**, **Stop/Start rotation** for the camera orbit and **Hide/Show airflow** for the air particles. The simulation runs at a steady 60% traffic demand with both cooling units healthy.
 - **Colour racks by** CPU load, inlet temperature or **power** (draw against each rack's 12 kW budget, which shows where there is capacity to add servers).
+- **Thermal camera** switches the hall to a false-colour infrared view (the ironbow palette, 16–46 °C): every surface takes the colour of the air where it stands, so cold aisles, rack fronts at their inlet temperature, rears and hot aisles at their exhaust and the warm ceiling plenum all read at a glance, and each server's face shows its own inlet and exhaust. Glass, the perforated doors, labels and the light columns drop out so the racks behind them show. It works with Replay.
 - **Replay** scrubs back up to 10 minutes: the 3D view, rack panel and KPIs show the hall as it was (one snapshot a second) while the simulation keeps running; the header chip shows how far back you are and **back to live** returns. Sparklines and the pulled-out server stay live.
 
 ## Your own data
@@ -65,7 +67,7 @@ Below that it shows per-core load for all 64 cores, CPU temperatures, fan speed,
 
 - `domain` for the FQDNs and `iloUrl` for the console link (`{ip}` is the iLO address, `{host}` the hostname).
 - `racks.<rack>.servers.U<n>` gives a server's real `host`, `serial`, `installed`, `model`, `cpu`, `cpuNote`, `os`, `kernel`, `drives`, `driveTB`, `ip`, `vlan`, `gateway`, `port`, `mac`, `ilo`, `oobPort` and `iloMac`. Every field is optional; slots and fields you leave out keep their generated values. Servers sit at U1, U3, … U23.
-- `telemetry` points at a live feed (`url`, `intervalSeconds`). It is polled, and every server and rack it reports shows its real figures instead of simulated ones: `cpu` in %, `memGB`, `tempC` (hottest CPU), `powerW`, `netGbps`, and a rack's `inletC`. `data/telemetry.example.json` shows the shape. Anything the feed stops reporting for three intervals falls back to the simulation; the header chip shows how many servers are live.
+- `telemetry` points at a live feed (`url`, `intervalSeconds`). It is polled, and every server and rack it reports shows its real figures instead of simulated ones: `cpu` in %, `memGB`, `tempC` (hottest CPU), `powerW`, `netGbps`, and a rack's `inletC`. Values can be numbers or numeric strings; anything else is ignored and that figure stays simulated. `data/telemetry.example.json` shows the shape. Anything the feed stops reporting for three intervals falls back to the simulation; the header chip shows how many servers are live.
 - Alerts follow ASHRAE A1 guidance: 27 °C recommended and 32 °C allowable inlet limits, plus 85% / 95% CPU thresholds.
 
 ## Run it
@@ -77,9 +79,9 @@ python3 -m http.server 8000
 # then open http://localhost:8000
 ```
 
-three.js 0.169.0 and its add-ons (OrbitControls, RoomEnvironment, RectAreaLightUniformsLib, EffectComposer, GTAOPass, UnrealBloomPass, OutputPass) load from jsDelivr through an import map, and the fonts from Google Fonts.
+Everything the page needs is in the repository, so it also works on a network without internet access: three.js 0.169.0 and the add-ons it uses (OrbitControls, RoomEnvironment, EffectComposer, GTAOPass, UnrealBloomPass, OutputPass and their dependencies) are in `vendor/three` (MIT licence) and load through an import map, and the Barlow Condensed and IBM Plex Mono fonts are in `vendor/fonts` (SIL Open Font License).
 
-Phones and tablets (narrow screens or touch-only pointers) skip ambient occlusion and use smaller shadow maps. Add `?quality=low` to the address to get that on any machine, for example a slow laptop, or `?quality=high` to force everything on.
+Ambient occlusion runs at half resolution. Phones and tablets (narrow screens or touch-only pointers) skip it and use smaller shadow maps. Add `?quality=low` to the address to get that on any machine, for example a slow laptop, or `?quality=high` to force everything on.
 
 ## Code layout
 
@@ -92,7 +94,8 @@ Phones and tablets (narrow screens or touch-only pointers) skip ambient occlusio
 | `js/textures.js` | Canvas-drawn textures for cabinets (worn and second-vendor variants), doors and rack-mounted hardware |
 | `js/racks.js` | Cabinets, servers, switches, panels, doors, selection outline and inventory highlight |
 | `js/hall.js` | Tiled floor and vented tiles, walls, ceiling, hot-aisle containment, trays, risers, busway, uplink panel |
-| `js/lights.js` | Ceiling fixtures as area lights, shadow-casting lights that follow the viewed aisle, light shafts in the haze |
+| `js/lights.js` | Ceiling fixtures and their light baked into a grid at start-up, shadow-casting lights that follow the viewed aisle, light shafts in the haze |
+| `js/thermal.js` | Thermal camera: the air-temperature field, per-server surface temperatures and the false-colour material |
 | `js/particles.js` | Hot and cold air particles, network packets |
 | `js/server.js` | Pulled-out server model and its per-core telemetry |
 | `js/sim.js` | Telemetry simulation and rack/hall roll-ups |
@@ -105,4 +108,5 @@ Phones and tablets (narrow screens or touch-only pointers) skip ambient occlusio
 | `js/replay.js` | Ten-minute snapshot ring buffer and the swap used while replaying |
 | `js/data.js` | Loads `data/hall.json` |
 | `js/live.js` | Polls the optional telemetry feed and applies it over the simulation |
-| `js/main.js` | Wiring, picking, search, boot and the frame loop |
+| `js/main.js` | Wiring, picking, search, deep links, boot and the frame loop |
+| `vendor/` | three.js and the fonts, served with the page |

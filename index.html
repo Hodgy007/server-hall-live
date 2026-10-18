@@ -4,14 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Server Hall Live</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<canvas id="stage" aria-label="3D view of a server hall with four rows of racks"></canvas>
+<canvas id="stage" aria-label="3D view of a server hall with eight rows of racks"></canvas>
 
 <div class="hud">
   <header class="top">
@@ -22,7 +20,7 @@
       <div class="tools">
         <button id="hallView" type="button" title="Back to the whole-hall overview (Esc)">Reset view</button>
         <form id="findForm" class="find" role="search">
-          <input id="find" type="search" list="hosts" placeholder="Find host or rack  ( / )" aria-label="Find a server or rack, for example db-c04-07 or B03" autocomplete="off" spellcheck="false">
+          <input id="find" type="search" list="hosts" placeholder="Find host or rack  ( / )" aria-label="Find a server or rack, for example db-e04-07 or B03" autocomplete="off" spellcheck="false">
           <datalist id="hosts"></datalist>
         </form>
         <span id="findMsg" class="findmsg" role="status"></span>
@@ -137,13 +135,14 @@
             <div class="row"><label for="replay">Replay</label><span><button type="button" class="linkbtn" id="replayLive" hidden>back to live</button> <b id="replayVal">Live</b></span></div>
             <input type="range" id="replay" min="-120" max="0" step="5" value="0" aria-describedby="replayVal">
           </div>
-          <fieldset class="seg">
+          <fieldset class="seg" id="modeSet">
             <legend>Color racks by</legend>
             <input type="radio" name="mode" id="modeLoad" value="load" checked><label for="modeLoad">CPU load</label>
             <input type="radio" name="mode" id="modeHeat" value="heat"><label for="modeHeat">Inlet temp</label>
             <input type="radio" name="mode" id="modePower" value="power"><label for="modePower">Power</label>
           </fieldset>
           <div class="legend"><div class="lgbar" id="lgBar"></div><div class="lgticks" id="lgTicks"></div></div>
+          <button id="thermal" class="tog off" aria-pressed="false" title="False-colour infrared view: every surface coloured by the air temperature where it stands">Thermal camera</button>
           <div class="btns">
             <button id="orbit" class="tog">Stop rotation</button>
             <button id="airflow" class="tog">Hide airflow</button>
@@ -159,8 +158,8 @@
 
 <script type="importmap">
 { "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+  "three": "./vendor/three/build/three.module.min.js",
+  "three/addons/": "./vendor/three/examples/jsm/"
 } }
 </script>
 <script type="module" src="js/main.js"></script>
