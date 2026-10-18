@@ -162,6 +162,43 @@ export function drawRear(g, w, h, P) {
     g.fillStyle = P.hole; for (let y = 10; y < h - 10; y += 6) g.fillRect(x + 6, y, 13, 2);
   }
 }
+// 1U server front: rack ears with handles, eight NVMe carriers lined up with the 2U ones, honeycomb intake, control panel
+export function drawFront1U(g, w, h, P) {
+  g.fillStyle = P.base; g.fillRect(0, 0, w, h);
+  ears(g, w, h, P);
+  [0, w - 22].forEach(x => { g.strokeStyle = P.handle; g.lineWidth = 3; g.strokeRect(x + 7, 8, 8, h - 16); });
+  for (let i = 0; i < 8; i++) {
+    const x = 28 + i * 36;
+    g.fillStyle = P.caddy; g.fillRect(x, 4, 33, h - 8);
+    g.fillStyle = P.hole; for (let xx = x + 4; xx < x + 22; xx += 4) g.fillRect(xx, 8, 2, h - 16);
+    g.fillStyle = P.latch; g.fillRect(x + 23, 8, 7, h - 16);
+  }
+  g.fillStyle = P.hole;
+  for (let y = 7, k = 0; y < h - 4; y += 6, k++) for (let x = 326 + (k % 2) * 3.5; x < 426; x += 7) { g.beginPath(); g.arc(x, y, 2.3, 0, Math.PI * 2); g.fill(); }
+  g.fillStyle = P.panel; g.fillRect(430, 4, 56, h - 8);
+  g.fillStyle = P.tag; g.fillRect(436, h - 14, 44, 6);
+}
+// 1U server rear: a power supply at each side, OCP NIC with fibre leads, a low-profile PCIe slot, I/O
+export function drawRear1U(g, w, h, P) {
+  g.fillStyle = P.base; g.fillRect(0, 0, w, h);
+  ears(g, w, h, P);
+  [26, w - 26 - 86].forEach(x => {
+    g.fillStyle = P.psu; g.fillRect(x, 3, 86, h - 6);
+    grille(g, x + 18, h / 2, 13, P);
+    g.fillStyle = P.port; g.fillRect(x + 38, h / 2 - 9, 16, 18);
+    g.fillStyle = P.handle; g.fillRect(x + 74, 7, 5, h - 14);
+    g.fillStyle = P.led; g.fillRect(x + 60, 6, 6, 4);
+  });
+  g.fillStyle = P.port; g.fillRect(124, 10, 12, 6); g.fillRect(124, 22, 12, 6); g.fillRect(142, 12, 16, 12);
+  g.fillStyle = P.vga; g.fillRect(164, 12, 22, 10);
+  [200, 220, 246, 266].forEach(x => {
+    g.fillStyle = P.port; g.fillRect(x, 8, 16, 11);
+    g.fillStyle = P.cable; g.fillRect(x + 3, 17, 10, h - 17);
+    g.fillStyle = P.led; g.fillRect(x + 6, 4, 4, 3);
+  });
+  g.fillStyle = P.slot; g.fillRect(296, 4, 100, h - 8);
+  g.fillStyle = P.hole; for (let x = 304; x < 390; x += 8) g.fillRect(x, 10, 4, h - 20);
+}
 // 1U switch, fan/PSU side (faces the cold aisle) and port side (faces the hot aisle)
 export function drawSwFans(g, w, h, P) {
   g.fillStyle = P.base; g.fillRect(0, 0, w, h); ears(g, w, h, P);

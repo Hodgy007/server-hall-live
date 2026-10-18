@@ -3,7 +3,7 @@
 // exhaust, warming towards the ceiling plenum. Server faces show each server's own inlet and exhaust.
 // Glass, perforated doors, labels and the light columns drop out so the racks behind them show.
 import { THREE, scene, cutPlane, ROWS, COLS, PITCH, ROW_HALF, RACK_D, SERVERS, ROOM, STOPS, LST } from './core.js';
-import { racks, plates, rears } from './racks.js';
+import { racks } from './racks.js';
 
 // Air temperature over the floor plan, one cell every ~0.19 m: red = °C, green = how much of it is cold aisle
 const FX = 64, FZ = 112;
@@ -37,6 +37,7 @@ const vertexShader = `
   #include <clipping_planes_pars_vertex>
   uniform highp sampler2D svTemp;
   uniform float svRow;
+  attribute float svIdx;
   varying vec3 vPos, vN;
   varying float vSvT;
   void main() {
@@ -47,7 +48,7 @@ const vertexShader = `
     #endif
     vec4 wp = modelMatrix * p;
     vPos = wp.xyz; vN = normalize( mat3( modelMatrix ) * n );
-    vSvT = svRow >= 0.0 ? texelFetch( svTemp, ivec2( gl_InstanceID, int( svRow ) ), 0 ).r : -100.0;
+    vSvT = svRow >= 0.0 ? texelFetch( svTemp, ivec2( int( svIdx ), int( svRow ) ), 0 ).r : -100.0;
     vec4 mvPosition = viewMatrix * wp;
     gl_Position = projectionMatrix * mvPosition;
     #include <clipping_planes_vertex>
@@ -105,7 +106,7 @@ export function setThermal(on) {
     const m0 = Array.isArray(o.material) ? o.material[0] : o.material;
     saved.set(o, { material: o.material, visible: o.visible });
     if (m0.transparent || o.userData.irHide) { o.visible = false; return; }
-    o.material = irMat(!m0.userData.noClip, o === plates ? 0 : o === rears ? 1 : -1);
+    o.material = irMat(!m0.userData.noClip, o.userData.face === 'front' ? 0 : o.userData.face === 'rear' ? 1 : -1);
   });
   acc = Infinity;
 }

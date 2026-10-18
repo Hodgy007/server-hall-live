@@ -32,7 +32,7 @@ export function step(dt) {
       const fanOut = sv.faults.some(f => f.kind === 'fan');
       sv.temp += (r.inlet + 13 + sv.load * 55 + (fanOut ? 6 : 0) - sv.temp) * k5;
       sv.rpm += ((3800 + clamp((sv.temp - 45) / 40, 0, 1) * 9200) * (fanOut ? 1.15 : 1) - sv.rpm) * k8;
-      sv.power = 260 + sv.load * 640 + (sv.rpm - 3800) * 0.006;
+      sv.power = sv.spec.w[0] + sv.load * (sv.spec.w[1] - sv.spec.w[0]) + (sv.rpm - 3800) * 0.006;   // idle to flat-out for the model, plus fans
       sv.net = r.row.net / SERVERS * sv.load * sv.bias * (0.85 + 0.15 * Math.sin(W.t * 1.7 + sv.phase));
       applyServer(sv);   // live telemetry, when a feed reports this server, replaces the simulated figures
       sv.cLvl = level(sv.load * 100, 85, 95, sv.cLvl, 3);

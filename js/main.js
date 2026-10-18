@@ -1,7 +1,7 @@
 // Entry point: wires the scene, simulation, HUD and interaction together and runs the frame loop.
 import { THREE, $, canvas, renderer, scene, camera, controls, clamp, SERVERS, COLS, ROOM, cutPlane, esc } from './core.js';
 import { W, UI, SV } from './state.js';
-import { racks, byId, byHost, cabinets, plates, rears, selBox, setDoor, doorOpen, updateDoors } from './racks.js';
+import { racks, byId, byHost, cabinets, plateMeshes, rearMeshes, selBox, setDoor, doorOpen, updateDoors } from './racks.js';
 import './hall.js';
 import { updateLights, bakedLighting } from './lights.js';
 import { setThermal, updateThermal } from './thermal.js';
@@ -68,7 +68,7 @@ function followLink() {
 window.addEventListener('hashchange', followLink);
 
 // ---------- Picking ----------
-const pickables = [plates, rears, ...cabinets];
+const pickables = [...plateMeshes, ...rearMeshes, ...cabinets];
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), tip = $('tip');
 let downAt = null;
 function pick(e) {
@@ -79,11 +79,12 @@ function pick(e) {
   for (const h of ray.intersectObjects(targets, false)) {
     if (cutPlane.distanceToPoint(h.point) < 0) continue;   // clipped away in rack view
     if (h.object.userData.srv) return { rack: SV.sel.r, sv: null, close: true };
-    if (h.object === plates || h.object === rears) {
-      const r = racks[(h.instanceId / SERVERS) | 0], sv = r.servers[h.instanceId % SERVERS];
+    const servers = h.object.userData.servers;
+    if (servers) {
+      const sv = servers[h.instanceId], r = sv.r;
       if (sv === SV.sel) continue;
       // The first click on a rack shows its front (and opens the door); once there, a click pulls a server out
-      const ready = UI.cutRack === r && h.object === plates && (doorOpen(r) || (SV.open && SV.sel.r === r));
+      const ready = UI.cutRack === r && h.object.userData.face === 'front' && (doorOpen(r) || (SV.open && SV.sel.r === r));
       return { rack: r, sv, focus: !ready };
     }
     return { rack: h.object.userData.rack, sv: null };

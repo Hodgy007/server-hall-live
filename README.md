@@ -12,7 +12,7 @@ A three.js animation of a server room that shows how the servers are performing.
 - **Cooling units** CU-1 and CU-2 sit outside the hall; they take warm air from the ceiling plenum and feed the floor: CU-1 the northern cold aisles (rows A–D), CU-2 the southern ones (rows E–H).
 - **Uplink panel** in the east wall, where the tray spine leaves the hall for the meet-me room; its strips pulse with hall traffic.
 - **Overhead services**: ladder cable trays with fibre bundles on threaded drop rods, a fibre riser from each rack up into its tray, and a busway over each row with a tap-off box, power drop and status LED per rack (amber above 10 kW).
-- **42U cabinets at true scale**: 12 × 2U servers in U1–24, blanking panels in U25–38, an out-of-band (iDRAC) switch in U39, a patch panel in U40 and two top-of-rack switches in U41–42. Fronts show NVMe caddies and honeycomb intakes; rears show PSUs, I/O and fibre leads, with cable looms down the hot-aisle side. Each rack has a **perforated front door**, so you see the LEDs through it. No two cabinets are quite alike: the powder coat varies in tint and sheen between batches, door edges, lock strips and kick plates are scuffed to different degrees, and about one rack in ten (A01, B03, F02 and others) is from a second vendor, with lighter panels, ribbed sides, a slotted roof, square-perforated doors and dark handles.
+- **42U cabinets at true scale**: 12 servers of one Dell PowerEdge model each (2U models fill U1–24, 1U models U1–12), blanking panels from there up to U38, an out-of-band (iDRAC) switch in U39, a patch panel in U40 and two top-of-rack switches in U41–42. Fronts show NVMe caddies and honeycomb intakes; rears show PSUs, I/O and fibre leads, with cable looms down the hot-aisle side. Each rack has a **perforated front door**, so you see the LEDs through it. No two cabinets are quite alike: the powder coat varies in tint and sheen between batches, door edges, lock strips and kick plates are scuffed to different degrees, and about one rack in ten (A01, B03, F02 and others) is from a second vendor, with lighter panels, ribbed sides, a slotted roof, square-perforated doors and dark handles.
 - **Glow**: LEDs, port lights and light fixtures bloom softly; steel panels and rails pick up soft reflections from an environment map.
 - **Light column on each rack**: height and colour show CPU load, or inlet air temperature when you switch the colour mode.
 - **Server LEDs**: activity lights blink faster under load; status lights go amber for a warning and flash red when critical.
@@ -32,25 +32,42 @@ A three.js animation of a server room that shows how the servers are performing.
 
 ## Inspect a single server
 
-Click a server in an open rack (or a cell in the rack panel's server strip, a row in the inventory, or search for it) and it slides out on its rails while the camera flies in. It is a Dell PowerEdge R7725 (R7725xd in the database rows) at true scale with the lid off. From front to back: eight NVMe drives in their carriers and the backplane, with cables running down the left wall to the board; six hot-swap fans; the two AMD EPYC sockets, each in its orange carrier frame under a copper-based heatsink with heat pipes and a label naming the processor; 24 DDR5 DIMMs, six either side of each socket; VRM chokes; two PCIe risers with blue handles (Dell's touch points); the OCP NIC, BOSS-N1 boot module, CMOS battery and the two power supplies. A service-tag label behind the front grille names the model, service tag and host. The hardware animates from that server's own telemetry:
+Click a server in an open rack (or a cell in the rack panel's server strip, a row in the inventory, or search for it) and it slides out on its rails while the camera flies in. It is shown at true scale with the lid off, built for its model (1U or 2U, one or two sockets, AMD or Intel). From front to back: eight NVMe drives in their carriers and the backplane, with cables running down the left wall to the board; the fan wall (six 60 mm fans in 2U, eight 40 mm fans in 1U); the CPU sockets, each in its carrier frame (orange on AMD, dark on Intel) under a copper-based heatsink with heat pipes and a label naming the processor; the DIMMs either side of each socket; VRM chokes; PCIe risers with blue handles (Dell's touch points); the OCP NIC, BOSS-N1 boot module, CMOS battery and the two power supplies. A service-tag label behind the front grille names the model, service tag and host. The hardware animates from that server's own telemetry:
 
 - **Fans** spin faster as the CPUs heat up (3,800 to 13,000 rpm).
 - **Heatsinks** glow from blue to red with CPU temperature, with heat rising off them.
-- **Memory sticks** light up in turn as memory fills (24 DIMMs, 768 GB).
+- **Memory sticks** light up in turn as memory fills (16 to 32 DIMMs, depending on the model).
 - **Drive and network LEDs** blink with disk IOPS and network traffic.
 - **Airflow particles** enter cool at the front and warm up as they pass the CPUs.
 
 The server panel starts with the server's specification:
 
-- **Server**: hostname (FQDN), model (Dell PowerEdge R7725, or R7725xd for the database rows) and Dell service tag.
-- **Processor**: 2 × AMD EPYC 9005 ("Turin"), 32 cores each: EPYC 9335 (web and batch rows), 9355 (API) or 9375F (database).
+- **Server**: hostname (FQDN), model and Dell service tag.
+- **Processor**: as fitted to the model (table below).
 - **OS**: Ubuntu, Debian, Red Hat Enterprise Linux or Rocky Linux, with the kernel version.
-- **Memory**: 768 GB DDR5-6400 RDIMM (24 × 32 GB, one DIMM on each of the 12 channels per socket) and how much is in use.
+- **Memory**: 32 GB DDR5-6400 RDIMMs in every slot (512 GB to 1 TB), how they sit on the memory channels, and how much is in use.
 - **Storage**: 8 NVMe drives (960 GB to 7.68 TB depending on the row), raw capacity and usage.
 - **Network**: the LACP bond's IP address, VLAN, gateway and MTU; **NIC 1** and **NIC 2** with the ToR switch and port each one is cabled to, and their MAC addresses.
 - **OOB (iDRAC)**: the management IP, the out-of-band switch port and MAC. **Open iDRAC console** opens `https://<iDRAC IP>/` in a new tab, or whatever `idracUrl` in `data/hall.json` says. Generated addresses are simulated; real ones come from your site data (below).
 
-Below that it shows per-core load for all 64 cores, CPU temperatures, fan speed, memory, IOPS, network and power, plus a 2-minute CPU trend. **Run 20 s stress test** pins the cores at 100% so you can watch the temperatures, fans and alerts respond. Click the pulled-out server again, press **Back** or <kbd>Esc</kbd> to slide it back in like a drawer; the camera stays where it is. Flying to a rack or opening a server stops the camera rotation until you press **Start rotation**.
+Each rack holds twelve servers of one model, picked at random from these Dell PowerEdge models:
+
+| Model | Size | Processors | Memory |
+| --- | --- | --- | --- |
+| R7725 | 2U | 2 × AMD EPYC 9355, 32 cores at 3.55 GHz | 24 DIMMs, 768 GB |
+| R7725xd (storage-dense) | 2U | 2 × AMD EPYC 9375F, 32 cores at 3.8 GHz | 24 DIMMs, 768 GB |
+| R7715 | 2U | 1 × AMD EPYC 9535, 64 cores at 2.4 GHz | 24 DIMMs, 768 GB |
+| R6725 | 1U | 2 × AMD EPYC 9335, 32 cores at 3.0 GHz | 24 DIMMs, 768 GB |
+| R6715 | 1U | 1 × AMD EPYC 9535, 64 cores at 2.4 GHz | 24 DIMMs, 768 GB |
+| R770 | 2U | 2 × Intel Xeon 6737P, 32 cores at 2.9 GHz | 32 DIMMs, 1 TB |
+| R770AP | 2U | 2 × Intel Xeon 6978P, 120 cores | 24 DIMMs, 768 GB |
+| R670 | 1U | 2 × Intel Xeon 6737P, 32 cores at 2.9 GHz | 32 DIMMs, 1 TB |
+| R570 | 2U | 1 × Intel Xeon 6737P, 32 cores at 2.9 GHz | 16 DIMMs, 512 GB |
+| R470 | 1U | 1 × Intel Xeon 6737P, 32 cores at 2.9 GHz | 16 DIMMs, 512 GB |
+
+Power draw follows the model, from idle to flat out. The rack panel names the rack's model, and the inventory lists 1U servers at single rack units.
+
+Below that it shows per-core load for every core (one block per socket), CPU temperatures, fan speed, memory, IOPS, network and power, plus a 2-minute CPU trend. **Run 20 s stress test** pins the cores at 100% so you can watch the temperatures, fans and alerts respond. Click the pulled-out server again, press **Back** or <kbd>Esc</kbd> to slide it back in like a drawer; the camera stays where it is. Flying to a rack or opening a server stops the camera rotation until you press **Start rotation**.
 
 ## Panels and controls
 
@@ -67,7 +84,7 @@ Below that it shows per-core load for all 64 cores, CPU temperatures, fan speed,
 `data/hall.json` is read at start-up. Out of the box it lists no racks, so everything is generated and simulated. Copy `data/hall.example.json` over it to see the format:
 
 - `domain` for the FQDNs and `idracUrl` for the console link (`{ip}` is the iDRAC address, `{host}` the hostname).
-- `racks.<rack>.servers.U<n>` gives a server's real `host`, `serial`, `installed`, `model`, `cpu`, `cpuNote`, `os`, `kernel`, `drives`, `driveTB`, `ip`, `vlan`, `gateway`, `port`, `mac`, `idrac`, `oobPort` and `idracMac` (the older `iloUrl`, `ilo` and `iloMac` names still work). Every field is optional; slots and fields you leave out keep their generated values. Servers sit at U1, U3, … U23.
+- `racks.<rack>.servers.U<n>` gives a server's real `host`, `serial`, `installed`, `model`, `cpu`, `cpuNote`, `os`, `kernel`, `drives`, `driveTB`, `ip`, `vlan`, `gateway`, `port`, `mac`, `idrac`, `oobPort` and `idracMac` (the older `iloUrl`, `ilo` and `iloMac` names still work). Every field is optional; slots and fields you leave out keep their generated values. Servers in racks of 2U models sit at U1, U3, … U23; in racks of 1U models at U1, U2, … U12.
 - `telemetry` points at a live feed (`url`, `intervalSeconds`). It is polled, and every server and rack it reports shows its real figures instead of simulated ones: `cpu` in %, `memGB`, `tempC` (hottest CPU), `powerW`, `netGbps`, and a rack's `inletC`. Values can be numbers or numeric strings; anything else is ignored and that figure stays simulated. `data/telemetry.example.json` shows the shape. Anything the feed stops reporting for three intervals falls back to the simulation; the header chip shows how many servers are live.
 - Alerts follow ASHRAE A1 guidance: 27 °C recommended and 32 °C allowable inlet limits, plus 85% / 95% CPU thresholds.
 
