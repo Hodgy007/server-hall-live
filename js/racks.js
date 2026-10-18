@@ -54,21 +54,28 @@ export const LED = {
 };
 const plateM = [], rearM = [], ledM = [], ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 export const HOST = ['web', 'api', 'db', 'batch'];
-// Per-row hardware: same 2U chassis (2× 32-core, 512 GB, 8 NVMe bays), different drives
-export const MODEL = ['2U compute node', '2U compute node', '2U storage node', '2U compute node'];
+// Per-row hardware: Dell PowerEdge 2U dual-socket AMD servers (2× 32-core EPYC 9005, 24 DIMMs, 8 NVMe bays);
+// the database rows use the storage-dense R7725xd
+export const MODEL = ['Dell PowerEdge R7725', 'Dell PowerEdge R7725', 'Dell PowerEdge R7725xd', 'Dell PowerEdge R7725'];
+// 24 × 32 GB DDR5 RDIMMs: EPYC 9005 has 12 memory channels per socket, one DIMM on each
+export const DIMMS = 24, MEM_GB = 768;
 export const DRIVE = ['8× 960 GB NVMe', '8× 1.92 TB NVMe', '8× 7.68 TB NVMe', '8× 3.84 TB NVMe'];
 export const DRIVE_TB = [7.68, 15.36, 61.44, 30.72];
-// Two sockets of 32 cores each in every row; the CPU family differs by workload
+// Two 32-core AMD EPYC 9005 ("Turin") sockets in every server; the part differs by workload
 export const CPU = [
-  { name: 'Intel Xeon Gold 6448Y', ghz: 2.1 },
-  { name: 'Intel Xeon Gold 6448Y', ghz: 2.1 },
-  { name: 'AMD EPYC 9354', ghz: 3.25 },
-  { name: 'AMD EPYC 9334', ghz: 2.7 }
+  { name: 'AMD EPYC 9335', ghz: 3.0 },
+  { name: 'AMD EPYC 9355', ghz: 3.55 },
+  { name: 'AMD EPYC 9375F', ghz: 3.8 },
+  { name: 'AMD EPYC 9335', ghz: 3.0 }
 ];
 const VLAN = [110, 120, 130, 140];
 const mac = (oui, n) => [oui >> 16 & 255, oui >> 8 & 255, oui & 255, 0x20 + (n >> 16 & 15), n >> 8 & 255, n & 255].map(b => b.toString(16).padStart(2, '0')).join(':');
-// Where the iLO (BMC) web console lives: "iloUrl" in data/hall.json, e.g. "https://{ip}/" or "https://{host}-ilo.example.com/"
-export const iloUrl = sv => { const u = fill(HALL.iloUrl || 'https://{ip}/', sv); return /^https?:\/\//i.test(u) ? u : '#'; };
+// Where the iDRAC (Dell's BMC) web console lives: "idracUrl" in data/hall.json (or the older "iloUrl"),
+// e.g. "https://{ip}/" or "https://{host}-idrac.example.com/"
+export const iloUrl = sv => { const u = fill(HALL.idracUrl || HALL.iloUrl || 'https://{ip}/', sv); return /^https?:\/\//i.test(u) ? u : '#'; };
+// Dell service tags: seven characters, no vowels
+const TAG = '0123456789BCDFGHJKLMNPQRSTVWXYZ';
+const serviceTag = v => { let n = Math.floor(v * TAG.length ** 7), s = ''; for (let i = 0; i < 7; i++) { s = TAG[n % TAG.length] + s; n = Math.floor(n / TAG.length); } return s; };
 export const DOMAIN = HALL.domain || 'hall2.local';
 const OS = [
   [['Ubuntu 22.04.4 LTS', '5.15'], ['Ubuntu 24.04.1 LTS', '6.8']],
@@ -92,17 +99,18 @@ function mount(mesh, i, r, side, y, dz, x, store) {
         r, s, idx: pi, y, u, host: `${HOST[r.kind]}-${r.id.toLowerCase()}-${String(s + 1).padStart(2, '0')}`,
         bias: 0.75 + rnd() * 0.5, memBias: 0.85 + rnd() * 0.3, phase: rnd() * 20, load: 0.4, stressLeft: 0, stressAmp: 0, hist: [],
         mem: 0.5, temp: 45, rpm: 4000, power: 500, net: 0, cLvl: 0, tLvl: 0, status: 0,
-        serial: 'HX' + (2400000 + Math.floor(rnd() * 99999)).toString(36).toUpperCase(),
-        installed: `20${22 + Math.floor(rnd() * 4)}-${String(1 + Math.floor(rnd() * 12)).padStart(2, '0')}`,
+        serial: serviceTag(rnd()),
+        installed: `20${25 + Math.floor(rnd() * 2)}-${String(1 + Math.floor(rnd() * 12)).padStart(2, '0')}`,
         os: OS[r.kind][Math.floor(rnd() * OS[r.kind].length)], diskUsed: 0.25 + rnd() * 0.5,
         model: MODEL[r.kind], drives: DRIVE[r.kind], driveTB: DRIVE_TB[r.kind], cpu: `2× ${CPU[r.kind].name}`, cpuNote: `32 cores each at ${CPU[r.kind].ghz} GHz, 64 in total`,
         // NIC 1 and NIC 2 run to the same port on the rack's A and B top-of-rack switches (LACP bond);
-        // the iLO port runs to the rack's out-of-band switch
+        // the iDRAC port runs to the rack's out-of-band switch
         port: `Ethernet1/${s + 1}`, oobPort: `Gi1/0/${s + 1}`,
         // one /24 per rack: 10.<VLAN>.<rack>.x, rack numbered within its workload's pair of rows
         vlan: VLAN[r.kind], ip: `10.${VLAN[r.kind]}.${(r.ri % 2) * 20 + r.c + 1}.${11 + s}`, gw: `10.${VLAN[r.kind]}.${(r.ri % 2) * 20 + r.c + 1}.1`,
         ilo: `10.250.${r.ri * 16 + r.c + 1}.${11 + s}`,
-        mac: [mac(0x3cecef, pi * 4), mac(0x3cecef, pi * 4 + 1)], iloMac: mac(0x94188, pi * 4 + 2)
+        // Broadcom OCP NIC ports; the iDRAC carries a Dell address
+        mac: [mac(0x000af7, pi * 4), mac(0x000af7, pi * 4 + 1)], iloMac: mac(0x001422, pi * 4 + 2)
       };
       r.servers.push(sv);
       mount(plates, pi, r, 1, y, 0.007, 0, plateM);
@@ -122,7 +130,7 @@ scene.add(plates, rears, leds);
 
 // Real inventory from data/hall.json replaces the generated values slot by slot: racks.<id>.servers.U<n>
 const SET = { host: 'host', serial: 'serial', installed: 'installed', model: 'model', drives: 'drives', driveTB: 'driveTB', cpu: 'cpu', cpuNote: 'cpuNote',
-  ip: 'ip', vlan: 'vlan', gateway: 'gw', ilo: 'ilo', iloMac: 'iloMac', port: 'port', oobPort: 'oobPort' };
+  ip: 'ip', vlan: 'vlan', gateway: 'gw', ilo: 'ilo', iloMac: 'iloMac', idrac: 'ilo', idracMac: 'iloMac', port: 'port', oobPort: 'oobPort' };
 for (const r of racks) {
   const slots = HALL.racks && HALL.racks[r.id] && HALL.racks[r.id].servers;
   if (!slots) continue;

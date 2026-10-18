@@ -1,5 +1,5 @@
 // Entry point: wires the scene, simulation, HUD and interaction together and runs the frame loop.
-import { THREE, $, canvas, renderer, scene, camera, controls, SERVERS, COLS, cutPlane, esc } from './core.js';
+import { THREE, $, canvas, renderer, scene, camera, controls, clamp, SERVERS, COLS, ROOM, cutPlane, esc } from './core.js';
 import { W, UI, SV } from './state.js';
 import { racks, byId, byHost, cabinets, plates, rears, selBox, setDoor, doorOpen, updateDoors } from './racks.js';
 import './hall.js';
@@ -106,7 +106,7 @@ canvas.addEventListener('pointermove', e => {
   } else tip.hidden = true;
 });
 canvas.addEventListener('pointerleave', () => { UI.hovered = null; tip.hidden = true; });
-canvas.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
+canvas.addEventListener('pointerdown', e => { downAt = e.button === 0 ? [e.clientX, e.clientY] : null; });   // right-drag pans, it never picks
 canvas.addEventListener('pointerup', e => {
   if (!downAt) return;
   const moved = Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]); downAt = null;
@@ -206,7 +206,35 @@ document.addEventListener('keydown', e => {
     const r = UI.cutRack, c = r.c + (e.key === 'ArrowRight' ? 1 : -1) * r.face;
     if (c >= 0 && c < COLS) { e.preventDefault(); focusRack(byId[r.row.id + String(c + 1).padStart(2, '0')]); }
   }
+  else if (!typing && MOVE[e.key.toLowerCase()] && !e.ctrlKey && !e.metaKey && !e.altKey && !(e.key.startsWith('Arrow') && /BUTTON/.test(document.activeElement.tagName))) {
+    e.preventDefault(); held.add(e.key.toLowerCase());
+  }
 });
+document.addEventListener('keyup', e => held.delete(e.key.toLowerCase()));
+window.addEventListener('blur', () => held.clear());
+
+// ---------- Moving around: WASD (or the arrow keys, outside rack view) slide the view across the floor ----------
+const MOVE = { w: [0, 1], s: [0, -1], a: [-1, 0], d: [1, 0], arrowup: [0, 1], arrowdown: [0, -1], arrowleft: [-1, 0], arrowright: [1, 0] };
+const held = new Set(), fwd = new THREE.Vector3(), side = new THREE.Vector3(), move = new THREE.Vector3(), UP = new THREE.Vector3(0, 1, 0);
+function moveView(dt) {
+  if (!held.size || !controls.enabled) return;
+  let mx = 0, mz = 0;
+  for (const k of held) { mx += MOVE[k][0]; mz += MOVE[k][1]; }
+  fwd.subVectors(controls.target, camera.position).setY(0);
+  if ((!mx && !mz) || fwd.lengthSq() < 1e-6) return;
+  if (UI.orbitOn) setOrbit(false);
+  fwd.normalize(); side.crossVectors(fwd, UP);
+  // faster from far away, slow enough to walk an aisle up close
+  const speed = clamp(camera.position.distanceTo(controls.target) * 0.6, 1.2, 8) * dt;
+  move.copy(side).multiplyScalar(mx).addScaledVector(fwd, mz).setLength(speed);
+  camera.position.add(move); controls.target.add(move);
+}
+// Keep what you are looking at inside the hall, however you got there
+function keepInHall() {
+  const t = controls.target, x = clamp(t.x, -ROOM.x, ROOM.x), z = clamp(t.z, -ROOM.z, ROOM.z);
+  if (x === t.x && z === t.z) return;
+  camera.position.x += x - t.x; camera.position.z += z - t.z; t.x = x; t.z = z;
+}
 
 // ---------- Layout ----------
 function resize() {
@@ -253,7 +281,9 @@ function frame(now) {
   updateDoors(dt);
   updateServerModel(dt);
   updateCam(dt);
+  moveView(dt);
   controls.update();
+  keepInHall();
   updateLights(dt);
   if (releaseCut() && !SV.open && UI.selected) { setDoor(UI.selected, false); setLink(); }
   render();

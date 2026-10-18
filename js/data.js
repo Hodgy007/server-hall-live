@@ -4,5 +4,5 @@ export const HALL = await fetch('data/hall.json', { cache: 'no-cache' })
   .then(r => (r.ok ? r.json() : {}))
   .catch(() => ({}));
 
-// "https://{ip}/" style templates: {ip} is the iLO address, {host} the server's hostname
+// "https://{ip}/" style templates: {ip} is the iDRAC address, {host} the server's hostname
 export const fill = (tpl, sv) => tpl.replace(/\{ip\}/g, sv.ilo).replace(/\{host\}/g, sv.host);

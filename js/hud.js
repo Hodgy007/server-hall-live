@@ -1,7 +1,7 @@
 // HUD: KPI strip, rack panel (Live and Inventory tabs), server panel, legend.
 import { $, COL, STOPS, cssGrad, SERVERS, esc } from './core.js';
 import { W, G, UI, SV } from './state.js';
-import { iloUrl, DOMAIN, highlight, unhighlight } from './racks.js';
+import { iloUrl, DOMAIN, DIMMS, MEM_GB, highlight, unhighlight } from './racks.js';
 import { describe, rackFaults } from './faults.js';
 
 const SHORT = { psu: k => `PSU ${k + 1} failed`, disk: k => `drive ${k + 1} failed`, fan: k => `fan ${k + 1} failed` };
@@ -65,10 +65,10 @@ export function updateHud() {
     $('sHost').textContent = sv.host;
     $('sMeta').textContent = `Rack ${sv.r.id} · U${sv.u}–${sv.u + 1} · ${sv.r.row.role}`;
     const id = sv.r.id.toLowerCase(), tb = sv.driveTB;
-    $('spHost').innerHTML = `${esc(sv.host)}.${esc(DOMAIN)} <span>· ${esc(sv.model)} · SN ${esc(sv.serial)}</span>`;
+    $('spHost').innerHTML = `${esc(sv.host)}.${esc(DOMAIN)} <span>· ${esc(sv.model)} · Service Tag ${esc(sv.serial)}</span>`;
     $('spCpu').innerHTML = `${esc(sv.cpu)} <span>· ${esc(sv.cpuNote)}</span>`;
     $('spOs').innerHTML = `${esc(sv.os[0])} <span>· Linux kernel ${esc(sv.os[1])}</span>`;
-    $('spRam').innerHTML = `512 GB DDR5-4800 <span>· 16 × 32 GB · ${Math.round(SV.mem * 512)} GB in use</span>`;
+    $('spRam').innerHTML = `${MEM_GB} GB DDR5-6400 RDIMM <span>· ${DIMMS} × ${MEM_GB / DIMMS} GB, 12 channels per socket · ${Math.round(SV.mem * MEM_GB)} GB in use</span>`;
     const diskF = sv.faults.find(f => f.kind === 'disk');
     $('spDisk').innerHTML = `${esc(sv.drives)} <span>· ${tb.toFixed(1)} TB raw · ${(tb * sv.diskUsed).toFixed(1)} TB used (${Math.round(sv.diskUsed * 100)}%)</span>` +
       (diskF ? ` <em class="bad">· drive ${diskF.k + 1} failed, RAID degraded</em>` : '');
@@ -79,13 +79,13 @@ export function updateHud() {
     const fl = $('sFaults'), all = sv.faults.concat(rackFaults(sv.r).filter(f => !f.sv));
     fl.hidden = !all.length; fl.innerHTML = all.map(f => `<li>${describe(f)}</li>`).join('');
     $('spIlo').innerHTML = `${esc(sv.ilo)} <span>· oob-${id} ${esc(sv.oobPort)} · 1 GbE · ${esc(sv.iloMac)}</span>`;
-    const ilo = $('sIlo'); if (ilo.dataset.ip !== sv.ilo) { ilo.dataset.ip = sv.ilo; ilo.href = iloUrl(sv); ilo.setAttribute('aria-label', `Open the iLO console for ${sv.host} at ${sv.ilo}`); }
+    const ilo = $('sIlo'); if (ilo.dataset.ip !== sv.ilo) { ilo.dataset.ip = sv.ilo; ilo.href = iloUrl(sv); ilo.setAttribute('aria-label', `Open the iDRAC console for ${sv.host} at ${sv.ilo}`); }
     $('sStatus').textContent = statusText[SV.status]; $('sStatus').className = 'pill ' + statusClass[SV.status];
     $('sCpuV').textContent = Math.round(sv.load * 100) + '%'; $('sCpuV').className = lvlClass(SV.cLvl);
     $('sT0').textContent = SV.temp[0].toFixed(0) + ' °C'; $('sT0').className = lvlClass(tl(SV.temp[0]));
     $('sT1').textContent = SV.temp[1].toFixed(0) + ' °C'; $('sT1').className = lvlClass(tl(SV.temp[1]));
     $('sFan').textContent = (Math.round(SV.rpm / 100) * 100).toLocaleString('en-US') + ' rpm';
-    $('sMem').textContent = Math.round(SV.mem * 512) + ' GB';
+    $('sMem').textContent = Math.round(SV.mem * MEM_GB) + ' GB';
     $('sIops').textContent = fmtK(SV.iops);
     $('sNet').textContent = SV.netIn.toFixed(1) + ' / ' + SV.netOut.toFixed(1);
     $('sPow').textContent = Math.round(SV.power) + ' W';
@@ -108,7 +108,7 @@ export function updateHud() {
   const cpu = r.load * 100;
   $('rCpu').textContent = Math.round(cpu) + '%';
   $('rCpuBar').style.width = cpu.toFixed(1) + '%'; $('rCpuBar').style.background = barColor(cpu, 85, 95);
-  $('rMem').textContent = (r.mem * SERVERS * 0.512).toFixed(1) + ' of ' + (SERVERS * 0.512).toFixed(1) + ' TB';
+  $('rMem').textContent = (r.mem * SERVERS * MEM_GB / 1000).toFixed(1) + ' of ' + (SERVERS * MEM_GB / 1000).toFixed(1) + ' TB';
   $('rMemBar').style.width = (r.mem * 100).toFixed(1) + '%'; $('rMemBar').style.background = barColor(r.mem * 100, 85, 95);
   $('rIn').textContent = r.inlet.toFixed(1) + ' °C'; $('rIn').className = lvlClass(r.tLvl);
   $('rEx').textContent = r.exhaust.toFixed(1) + ' °C';
@@ -180,11 +180,11 @@ function buildInv(r) {
 Ethernet1/1–${SERVERS} → servers' NIC ${k + 1}`, '', () => highlight(r, 42 - k, 1, -1)) }));
   add('U40', `pp-${id}`, 'Patch panel · 48-port LC fibre (rear)', '', () => highlight(r, 40, 1, -1));
   add('U39', `oob-${id}`, `OOB switch · 48× 1GbE (rear)
-Gi1/0/1–${SERVERS} → servers' iLO`, '', () => highlight(r, 39, 1, -1));
+Gi1/0/1–${SERVERS} → servers' iDRAC`, '', () => highlight(r, 39, 1, -1));
   add('U25–38', 'Empty', '14U · blanking panels fitted', 'empty', () => highlight(r, 25, 14, 1));
   for (let s = SERVERS - 1; s >= 0; s--) {
     const sv = r.servers[s];
-    const tr = add(`U${sv.u}–${sv.u + 1}`, sv.host, `${sv.model} · ${sv.drives}\nSN ${sv.serial} · in service ${sv.installed}`, 'sv', () => highlight(r, sv.u, 2, 1));
+    const tr = add(`U${sv.u}–${sv.u + 1}`, sv.host, `${sv.model} · ${sv.drives}\nService Tag ${sv.serial} · in service ${sv.installed}`, 'sv', () => highlight(r, sv.u, 2, 1));
     tr.tabIndex = 0; tr.setAttribute('aria-label', `Pull out ${sv.host}`);
     tr.addEventListener('click', () => hooks.open(sv));
     tr.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); hooks.open(sv); } });
@@ -194,7 +194,7 @@ Gi1/0/1–${SERVERS} → servers' iLO`, '', () => highlight(r, 39, 1, -1));
   const tot = add('', 'Rack total', `${SERVERS} servers + 2 switches`, 'tot', () => highlight(r, 1, 42, 1));
   tot.querySelector('b').style.color = 'var(--cold)';
   invRows.push({ kind: 'tot', tr: tot });
-  $('invSum').innerHTML = `<b>${SERVERS}</b> servers · <b>${SERVERS * 64}</b> cores · <b>${(SERVERS * 0.512).toFixed(1)} TB</b> RAM · <b>${r.servers.reduce((a, sv) => a + sv.driveTB, 0).toFixed(0)} TB</b> NVMe<br>` +
+  $('invSum').innerHTML = `<b>${SERVERS}</b> servers · <b>${SERVERS * 64}</b> cores · <b>${(SERVERS * MEM_GB / 1000).toFixed(1)} TB</b> RAM · <b>${r.servers.reduce((a, sv) => a + sv.driveTB, 0).toFixed(0)} TB</b> NVMe<br>` +
     `<b>2</b> ToR switches · <b>1</b> OOB switch · <b>2</b> PDUs · <b>1</b> patch panel · <b>14U</b> free of 42U`;
 }
 function updateInv(r) {

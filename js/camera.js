@@ -23,11 +23,13 @@ export function setOrbit(on) {
 
 export const flyHall = () => { setCut(null); flyTo(HALL_VIEW.pos, HALL_VIEW.target, 1.4); };
 
-// The cut-away only makes sense while you stand at the rack: zoom or orbit away and the hall comes back
-const CUT_RANGE = 4.5;
+// The cut-away only makes sense while you stand at the rack: zoom or orbit away, or move off across the aisle,
+// and the hall comes back (sliding along the row keeps it)
+const CUT_RANGE = 4.5, CUT_DRIFT = 1.2;
 export function releaseCut() {
   if (!UI.cutRack || CAM.active) return false;
-  if (camera.position.distanceTo(controls.target) <= CUT_RANGE) return false;
+  const r = UI.cutRack;
+  if (camera.position.distanceTo(controls.target) <= CUT_RANGE && Math.abs(controls.target.z - (r.z + r.face * FRONT)) <= CUT_DRIFT) return false;
   setCut(null); return true;
 }
 
