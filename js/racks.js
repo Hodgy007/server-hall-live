@@ -1,7 +1,7 @@
 // Cabinets and everything mounted in them. Fronts face the cold aisle, rears the hot aisle.
-import { THREE, scene, lc, COL, rnd, labelTex, RACK_W, RACK_H, RACK_D, COLS, PITCH, SERVERS, ROWS, U, U0, U_TOP, FRONT, uY, ease, reduceMotion } from './core.js';
+import { THREE, scene, lc, COL, rnd, vrnd, labelTex, RACK_W, RACK_H, RACK_D, COLS, PITCH, SERVERS, ROWS, U, U0, U_TOP, FRONT, uY, ease, reduceMotion } from './core.js';
 import { HALL, fill } from './data.js';
-import { sideTex, roughTex, topTex, railTex, bezelTex, plinthTex, contactTex, doorTex, doorAlpha, plateMat, drawFront, drawRear, drawSwFans, drawSwPorts, drawPatch, drawBlank } from './textures.js';
+import { sideTexes, roughTex, topTex, topTexB, railTex, bezelTex, plinthTex, contactTex, doorTexes, doorAlphas, plateMat, drawFront, drawRear, drawSwFans, drawSwPorts, drawPatch, drawBlank } from './textures.js';
 
 export const racks = [], cabinets = [];
 const colGeo = new THREE.BoxGeometry(0.5, 1, 0.05); colGeo.translate(0, 0.5, 0);
@@ -9,16 +9,23 @@ const frameGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(0.5, 0.9, 0.05));
 const frameMat = new THREE.LineBasicMaterial({ color: lc('#8299a8'), transparent: true, opacity: 0.18 });
 const darkInside = new THREE.MeshStandardMaterial({ color: 0x06080a, roughness: 0.9, metalness: 0.2 });
 const cabGeo = new THREE.BoxGeometry(RACK_W, RACK_H, RACK_D);
+// Powder coat from different batches: a slightly cooler or warmer, lighter or darker grey, and a different sheen
+function cabinetFinish(vendor) {
+  const k = vendor ? 1.3 : 0.9 + vrnd() * 0.18, h = vendor ? -0.03 : (vrnd() - 0.5) * 0.08;
+  return { color: new THREE.Color(k * (1 + h), k, k * (1 - h)), rough: vendor ? 0.62 : 0.7 + vrnd() * 0.18 };
+}
 
 ROWS.forEach((row, ri) => {
   for (let c = 0; c < COLS; c++) {
     const x = (c - (COLS - 1) / 2) * PITCH;
-    const sideM = new THREE.MeshStandardMaterial({ map: sideTex, roughnessMap: roughTex, metalness: 0.5, roughness: 0.8, emissive: 0x000000 });
-    const topM = new THREE.MeshStandardMaterial({ map: topTex, roughnessMap: roughTex, metalness: 0.5, roughness: 0.75, emissive: 0x000000 });
+    // Not every cabinet is the same: a few come from a second vendor, the rest differ in wear, tint and finish
+    const vendor = vrnd() < 0.09, wear = Math.floor(vrnd() * 3), finish = cabinetFinish(vendor);
+    const sideM = new THREE.MeshStandardMaterial({ map: sideTexes[vendor ? 3 : wear], roughnessMap: roughTex, metalness: vendor ? 0.35 : 0.5, roughness: finish.rough, color: finish.color, emissive: 0x000000 });
+    const topM = new THREE.MeshStandardMaterial({ map: vendor ? topTexB : topTex, roughnessMap: roughTex, metalness: vendor ? 0.35 : 0.5, roughness: finish.rough - 0.05, color: finish.color, emissive: 0x000000 });
     const mesh = new THREE.Mesh(cabGeo, [sideM, sideM, topM, darkInside, darkInside, darkInside]);
-    mesh.position.set(x, RACK_H / 2, row.z); scene.add(mesh);
+    mesh.position.set(x, RACK_H / 2, row.z); mesh.castShadow = mesh.receiveShadow = true; scene.add(mesh);
     const r = {
-      id: row.id + String(c + 1).padStart(2, '0'), ri, kind: row.kind, c, row, x, z: row.z, face: row.face, mesh, mats: [sideM, topM],
+      id: row.id + String(c + 1).padStart(2, '0'), ri, kind: row.kind, c, row, x, z: row.z, face: row.face, mesh, mats: [sideM, topM], vendor, wear, finish: finish.color,
       phase: rnd() * 20, base: row.base + (rnd() - 0.5) * 0.18, memBase: rnd() * 0.18, inletOffset: (rnd() - 0.5) * 1.2,
       demand: 0.4, load: 0.4, mem: 0.5, inlet: 20, exhaust: 30, power: 0, swPower: 0, net: 0, cpuLvl: 0, tLvl: 0, svLvl: 0, status: 0, svWarn: 0, svCrit: 0,
       hist: [], ihist: [], pktAcc: 0, leds: []
@@ -171,8 +178,8 @@ racks.forEach((r, i) => {
   [-1, 1].forEach((s, k) => {
     mount(rails, i * 4 + k * 2, r, 1, U0 + 21 * U, 0.004, s * 0.278);
     mount(rails, i * 4 + k * 2 + 1, r, -1, U0 + 21 * U, 0.004, s * 0.278);
-    mount(bezels, i * 2 + k, r, s, (U_TOP + RACK_H) / 2, 0.007);
-    mount(plinths, i * 2 + k, r, s, U0 / 2, 0.007);
+    mount(bezels, i * 2 + k, r, s, (U_TOP + RACK_H) / 2, 0.007); bezels.setColorAt(i * 2 + k, r.finish);
+    mount(plinths, i * 2 + k, r, s, U0 / 2, 0.007); plinths.setColorAt(i * 2 + k, r.finish);
     mount(looms, i * 2 + k, r, -1, U0 + 21 * U, 0.04, s * 0.236);
     tint.copy(LOOM[k]).multiplyScalar(0.85 + rnd() * 0.3); looms.setColorAt(i * 2 + k, tint);
   });
@@ -188,23 +195,31 @@ scene.add(contact);
 // ---------- Perforated front doors, hinged on the left; the selected rack's door swings open ----------
 const DOOR_H = U_TOP + 0.01 - 0.07, DOOR_Y = 0.07 + DOOR_H / 2, DOOR_Z = FRONT + 0.03, DOOR_OPEN = -1.75;
 const doorGeo = new THREE.BoxGeometry(0.585, DOOR_H, 0.012); doorGeo.translate(0.2925, 0, 0);
-const doorMat = new THREE.MeshStandardMaterial({ map: doorTex, alphaMap: doorAlpha, transparent: true, metalness: 0.6, roughness: 0.5, side: THREE.DoubleSide });
 const handleGeo = new THREE.BoxGeometry(0.018, 0.22, 0.03); handleGeo.translate(0.55, 0, 0.018);
-const handleMat = new THREE.MeshStandardMaterial({ color: 0x9aa6b0, metalness: 0.85, roughness: 0.3 });
-// Instanced: a door's matrix is only rebuilt while it moves
-const doors = new THREE.InstancedMesh(doorGeo, doorMat, racks.length), handles = new THREE.InstancedMesh(handleGeo, handleMat, racks.length);
-doors.renderOrder = 1;
-const dObj = new THREE.Object3D();
+const handleMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.85, roughness: 0.3 });
+// Instanced, one mesh per door style (three worn variants and the second vendor's); a door's matrix is only rebuilt while it moves
+const doorStyle = r => r.vendor ? 3 : r.wear;
+const doorMeshes = doorTexes.map((map, k) => {
+  const m = new THREE.InstancedMesh(doorGeo, new THREE.MeshStandardMaterial({ map, alphaMap: doorAlphas[k], transparent: true, metalness: 0.6, roughness: 0.5, side: THREE.DoubleSide }),
+    Math.max(1, racks.filter(r => doorStyle(r) === k).length));
+  m.renderOrder = 1; m.count = 0;
+  return m;
+});
+const handles = new THREE.InstancedMesh(handleGeo, handleMat, racks.length);
+const dObj = new THREE.Object3D(), HANDLE = [lc('#9aa6b0'), lc('#2a2f34')];
 function placeDoor(r) {
   const d = r.door;
   dObj.position.copy(d.hinge); dObj.rotation.set(0, d.base + ease(d.a) * DOOR_OPEN, 0); dObj.updateMatrix();
-  doors.setMatrixAt(d.i, dObj.matrix); handles.setMatrixAt(d.i, dObj.matrix);
+  d.mesh.setMatrixAt(d.j, dObj.matrix); handles.setMatrixAt(d.i, dObj.matrix);
 }
 racks.forEach((r, i) => {
-  r.door = { i, hinge: new THREE.Vector3(r.x - r.face * 0.2925, DOOR_Y, r.z + r.face * DOOR_Z), base: r.face > 0 ? 0 : Math.PI, a: 0, target: 0 };
+  const mesh = doorMeshes[doorStyle(r)], j = mesh.count++;
+  r.door = { i, mesh, j, hinge: new THREE.Vector3(r.x - r.face * 0.2925, DOOR_Y, r.z + r.face * DOOR_Z), base: r.face > 0 ? 0 : Math.PI, a: 0, target: 0 };
   placeDoor(r);
+  mesh.setColorAt(j, tint.copy(r.finish).multiplyScalar(0.95 + vrnd() * 0.1));
+  handles.setColorAt(i, HANDLE[r.vendor ? 1 : 0]);
 });
-scene.add(doors, handles);
+scene.add(...doorMeshes, handles);
 export const doorOpen = r => r.door.a > 0.85;
 export function setDoor(r, open) { r.door.target = open ? 1 : 0; }
 export function updateDoors(dt) {
@@ -214,7 +229,7 @@ export function updateDoors(dt) {
     d.a = d.target > d.a ? Math.min(1, d.a + dt / (reduceMotion ? 0.01 : 0.55)) : Math.max(0, d.a - dt / (reduceMotion ? 0.01 : 0.55));
     placeDoor(r); moved = true;
   }
-  if (moved) { doors.instanceMatrix.needsUpdate = true; handles.instanceMatrix.needsUpdate = true; doors.computeBoundingSphere(); }
+  if (moved) { for (const m of doorMeshes) { m.instanceMatrix.needsUpdate = true; m.computeBoundingSphere(); } handles.instanceMatrix.needsUpdate = true; }
 }
 
 // ---------- Selection outline and inventory highlight ----------

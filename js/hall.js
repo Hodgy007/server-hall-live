@@ -1,34 +1,118 @@
 // The room around the racks: raised floor, walls and ceiling, hot-aisle containment, cable trays,
 // overhead busway, wall-mounted cooling units and the uplink panel to the meet-me room.
-import { THREE, scene, lc, COL, canvasTex, labelTex, speckle, ROWS, COLD, HACS, COOLING, RACK_H, ROW_HALF, TRAY_Y, TRAY_X, ROOM } from './core.js';
+import { THREE, scene, lc, COL, LOW_POWER, vrnd, broadPunctualSpec, canvasTex, labelTex, speckle, ROWS, COLD, HACS, COOLING, RACK_H, ROW_HALF, TRAY_Y, TRAY_X, ROOM } from './core.js';
+import { Reflector } from 'three/addons/objects/Reflector.js';
 import { racks } from './racks.js';
 
 const m4 = new THREE.Matrix4();
 
 // ---------- Raised floor ----------
-const floorTex = canvasTex(256, 256, (g) => {
-  g.fillStyle = '#131b23'; g.fillRect(0, 0, 256, 256); speckle(g, 256, 256, 5000, 0.03);
-  g.fillStyle = '#080c10'; g.fillRect(0, 0, 256, 3); g.fillRect(0, 0, 3, 256);
-  g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(3, 3, 250, 1); g.fillRect(3, 3, 1, 250);
-});
-floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping; floorTex.repeat.set(2 * ROOM.x / 0.6, 2 * ROOM.z / 0.6);
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(2 * ROOM.x, 2 * ROOM.z), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.5, metalness: 0.3 }));
-floor.rotation.x = -Math.PI / 2; floor.material.userData.noClip = true; scene.add(floor);
+// Polished anti-static tiles, 0.6 m square. One texture covers 4 × 4 tiles so neighbours differ a little in
+// tint, gloss and wear; the seams are rough and sunk so they break up the reflections.
+const TILE_PX = 256, TILES = 4;
+const tileVar = Array.from({ length: TILES * TILES }, () => ({ l: vrnd(), r: vrnd(), s: vrnd() }));
+function floorTiles(g, w, h, kind) {
+  tileVar.forEach((t, i) => {
+    const x = (i % TILES) * TILE_PX, y = ((i / TILES) | 0) * TILE_PX;
+    if (kind === 'map') { const v = 19 + t.l * 4; g.fillStyle = `rgb(${v - 3},${v + 3},${v + 9})`; }
+    else if (kind === 'rough') { const v = 50 + t.r * 12; g.fillStyle = `rgb(${v},${v},${v})`; }
+    else g.fillStyle = '#c0c0c0';
+    g.fillRect(x, y, TILE_PX, TILE_PX);
+    // scuffs: chair and trolley marks, rougher and slightly lighter than the polish around them
+    g.save(); g.beginPath(); g.rect(x, y, TILE_PX, TILE_PX); g.clip();
+    const n = Math.floor(t.s * 9);
+    for (let k = 0; k < n; k++) {
+      const cx = x + Math.random() * TILE_PX, cy = y + Math.random() * TILE_PX, r = 12 + Math.random() * 60, a0 = Math.random() * 6.3;
+      g.strokeStyle = kind === 'map' ? 'rgba(255,255,255,0.035)' : kind === 'rough' ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.12)';
+      g.lineWidth = 0.6 + Math.random() * 1.8; g.beginPath(); g.arc(cx, cy, r, a0, a0 + 0.3 + Math.random() * 0.9); g.stroke();
+    }
+    g.restore();
+    // seam: a dark groove with a faint bevel highlight on the far edges
+    g.fillStyle = kind === 'map' ? '#06090c' : kind === 'rough' ? '#ffffff' : '#000000';
+    g.fillRect(x, y, TILE_PX, 4); g.fillRect(x, y, 4, TILE_PX);
+    if (kind === 'map') { g.fillStyle = 'rgba(255,255,255,0.06)'; g.fillRect(x + 4, y + 4, TILE_PX - 4, 1); g.fillRect(x + 4, y + 4, 1, TILE_PX - 4); }
+    if (kind === 'bump') { g.fillStyle = '#808080'; g.fillRect(x + 4, y + 4, TILE_PX - 4, 2); g.fillRect(x + 4, y + 4, 2, TILE_PX - 4); }
+  });
+  if (kind === 'map') speckle(g, w, h, 30000, 0.025);
+}
+const FLOOR_PX = TILE_PX * TILES, FLOOR_REP = [2 * ROOM.x / (0.6 * TILES), 2 * ROOM.z / (0.6 * TILES)];
+const floorTex = canvasTex(FLOOR_PX, FLOOR_PX, (g, w, h) => floorTiles(g, w, h, 'map'));
+const floorRough = canvasTex(FLOOR_PX, FLOOR_PX, (g, w, h) => floorTiles(g, w, h, 'rough'), true);
+const floorBump = canvasTex(FLOOR_PX, FLOOR_PX, (g, w, h) => floorTiles(g, w, h, 'bump'), true);
+for (const t of [floorTex, floorRough, floorBump]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...FLOOR_REP); t.anisotropy = 8; }
+const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughnessMap: floorRough, bumpMap: floorBump, bumpScale: 1.2, roughness: 1, metalness: 0.15 });
+// No image-based reflection: its bright light boxes show up as hot spots on a polish this glossy,
+// and the planar reflection shows the real room instead
+floorMat.userData.noClip = true; floorMat.userData.envMapIntensity = 0;
+const floorGeo = new THREE.PlaneGeometry(2 * ROOM.x, 2 * ROOM.z);
+let floor, reflTarget = null;
+floorMat.onBeforeCompile = sh => broadPunctualSpec(sh, 0.55);
+if (LOW_POWER) floor = new THREE.Mesh(floorGeo, floorMat);
+else {
+  // Planar reflection: the scene is rendered once more from below the floor at half resolution, then blended
+  // into the tile shading by gloss and viewing angle, and blurred where a tile is rougher
+  floor = new Reflector(floorGeo, { textureWidth: 512, textureHeight: 512, clipBias: 0.002, multisample: 0 });
+  const textureMatrix = floor.material.uniforms.textureMatrix.value;
+  reflTarget = floor.getRenderTarget();
+  floor.material.dispose(); floor.material = floorMat;
+  // The ambient-occlusion pass draws the scene again with an override material; that pass needs no reflection
+  const reflect = floor.onBeforeRender;
+  floor.onBeforeRender = (r, sc, cam) => { if (!sc.overrideMaterial) reflect(r, sc, cam); };
+  floorMat.onBeforeCompile = sh => {
+    broadPunctualSpec(sh, 0.55);
+    sh.uniforms.reflMap = { value: reflTarget.texture };
+    sh.uniforms.reflMatrix = { value: textureMatrix };
+    sh.uniforms.reflTexel = { value: new THREE.Vector2(1 / 512, 1 / 512) };
+    floorMat.userData.shader = sh;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nuniform mat4 reflMatrix;\nvarying vec4 vReflUv;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\nvReflUv = reflMatrix * vec4(transformed, 1.0);');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform sampler2D reflMap;\nuniform vec2 reflTexel;\nvarying vec4 vReflUv;')
+      .replace('#include <opaque_fragment>', `
+        {
+          float nv = clamp(dot(geometryNormal, geometryViewDir), 0.0, 1.0);
+          float fres = 0.04 + 0.96 * pow(1.0 - nv, 5.0);
+          float gloss = 1.0 - roughnessFactor;
+          vec2 ruv = vReflUv.xy / vReflUv.w + (normal - geometryNormal).xy * 0.02;
+          vec2 o = reflTexel * (1.0 + 8.0 * roughnessFactor);
+          vec3 refl = texture2D(reflMap, ruv).rgb * 0.4
+            + (texture2D(reflMap, ruv + vec2(o.x, o.y)).rgb + texture2D(reflMap, ruv - vec2(o.x, o.y)).rgb
+             + texture2D(reflMap, ruv + vec2(o.x, -o.y)).rgb + texture2D(reflMap, ruv - vec2(o.x, -o.y)).rgb) * 0.15;
+          outgoingLight += refl * gloss * gloss * mix(0.3, 0.85, fres);
+        }
+        #include <opaque_fragment>`);
+  };
+}
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+// The reflection renders at half the canvas resolution
+export function resizeFloor(w, h) {
+  if (!reflTarget) return;
+  const rw = Math.max(1, Math.round(w / 2)), rh = Math.max(1, Math.round(h / 2));
+  reflTarget.setSize(rw, rh);
+  if (floorMat.userData.shader) floorMat.userData.shader.uniforms.reflTexel.value.set(1 / rw, 1 / rh);
+}
 
-const perfTex = canvasTex(128, 128, (g) => {
-  g.fillStyle = '#0e1820'; g.fillRect(0, 0, 128, 128);
-  g.fillStyle = '#7fd6f2';
-  for (let y = 10; y < 128; y += 12) for (let x = 10; x < 128; x += 12) { g.beginPath(); g.arc(x, y, 2.6, 0, Math.PI * 2); g.fill(); }
-  g.strokeStyle = '#26404f'; g.lineWidth = 4; g.strokeRect(2, 2, 124, 124);
-});
+// Perforated (vented) tiles down every cold aisle: bare steel grates that catch the light, with supply air
+// glowing faintly through the holes. One material per aisle so a cooling failure can dim it.
+function perfDraw(g, solid, hole, frame) {
+  g.fillStyle = solid; g.fillRect(0, 0, 128, 128);
+  g.fillStyle = hole;
+  for (let y = 10; y < 128; y += 12) for (let x = 10; x < 128; x += 12) { g.beginPath(); g.arc(x, y, 3.2, 0, Math.PI * 2); g.fill(); }
+  g.strokeStyle = frame; g.lineWidth = 4; g.strokeRect(2, 2, 124, 124);
+}
+const perfTex = canvasTex(128, 128, g => { perfDraw(g, '#3a454e', '#04070a', '#1e252b'); speckle(g, 128, 128, 1500, 0.06); });
+const perfBump = canvasTex(128, 128, g => perfDraw(g, '#b0b0b0', '#000000', '#404040'), true);
+const perfGlow = canvasTex(128, 128, g => perfDraw(g, '#000000', '#7fd6f2', '#000000'));
 const PERF_W = 2 * ROW_HALF + 0.4, PERF_D = 1.2;
-perfTex.wrapS = perfTex.wrapT = THREE.RepeatWrapping; perfTex.repeat.set(PERF_W / 0.6, PERF_D / 0.6);
-// Perforated tiles down the middle of every cold aisle, one material each so a cooling failure can dim them
+for (const t of [perfTex, perfBump, perfGlow]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(PERF_W / 0.6, PERF_D / 0.6); }
 export const perfMats = [];
 COLD.forEach(z => {
-  const m = new THREE.MeshBasicMaterial({ map: perfTex, color: lc('#8fb8c8'), toneMapped: false }); m.userData.noClip = true;
+  const m = new THREE.MeshStandardMaterial({ map: perfTex, bumpMap: perfBump, bumpScale: 1.5, metalness: 0.6, roughness: 0.4,
+    emissiveMap: perfGlow, emissive: lc('#8fb8c8'), emissiveIntensity: 0.4 });
+  m.userData.noClip = true; m.userData.envMapIntensity = 0.015; m.onBeforeCompile = sh => broadPunctualSpec(sh, 0.55);
   const p = new THREE.Mesh(new THREE.PlaneGeometry(PERF_W, PERF_D), m);
-  p.rotation.x = -Math.PI / 2; p.position.set(0, 0.003, z); scene.add(p); perfMats.push(m);
+  p.rotation.x = -Math.PI / 2; p.position.set(0, 0.003, z); p.receiveShadow = true; scene.add(p); perfMats.push(m);
 });
 
 // ---------- Walls and suspended ceiling ----------
@@ -59,17 +143,6 @@ ceilTex.wrapS = ceilTex.wrapT = THREE.RepeatWrapping; ceilTex.repeat.set(2 * ROO
 const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(2 * ROOM.x, 2 * ROOM.z), new THREE.MeshStandardMaterial({ map: ceilTex, roughness: 0.95 }));
 ceiling.rotation.x = Math.PI / 2; ceiling.position.y = ROOM.h; ceiling.material.userData.noClip = true; scene.add(ceiling);
 
-// Light fixtures over every aisle (bright enough to bloom); one point light per cold aisle
-{
-  const fxGeo = new THREE.BoxGeometry(1.6, 0.04, 0.16), fxMat = new THREE.MeshBasicMaterial({ color: lc('#d8ecff').multiplyScalar(2.2) });
-  const aisles = COLD.concat(HACS.map(h => h.zc)), fx = new THREE.InstancedMesh(fxGeo, fxMat, aisles.length * 3);
-  aisles.forEach((z, i) => {
-    [-2.6, 0, 2.6].forEach((x, k) => { m4.makeTranslation(x, ROOM.h - 0.03, z); fx.setMatrixAt(i * 3 + k, m4); });
-    if (i < COLD.length) { const pl = new THREE.PointLight(0xa8dcff, 3.0, 9, 2); pl.position.set(0, ROOM.h - 0.2, z); scene.add(pl); }
-  });
-  scene.add(fx);
-}
-
 // ---------- Hot-aisle containment between back-to-back rows ----------
 // Tinted roof panels on a frame, sliding end doors, and chimneys to the ceiling plenum
 const glassMat = new THREE.MeshStandardMaterial({ color: 0x5a7a90, metalness: 0.1, roughness: 0.15, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide });
@@ -78,7 +151,7 @@ const chimMat = new THREE.MeshStandardMaterial({ color: 0x232c35, metalness: 0.5
 const signTex = labelTex('HOT AISLE', '#ff8a5c');
 HACS.forEach(H => {
   const W = H.x1 - H.x0, D = H.z1 - H.z0, XM = (H.x0 + H.x1) / 2, Z = H.zc;
-  const bar = (w, h, d, x, y, z) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), frameMat); b.position.set(x, y, z); scene.add(b); };
+  const bar = (w, h, d, x, y, z) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), frameMat); b.position.set(x, y, z); b.castShadow = true; scene.add(b); };
   const roof = new THREE.Mesh(new THREE.BoxGeometry(W, 0.01, D), glassMat);
   roof.position.set(XM, H.top + 0.005, Z); roof.renderOrder = 2; scene.add(roof);
   for (let k = 0; k <= 12; k++) bar(0.03, 0.035, D, H.x0 + k * W / 12, H.top + 0.02, Z);
@@ -114,12 +187,12 @@ function tray(x0, z0, x1, z1) {
   const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, y = TRAY_Y - 0.04;
   [-0.15, 0.15].forEach(o => {
     const rail = new THREE.Mesh(alongX ? new THREE.BoxGeometry(len, 0.06, 0.012) : new THREE.BoxGeometry(0.012, 0.06, len), trayMat);
-    rail.position.set(cx + (alongX ? 0 : o), y + 0.02, cz + (alongX ? o : 0)); scene.add(rail);
+    rail.position.set(cx + (alongX ? 0 : o), y + 0.02, cz + (alongX ? o : 0)); rail.castShadow = true; scene.add(rail);
   });
   for (let s = -len / 2 + 0.1; s < len / 2; s += 0.3) rungs.push([alongX ? cx + s : cx, y, alongX ? cz : cz + s, alongX]);
   for (let s = -len / 2 + 0.2; s < len / 2; s += 1.2) [-0.17, 0.17].forEach(o => rods.push([alongX ? cx + s : cx + o, alongX ? cz + o : cz + s]));
   const b = new THREE.Mesh(alongX ? new THREE.BoxGeometry(len, 0.035, 0.16) : new THREE.BoxGeometry(0.16, 0.035, len), bundleMat);
-  b.position.set(cx, y + 0.025, cz); scene.add(b);
+  b.position.set(cx, y + 0.025, cz); b.castShadow = true; scene.add(b);
 }
 ROWS.forEach(row => tray(-ROW_HALF - 0.1, row.z, TRAY_X, row.z));
 tray(TRAY_X, ROWS[0].z - 0.15, TRAY_X, ROWS[ROWS.length - 1].z + 0.15);   // spine
@@ -129,6 +202,7 @@ tray(TRAY_X, 0, ROOM.x - 0.06, 0);                                       // to t
   rungs.forEach(([x, y, z, ax], i) => { m4.makeRotationY(ax ? 0 : Math.PI / 2).setPosition(x, y, z); rg.setMatrixAt(i, m4); });
   const rd = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.006, 0.006, ROOM.h - TRAY_Y + 0.05, 6), rodMat, rods.length);
   rods.forEach(([x, z], i) => { m4.makeTranslation(x, (ROOM.h + TRAY_Y) / 2 - 0.04, z); rd.setMatrixAt(i, m4); });
+  rg.castShadow = rd.castShadow = true;
   scene.add(rg, rd);
 }
 
@@ -141,6 +215,7 @@ export const RISER_DZ = 0.1;   // offset towards the rear, inside the tray footp
     m4.makeTranslation(r.x + s * 0.035, (RACK_H + TRAY_Y - 0.04) / 2, r.z - r.face * RISER_DZ); riser.setMatrixAt(i * 2 + k, m4);
     riser.setColorAt(i * 2 + k, RC[k]);
   }));
+  riser.castShadow = true;
   scene.add(riser);
 }
 
@@ -165,7 +240,7 @@ export let tapLeds;
   const BUS_Y = 2.42, BUS_L = 2 * ROW_HALF + 0.3;
   ROWS.forEach(row => {
     const z = row.z + row.face * 0.26;
-    const bus = new THREE.Mesh(new THREE.BoxGeometry(BUS_L, 0.1, 0.13), busMat); bus.position.set(0, BUS_Y, z); scene.add(bus);
+    const bus = new THREE.Mesh(new THREE.BoxGeometry(BUS_L, 0.1, 0.13), busMat); bus.position.set(0, BUS_Y, z); bus.castShadow = true; scene.add(bus);
     const stripe = new THREE.Mesh(new THREE.BoxGeometry(BUS_L, 0.012, 0.132), stripeMat); stripe.position.set(0, BUS_Y + 0.03, z); scene.add(stripe);
     for (let k = -ROW_HALF + 0.3; k < ROW_HALF; k += 2.4) {
       const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, ROOM.h - BUS_Y, 6), rodMat);
@@ -182,6 +257,7 @@ export let tapLeds;
     m4.makeTranslation(r.x + 0.04, (BUS_Y - 0.17 + RACK_H) / 2, z); drops.setMatrixAt(i, m4);
     m4.makeTranslation(r.x - 0.05, BUS_Y - 0.09, z + r.face * 0.057); tapLeds.setMatrixAt(i, m4); tapLeds.setColorAt(i, off);
   });
+  taps.castShadow = drops.castShadow = true;
   scene.add(taps, drops, tapLeds);
 }
 
@@ -197,7 +273,7 @@ const cuFront = new THREE.MeshStandardMaterial({ map: louvreTex, metalness: 0.5,
 COOLING.forEach(({ name, z }) => {
   const x = -ROOM.x + 0.45, L = 3.2;
   const body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2.2, L), [cuFront, cuSide, cuSide, cuSide, cuSide, cuSide]);
-  body.position.set(x, 1.1, z); scene.add(body);
+  body.position.set(x, 1.1, z); body.castShadow = body.receiveShadow = true; scene.add(body);
   const stripMat = new THREE.MeshBasicMaterial({ color: lc(COL.cold), toneMapped: false });
   const strip = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.05, L - 0.4), stripMat); strip.position.set(x + 0.455, 1.92, z); scene.add(strip);
   const l = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 0.18), new THREE.MeshBasicMaterial({ map: labelTex(name), transparent: true, toneMapped: false }));

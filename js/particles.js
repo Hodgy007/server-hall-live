@@ -14,7 +14,8 @@ export function makePoints(n, size, parent) {
   const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size, map: glow, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+  // additive, so fog would brighten rather than fade them
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size, map: glow, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, fog: false }));
   pts.frustumCulled = false; (parent || scene).add(pts);
   return { geo, pos, col, n, pts };
 }
@@ -124,7 +125,7 @@ export function updateParticles(dt, perfMats) {
     cold.col[o] = coldC.r * b; cold.col[o + 1] = coldC.g * b; cold.col[o + 2] = coldC.b * b;
   }
   cold.geo.attributes.position.needsUpdate = true; cold.geo.attributes.color.needsUpdate = true;
-  perfMats.forEach((m, i) => m.color.setScalar(0.55 * flow[i] + 0.15));
+  perfMats.forEach((m, i) => { m.emissiveIntensity = 0.35 * flow[i] + 0.05; });
 
   // packets
   for (const r of racks) {

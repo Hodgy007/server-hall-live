@@ -6,12 +6,14 @@ A three.js animation of a server room that shows how the servers are performing.
 
 - **96 racks in eight rows of 12** (two rows each of web front-end, API services, database, and batch and analytics). Rows face each other across 1.8 m cold aisles and stand back to back over 1.2 m hot aisles; the outer rows A and H exhaust towards the end walls.
 - **The room**: raised floor, walls and a suspended ceiling with light fixtures. The walls and ceiling face inwards, so from outside the room the near ones drop away and you look in like a dollhouse.
+- **Lighting**: each ceiling fixture is a rectangular area light the size of the panel, so the floor and rack tops get soft pools of light down every aisle (the hot-aisle fixtures sit between the chimneys and run dimmer). In the cold aisle nearest where you are looking, shadow-casting lights take over most of each fixture's output, so racks, trays, busways and drop rods throw real shadows; move to another aisle and the shadows fade across with you. Ambient occlusion darkens where racks meet the floor, the gaps between them and the undersides of trays and busways. A faint cool haze makes fixtures, LEDs and far racks fall off with distance, with soft shafts of light under the cold-aisle fixtures.
+- **Floor**: polished anti-static tiles with sunk, rough seams. The floor reflects the racks, fixtures and LEDs (a planar reflection, blurred a little more where a tile is scuffed), and neighbouring tiles differ slightly in tint, gloss and wear. The vented tiles down the cold aisles are bare steel grates that catch the light, with supply air glowing faintly through the holes.
 - **Hot-aisle containment** over the three hot aisles (B/C, D/E, F/G): tinted roof panels on a frame, sliding end doors marked HOT AISLE, and three chimneys each up to the ceiling plenum.
 - **Cooling units** CU-1 and CU-2 on the west wall take warm air from the plenum and feed the floor: CU-1 the northern cold aisles (rows A–D), CU-2 the southern ones (rows E–H).
 - **Uplink panel** in the east wall, where the tray spine leaves the hall for the meet-me room; its strips pulse with hall traffic.
 - **Overhead services**: ladder cable trays with fibre bundles on threaded drop rods, a fibre riser from each rack up into its tray, and a busway over each row with a tap-off box, power drop and status LED per rack (amber above 10 kW).
-- **42U cabinets at true scale**: 12 × 2U servers in U1–24, blanking panels in U25–38, an out-of-band (iLO) switch in U39, a patch panel in U40 and two top-of-rack switches in U41–42. Fronts show NVMe caddies and honeycomb intakes; rears show PSUs, I/O and fibre leads, with cable looms down the hot-aisle side. Each rack has a **perforated front door**, so you see the LEDs through it.
-- **Glow**: LEDs, port lights and light fixtures bloom softly; steel panels, rails and floor pick up reflections from an environment map.
+- **42U cabinets at true scale**: 12 × 2U servers in U1–24, blanking panels in U25–38, an out-of-band (iLO) switch in U39, a patch panel in U40 and two top-of-rack switches in U41–42. Fronts show NVMe caddies and honeycomb intakes; rears show PSUs, I/O and fibre leads, with cable looms down the hot-aisle side. Each rack has a **perforated front door**, so you see the LEDs through it. No two cabinets are quite alike: the powder coat varies in tint and sheen between batches, door edges, lock strips and kick plates are scuffed to different degrees, and about one rack in ten (A01, B03, F02 and others) is from a second vendor, with lighter panels, ribbed sides, a slotted roof, square-perforated doors and dark handles.
+- **Glow**: LEDs, port lights and light fixtures bloom softly; steel panels and rails pick up soft reflections from an environment map.
 - **Light column on each rack**: height and colour show CPU load, or inlet air temperature when you switch the colour mode.
 - **Server LEDs**: activity lights blink faster under load; status lights go amber for a warning and flash red when critical.
 - **Hot-aisle particles**: exhaust air, brighter and redder as it heats up. In the contained aisles it rises to the roof, drifts to the nearest chimney and leaves through it; rows A and H exhaust towards the end walls.
@@ -86,7 +88,9 @@ python3 -m http.server 8000
 # then open http://localhost:8000
 ```
 
-three.js 0.169.0 and its add-ons (OrbitControls, RoomEnvironment, EffectComposer, UnrealBloomPass, OutputPass) load from jsDelivr through an import map, and the fonts from Google Fonts.
+three.js 0.169.0 and its add-ons (OrbitControls, RoomEnvironment, RectAreaLightUniformsLib, Reflector, EffectComposer, GTAOPass, UnrealBloomPass, OutputPass) load from jsDelivr through an import map, and the fonts from Google Fonts.
+
+Phones and tablets (narrow screens or touch-only pointers) skip the floor reflection and ambient occlusion and use smaller shadow maps. Add `?quality=low` to the address to get that on any machine, for example a slow laptop, or `?quality=high` to force everything on.
 
 ## Code layout
 
@@ -94,11 +98,12 @@ three.js 0.169.0 and its add-ons (OrbitControls, RoomEnvironment, EffectComposer
 | --- | --- |
 | `index.html` | Markup for the HUD and the import map |
 | `css/style.css` | All styles |
-| `js/core.js` | Renderer, scene, camera, controls, lighting, colour scales, hall geometry constants, canvas helpers |
+| `js/core.js` | Renderer, scene, camera, controls, fill lighting, quality setting, colour scales, hall geometry constants, canvas helpers |
 | `js/state.js` | Shared mutable state: world inputs, hall totals, selection, the pulled-out server |
-| `js/textures.js` | Canvas-drawn textures for cabinets, doors and rack-mounted hardware |
+| `js/textures.js` | Canvas-drawn textures for cabinets (worn and second-vendor variants), doors and rack-mounted hardware |
 | `js/racks.js` | Cabinets, servers, switches, panels, doors, selection outline and inventory highlight |
-| `js/hall.js` | Floor, walls, ceiling, hot-aisle containment, trays, risers, busway, cooling units, uplink panel |
+| `js/hall.js` | Reflective floor and vented tiles, walls, ceiling, hot-aisle containment, trays, risers, busway, cooling units, uplink panel |
+| `js/lights.js` | Ceiling fixtures as area lights, shadow-casting lights that follow the viewed aisle, light shafts in the haze |
 | `js/particles.js` | Hot and cold air particles, network packets |
 | `js/server.js` | Pulled-out server model and its per-core telemetry |
 | `js/sim.js` | Telemetry simulation and rack/hall roll-ups |
@@ -106,7 +111,7 @@ three.js 0.169.0 and its add-ons (OrbitControls, RoomEnvironment, EffectComposer
 | `js/camera.js` | Camera flights and the orbit toggle |
 | `js/hud.js` | KPI strip, rack and server panels, inventory, legend |
 | `js/alerts.js` | Alert feed |
-| `js/post.js` | Bloom post-processing |
+| `js/post.js` | Post-processing: ambient occlusion and bloom |
 | `js/faults.js` | Hardware faults: inject, repair, describe |
 | `js/replay.js` | Ten-minute snapshot ring buffer and the swap used while replaying |
 | `js/data.js` | Loads `data/hall.json` |

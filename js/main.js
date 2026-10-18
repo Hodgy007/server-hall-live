@@ -2,7 +2,8 @@
 import { THREE, $, canvas, renderer, scene, camera, controls, SERVERS, COLS, cutPlane } from './core.js';
 import { W, UI, SV } from './state.js';
 import { racks, byId, byHost, cabinets, plates, rears, selBox, setDoor, doorOpen, updateDoors } from './racks.js';
-import './hall.js';
+import { resizeFloor } from './hall.js';
+import { updateLights } from './lights.js';
 import { heat, cold } from './particles.js';
 import { SRV, srvMeshes, air, shim, mountServer, updateServerModel } from './server.js';
 import { step } from './sim.js';
@@ -196,19 +197,20 @@ document.addEventListener('keydown', e => {
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   renderer.setSize(w, h, false); resizePost(w, h);
+  const pr = renderer.getPixelRatio(); resizeFloor(w * pr, h * pr);
   camera.aspect = w / h; camera.fov = w / h < 1 ? 64 : 42; camera.updateProjectionMatrix();
   updateSparks();
 }
 window.addEventListener('resize', resize);
 if (window.innerWidth <= 720) { $('opsBox').open = false; setRackMin(true); }
 
-// Keep reflections subtle (just enough for steel to read as steel); let the rack-view cut clip everything but the room shell
+// Keep reflections subtle (just enough for steel to read as steel; the floor has its own planar reflection); let the rack-view cut clip everything but the room shell
 scene.traverse(o => {
   const ms = Array.isArray(o.material) ? o.material : [o.material];
   for (const m of ms) {
     if (!m) continue;
-    if (m.isMeshStandardMaterial) m.envMapIntensity = m.metalness > 0.6 ? 0.22 : 0.12;
-    if (!m.userData.noClip) m.clippingPlanes = [cutPlane];
+    if (m.isMeshStandardMaterial) m.envMapIntensity = m.userData.envMapIntensity ?? (m.metalness > 0.6 ? 0.22 : 0.12);
+    if (!m.userData.noClip) { m.clippingPlanes = [cutPlane]; m.clipShadows = true; }
   }
 });
 
@@ -224,7 +226,8 @@ syncReplay();
 
 let last = performance.now(), hudAcc = 0;
 function frame(now) {
-  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  // a frame's timestamp can precede the previous performance.now() (slow first frames), so never step backwards
+  const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now;
   step(dt);
   const past = swapIn();          // replaying: draw (and show in the panels) the recorded state, then restore the live one
   updateVisuals(dt);
@@ -232,6 +235,7 @@ function frame(now) {
   updateServerModel(dt);
   updateCam(dt);
   controls.update();
+  updateLights(dt);
   if (releaseCut() && !SV.open && UI.selected) setDoor(UI.selected, false);
   render();
   if (SV.open) drawCores();

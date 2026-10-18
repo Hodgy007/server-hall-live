@@ -1,24 +1,53 @@
 // Procedural textures for cabinets and rack-mounted hardware, all drawn on canvas.
 import { THREE, canvasTex, speckle } from './core.js';
 
+// ---------- Wear ----------
+// Rubs where the powder coat is worn towards bare steel, and darker marks from trolleys, boots and cable reels
+function scuffs(g, x, y, w, h, n) {
+  for (let i = 0; i < n; i++) {
+    const px = x + Math.random() * w, py = y + Math.random() * h, len = 3 + Math.random() * 16, a = (Math.random() - 0.5) * 0.9;
+    g.strokeStyle = Math.random() < 0.65 ? `rgba(170,182,192,${0.05 + Math.random() * 0.12})` : `rgba(0,0,0,${0.15 + Math.random() * 0.25})`;
+    g.lineWidth = 0.7 + Math.random() * 1.6;
+    g.beginPath(); g.moveTo(px, py); g.lineTo(px + Math.cos(a) * len, py + Math.sin(a) * len); g.stroke();
+  }
+}
+
 // ---------- Cabinet steel ----------
-export const sideTex = canvasTex(256, 512, (g, w, h) => {
-  g.fillStyle = '#1c242d'; g.fillRect(0, 0, w, h); speckle(g, w, h, 9000, 0.035);
-  g.fillStyle = '#0b1015'; g.fillRect(0, h / 2 - 2, w, 4); g.fillRect(0, 0, 5, h); g.fillRect(w - 5, 0, 5, h); g.fillRect(0, 0, w, 4); g.fillRect(0, h - 4, w, 4);
-  g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(0, h / 2 + 2, w, 1); g.fillRect(0, 4, w, 1); g.fillRect(5, 0, 1, h);
-  [h * 0.25, h * 0.75].forEach(y => { g.fillStyle = '#0d1217'; g.fillRect(w - 28, y - 16, 12, 32); g.fillStyle = '#56626d'; g.fillRect(w - 25, y - 5, 6, 10); });
-});
+// Three worn variants of the standard cabinet and a second vendor's (index 3): smoother, lighter panels with
+// ribbed sides, slotted roof vents and no mid-height seam
+function drawSide(g, w, h, vendor) {
+  g.fillStyle = vendor ? '#22272c' : '#1c242d'; g.fillRect(0, 0, w, h); speckle(g, w, h, vendor ? 4000 : 9000, 0.035);
+  g.fillStyle = '#0b1015'; g.fillRect(0, 0, 5, h); g.fillRect(w - 5, 0, 5, h); g.fillRect(0, 0, w, 4); g.fillRect(0, h - 4, w, 4);
+  if (vendor) {
+    for (let x = 40; x < w - 30; x += 44) { g.fillStyle = '#15191d'; g.fillRect(x, 30, 3, h - 60); g.fillStyle = 'rgba(255,255,255,0.06)'; g.fillRect(x + 3, 30, 1, h - 60); }
+    g.fillStyle = '#3b434b'; g.fillRect(18, 22, 40, 12);
+  } else {
+    g.fillStyle = '#0b1015'; g.fillRect(0, h / 2 - 2, w, 4);
+    g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(0, h / 2 + 2, w, 1);
+    [h * 0.25, h * 0.75].forEach(y => { g.fillStyle = '#0d1217'; g.fillRect(w - 28, y - 16, 12, 32); g.fillStyle = '#56626d'; g.fillRect(w - 25, y - 5, 6, 10); });
+  }
+  g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(0, 4, w, 1); g.fillRect(5, 0, 1, h);
+}
+export const sideTexes = [0, 1, 2, 3].map(k => canvasTex(256, 512, (g, w, h) => {
+  drawSide(g, w, h, k === 3);
+  // front and rear edges get knocked, the bottom gets kicked; the vendor cabinet is the newest and least worn
+  const n = k % 3;
+  scuffs(g, 0, 0, 22, h, 10 + n * 14); scuffs(g, w - 22, 0, 22, h, 6 + n * 10); scuffs(g, 0, h - 70, w, 66, 8 + n * 12);
+}));
 export const roughTex = canvasTex(128, 256, (g, w, h) => { g.fillStyle = '#a0a0a0'; g.fillRect(0, 0, w, h); speckle(g, w, h, 6000, 0.12); }, true);
-export const topTex = canvasTex(256, 420, (g, w, h) => {
-  g.fillStyle = '#1a222b'; g.fillRect(0, 0, w, h); speckle(g, w, h, 7000, 0.035);
+const drawTop = vendor => (g, w, h) => {
+  g.fillStyle = vendor ? '#20252a' : '#1a222b'; g.fillRect(0, 0, w, h); speckle(g, w, h, 7000, 0.035);
   g.fillStyle = '#080b0e';
-  for (let y = 120, k = 0; y < 300; y += 9, k++) for (let x = 40 + (k % 2) * 4.5; x < w - 40; x += 9) { g.beginPath(); g.arc(x, y, 2.4, 0, Math.PI * 2); g.fill(); }
+  if (vendor) for (let y = 110; y < 310; y += 14) g.fillRect(44, y, w - 88, 6);
+  else for (let y = 120, k = 0; y < 300; y += 9, k++) for (let x = 40 + (k % 2) * 4.5; x < w - 40; x += 9) { g.beginPath(); g.arc(x, y, 2.4, 0, Math.PI * 2); g.fill(); }
   [[30, 34], [h - 64, 34]].forEach(([y, hh]) => {
     g.fillStyle = '#06080b'; g.fillRect(50, y, w - 100, hh);
     g.fillStyle = '#1c232b'; for (let x = 52; x < w - 50; x += 3) g.fillRect(x, y + 2, 1, hh - 4);
   });
   g.strokeStyle = '#0b1015'; g.lineWidth = 6; g.strokeRect(3, 3, w - 6, h - 6);
-});
+  scuffs(g, 0, 0, w, h, 25);
+};
+export const topTex = canvasTex(256, 420, drawTop(false)), topTexB = canvasTex(256, 420, drawTop(true));
 export const railTex = canvasTex(32, 1024, (g, w, h) => {
   g.fillStyle = '#34404b'; g.fillRect(0, 0, w, h);
   g.fillStyle = '#050608'; for (let k = 0; k < 126; k++) g.fillRect(11, k * h / 126 + 1.5, 10, 4.6);
@@ -37,21 +66,33 @@ export const contactTex = canvasTex(128, 192, (g, w, h) => {
   g.filter = 'blur(14px)'; g.fillStyle = 'rgba(0,0,0,0.85)'; g.fillRect(30, 34, w - 60, h - 68);
 }, true);
 
-// Perforated front door: honeycomb holes in a solid border, solid lock strip on the opening edge
+// Perforated front door: honeycomb holes in a solid border, solid lock strip on the opening edge. The second
+// vendor's door has larger square perforations, a wider frame and a nameplate.
 const DOOR_W = 256, DOOR_H = 832;
-function doorHoles(g, w, h, solid, hole) {
+function doorHoles(g, w, h, solid, hole, vendor) {
   g.fillStyle = solid; g.fillRect(0, 0, w, h);
   g.fillStyle = hole;
+  if (vendor) {
+    for (let y = 60; y < h - 40; y += 8) for (let x = 24; x < w - 44; x += 8) g.fillRect(x, y, 5, 5);
+    return;
+  }
   for (let y = 22, k = 0; y < h - 22; y += 5.2, k++) {
     for (let x = 16 + (k % 2) * 3; x < w - 34; x += 6) { g.beginPath(); g.arc(x, y, 2.1, 0, Math.PI * 2); g.fill(); }
   }
 }
-export const doorTex = canvasTex(DOOR_W, DOOR_H, (g, w, h) => {
-  doorHoles(g, w, h, '#202932', '#0b0f13');
+// Three worn variants of the standard door and the second vendor's (index 3)
+export const doorTexes = [0, 1, 2, 3].map(k => canvasTex(DOOR_W, DOOR_H, (g, w, h) => {
+  const vendor = k === 3;
+  doorHoles(g, w, h, vendor ? '#252a30' : '#202932', '#0b0f13', vendor);
   speckle(g, w, h, 4000, 0.03);
   g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(0, 0, w, 2); g.fillRect(0, 0, 2, h);
-});
-export const doorAlpha = canvasTex(DOOR_W, DOOR_H, (g, w, h) => doorHoles(g, w, h, '#ffffff', '#1a1a1a'), true);
+  if (vendor) { g.fillStyle = '#4a535c'; g.fillRect(70, 22, 100, 18); g.fillStyle = '#1a1f24'; g.fillRect(76, 28, 88, 6); }
+  // the lock strip is handled every day; the bottom rail gets kicked
+  const n = k % 3;
+  scuffs(g, w - 36, h * 0.3, 36, h * 0.4, 14 + n * 12); scuffs(g, 0, h - 26, w, 26, 6 + n * 10); scuffs(g, 0, 0, 6, h, 4 + n * 6);
+}));
+const alphaStd = canvasTex(DOOR_W, DOOR_H, (g, w, h) => doorHoles(g, w, h, '#ffffff', '#1a1a1a'), true);
+export const doorAlphas = [alphaStd, alphaStd, alphaStd, canvasTex(DOOR_W, DOOR_H, (g, w, h) => doorHoles(g, w, h, '#ffffff', '#1a1a1a', true), true)];
 
 // ---------- Rack-mounted hardware ----------
 // Each face is drawn three times: colour, height map for bump shading, and glow (LEDs only).
