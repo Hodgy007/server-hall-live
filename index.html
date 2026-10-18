@@ -16,7 +16,7 @@
     <div class="brand">
       <div class="eyebrow">Hall 2 · Rows A–H · 96 racks · 2 cooling units</div>
       <h1>Server Hall Live</h1>
-      <div class="meta"><span class="chip" id="liveChip">Simulated telemetry</span><span class="hint">Drag to orbit · scroll to zoom · click a rack to open its door, then a server</span></div>
+      <div class="meta"><span class="chip" id="liveChip">Simulated telemetry</span><span class="hint">Drag to orbit · right-drag or WASD to move · scroll to zoom · click a rack to open its door, then a server</span></div>
       <div class="tools">
         <button id="hallView" type="button" title="Back to the whole-hall overview (Esc)">Reset view</button>
         <form id="findForm" class="find" role="search">
@@ -102,10 +102,10 @@
         <div><dt>Network</dt><dd id="spNet">—</dd></div>
         <div><dt>NIC 1</dt><dd id="spNic1">—</dd></div>
         <div><dt>NIC 2</dt><dd id="spNic2">—</dd></div>
-        <div><dt>OOB (iLO)</dt><dd id="spIlo">—</dd></div>
+        <div><dt>OOB (iDRAC)</dt><dd id="spIlo">—</dd></div>
       </dl>
       <ul class="faults" id="sFaults" hidden></ul>
-      <a class="btnlink" id="sIlo" href="#" target="_blank" rel="noopener">Open iLO console ↗</a>
+      <a class="btnlink" id="sIlo" href="#" target="_blank" rel="noopener">Open iDRAC console ↗</a>
       <div class="cores">
         <div class="tl"><span>Per-core load, 64 cores</span><span>CPU0 · CPU1</span></div>
         <canvas id="sCores"></canvas>

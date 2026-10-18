@@ -79,6 +79,8 @@ controls.dampingFactor = 0.08;
 controls.maxPolarAngle = Math.PI * 0.48;
 controls.minDistance = 0.35;
 controls.maxDistance = 34;
+// Right-drag (or shift-drag, or two fingers) slides the view across the floor rather than in the screen plane
+controls.screenSpacePanning = false;
 controls.autoRotateSpeed = 0.35;
 controls.autoRotate = !reduceMotion;
 

@@ -2,7 +2,7 @@
 // it is polled and its figures replace the simulation for every server and rack it reports.
 // Anything it leaves out, or stops reporting for three intervals, falls back to the simulation.
 import { HALL } from './data.js';
-import { byHost, byId } from './racks.js';
+import { byHost, byId, MEM_GB } from './racks.js';
 import { pushAlert } from './alerts.js';
 
 const T = HALL.telemetry || {}, EVERY = (T.intervalSeconds || 10) * 1000;
@@ -35,7 +35,7 @@ if (live.enabled) { poll(); setInterval(poll, EVERY); }
 export function applyServer(sv) {
   const L = sv.live; if (!fresh(L)) return false;
   if (L.cpu != null) sv.load = Math.max(0, Math.min(1, L.cpu / 100));
-  if (L.memGB != null) sv.mem = Math.max(0, Math.min(1, L.memGB / 512));
+  if (L.memGB != null) sv.mem = Math.max(0, Math.min(1, L.memGB / MEM_GB));
   if (L.tempC != null) sv.temp = L.tempC;
   if (L.powerW != null) sv.power = L.powerW;
   if (L.netGbps != null) sv.net = L.netGbps;
