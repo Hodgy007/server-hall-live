@@ -87,9 +87,11 @@ const shaftMat = new THREE.ShaderMaterial({
     varying float vH; varying vec3 vN; varying vec3 vV; varying float vD;
     void main() {
       #include <clipping_planes_fragment>
-      float edge = pow(abs(dot(normalize(vN), normalize(vV))), 1.5);
+      // Clamp before pow: with multisampling a GPU can evaluate just outside a triangle, where vH dips below 0,
+      // and pow of a negative is NaN, which the bloom pass smears into a black block across the screen
+      float edge = pow(clamp(abs(dot(normalize(vN), normalize(vV))), 0.0, 1.0), 1.5);
       // haze is only visible over distance: a shaft fades out as the camera walks into it
-      gl_FragColor = vec4(color * strength * pow(vH, 1.8) * edge * smoothstep(1.5, 5.0, vD), 1.0);
+      gl_FragColor = vec4(color * strength * pow(clamp(vH, 0.0, 1.0), 1.8) * edge * smoothstep(1.5, 5.0, vD), 1.0);
     }`,
   transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, clipping: true
 });
