@@ -1,9 +1,10 @@
 // Entry point: wires the scene, simulation, HUD and interaction together and runs the frame loop.
-import { THREE, $, canvas, renderer, scene, camera, controls, SERVERS, COLS, cutPlane } from './core.js';
+import { THREE, $, canvas, renderer, scene, camera, controls, SERVERS, COLS, cutPlane, esc } from './core.js';
 import { W, UI, SV } from './state.js';
 import { racks, byId, byHost, cabinets, plates, rears, selBox, setDoor, doorOpen, updateDoors } from './racks.js';
 import './hall.js';
-import { updateLights } from './lights.js';
+import { updateLights, bakedLighting } from './lights.js';
+import { setThermal, updateThermal } from './thermal.js';
 import { heat, cold } from './particles.js';
 import { SRV, srvMeshes, air, shim, mountServer, updateServerModel } from './server.js';
 import { step } from './sim.js';
@@ -29,6 +30,7 @@ function openServer(sv) {
   setOrbit(false);              // inspecting a server stops the orbit until Start rotation is pressed
   $('rackPanel').hidden = true; $('srvPanel').hidden = false;
   flyServer(sv);
+  setLink('host', sv.host);
   updateHud(); updateSparks();
 }
 // Slide the server back in like a drawer; the camera stays put
@@ -37,17 +39,33 @@ function closeServer() {
   SV.open = false;
   controls.autoRotate = UI.orbitOn;
   $('rackPanel').hidden = false; $('srvPanel').hidden = true;
+  setLink(UI.cutRack && 'rack', UI.cutRack && UI.cutRack.id);
   updateHud(); updateSparks();
 }
 function focusRack(r) {
   closeServer(); select(r); setOrbit(false); flyRack(r);
+  setLink('rack', r.id);
 }
 function hallView() {
   closeServer();
   if (UI.selected) setDoor(UI.selected, false);
   flyHall();
+  setLink();
 }
 hooks.open = openServer;
+
+// ---------- Deep links: #rack=B03 opens rack view, #host=db-e04-07 pulls that server out ----------
+// The address follows what you are looking at (without adding history entries), so it can be copied and shared
+function setLink(kind, id) {
+  history.replaceState(null, '', kind ? `#${kind}=${encodeURIComponent(id)}` : location.pathname + location.search);
+}
+function followLink() {
+  const m = /^#(rack|host)=(.+)$/.exec(location.hash); if (!m) return;
+  const id = decodeURIComponent(m[2]);
+  if (m[1] === 'host') { const sv = byHost.get(id) || byHost.get(id.toLowerCase()); if (sv) openServer(sv); }
+  else { const r = byId[id.toUpperCase()]; if (r) focusRack(r); }
+}
+window.addEventListener('hashchange', followLink);
 
 // ---------- Picking ----------
 const pickables = [plates, rears, ...cabinets];
@@ -80,8 +98,8 @@ canvas.addEventListener('pointermove', e => {
   if (hit) {
     tip.hidden = false;
     const sv = hit.sv, r = UI.hovered;
-    tip.innerHTML = hit.close ? `<b>${SV.sel.host}</b>click to push back in`
-      : sv && !hit.focus ? `<b>${sv.host}</b>U${sv.u} · CPU ${Math.round(sv.load * 100)}% · click to pull out`
+    tip.innerHTML = hit.close ? `<b>${esc(SV.sel.host)}</b>click to push back in`
+      : sv && !hit.focus ? `<b>${esc(sv.host)}</b>U${sv.u} · CPU ${Math.round(sv.load * 100)}% · click to pull out`
       : `<b>${r.id}</b>CPU ${Math.round(r.load * 100)}% · inlet ${r.inlet.toFixed(1)} °C · ${r.power.toFixed(1)} of 12 kW` + (UI.cutRack === r ? '' : ' · click to view the front');
     const x = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 8);
     tip.style.left = x + 'px'; tip.style.top = (e.clientY + 16) + 'px';
@@ -131,6 +149,13 @@ $('airflow').addEventListener('click', () => {
   UI.airOn = !UI.airOn;
   [heat, cold, air, shim].forEach(p => { p.pts.visible = UI.airOn; });
   $('airflow').textContent = UI.airOn ? 'Hide airflow' : 'Show airflow'; $('airflow').classList.toggle('off', !UI.airOn);
+});
+// Thermal camera: swaps the hall to a false-colour infrared view; the colour mode does not apply while it is on
+$('thermal').addEventListener('click', () => {
+  UI.thermal = !UI.thermal; setThermal(UI.thermal);
+  const b = $('thermal'); b.classList.toggle('off', !UI.thermal); b.setAttribute('aria-pressed', String(UI.thermal));
+  $('modeSet').disabled = UI.thermal;
+  renderLegend();
 });
 $('hallView').addEventListener('click', hallView);
 
@@ -198,7 +223,10 @@ scene.traverse(o => {
   const ms = Array.isArray(o.material) ? o.material : [o.material];
   for (const m of ms) {
     if (!m) continue;
-    if (m.isMeshStandardMaterial) m.envMapIntensity = m.userData.envMapIntensity ?? (m.metalness > 0.6 ? 0.22 : 0.12);
+    if (m.isMeshStandardMaterial && !m.userData.baked) {
+      m.envMapIntensity = m.userData.envMapIntensity ?? (m.metalness > 0.6 ? 0.22 : 0.12);
+      bakedLighting(m); m.userData.baked = true;
+    }
     if (!m.userData.noClip) { m.clippingPlanes = [cutPlane]; m.clipShadows = true; }
   }
 });
@@ -212,6 +240,7 @@ UI.selected = byId.A03;
 resize();
 select(UI.selected, false);
 syncReplay();
+followLink();
 
 let last = performance.now(), hudAcc = 0;
 function frame(now) {
@@ -220,12 +249,13 @@ function frame(now) {
   step(dt);
   const past = swapIn();          // replaying: draw (and show in the panels) the recorded state, then restore the live one
   updateVisuals(dt);
+  updateThermal(dt);
   updateDoors(dt);
   updateServerModel(dt);
   updateCam(dt);
   controls.update();
   updateLights(dt);
-  if (releaseCut() && !SV.open && UI.selected) setDoor(UI.selected, false);
+  if (releaseCut() && !SV.open && UI.selected) { setDoor(UI.selected, false); setLink(); }
   render();
   if (SV.open) drawCores();
   hudAcc += dt;

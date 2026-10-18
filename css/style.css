@@ -94,6 +94,7 @@ input[type="range"] { width: 100%; accent-color: var(--cold); margin: 0; }
 .seg label:first-of-type { border-radius: 4px 0 0 4px; } .seg label:last-of-type { border-radius: 0 4px 4px 0; }
 .seg label:not(:first-of-type) { border-left: 0; }
 .seg input:checked + label { color: var(--bg); background: var(--cold); border-color: var(--cold); }
+.seg:disabled { opacity: 0.45; } .seg:disabled label { cursor: not-allowed; }
 .legend { display: grid; gap: 3px; }
 .lgbar { height: 6px; border-radius: 3px; }
 .lgticks { position: relative; height: 14px; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }

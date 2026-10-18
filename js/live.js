@@ -8,6 +8,11 @@ import { pushAlert } from './alerts.js';
 const T = HALL.telemetry || {}, EVERY = (T.intervalSeconds || 10) * 1000;
 export const live = { enabled: !!T.url, servers: 0, at: 0, error: null };
 export const fresh = o => !!o && performance.now() - o.at < EVERY * 3;
+// Feeds often send numbers as strings; take those, and drop anything that is not a finite number
+// (one NaN reaching the renderer turns the view black)
+const num = v => (typeof v === 'number' || (typeof v === 'string' && v.trim() !== '')) && Number.isFinite(+v) ? +v : null;
+const pick = (v, keys) => Object.fromEntries(keys.map(k => [k, num(v && v[k])]));
+const SV_KEYS = ['cpu', 'memGB', 'tempC', 'powerW', 'netGbps'], RACK_KEYS = ['inletC'];
 
 async function poll() {
   try {
@@ -15,8 +20,8 @@ async function poll() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const d = await res.json(), now = performance.now();
     let n = 0;
-    for (const [host, v] of Object.entries(d.servers || {})) { const sv = byHost.get(host); if (sv) { sv.live = { ...v, at: now }; n++; } }
-    for (const [id, v] of Object.entries(d.racks || {})) { const r = byId[id]; if (r) r.live = { ...v, at: now }; }
+    for (const [host, v] of Object.entries(d.servers || {})) { const sv = byHost.get(host); if (sv) { sv.live = { ...pick(v, SV_KEYS), at: now }; n++; } }
+    for (const [id, v] of Object.entries(d.racks || {})) { const r = byId[id]; if (r) r.live = { ...pick(v, RACK_KEYS), at: now }; }
     if (!live.at || live.error) pushAlert('info', `Live telemetry connected · ${n} server${n === 1 ? '' : 's'} reporting`);
     live.servers = n; live.at = now; live.error = null;
   } catch (e) {
