@@ -11,7 +11,6 @@ import { updateVisuals } from './visuals.js';
 import { flyHall, flyRack, flyServer, updateCam, setOrbit, releaseCut } from './camera.js';
 import { hooks, updateHud, updateSparks, drawCores, renderLegend } from './hud.js';
 import { pushAlert } from './alerts.js';
-import { inject, clearAll } from './faults.js';
 import { replay, recorded, swapIn, swapOut } from './replay.js';
 import { live, fresh } from './live.js';
 import { render, resizePost } from './post.js';
@@ -124,13 +123,6 @@ function setRackMin(min) {
   if (!min) updateSparks();
 }
 $('rackMin').addEventListener('click', () => setRackMin(!$('rackPanel').classList.contains('min')));
-$('traffic').addEventListener('input', e => { W.traffic = e.target.value / 100; $('trafficVal').textContent = e.target.value + '%'; });
-$('spike').addEventListener('click', () => { W.spikeAge = 0; pushAlert('info', 'Traffic spike injected: ~3× web requests for 10 s'); });
-$('crac').addEventListener('click', e => {
-  W.fault = !W.fault; e.currentTarget.setAttribute('aria-pressed', String(W.fault));
-  e.currentTarget.textContent = W.fault ? 'Restore CU-2' : 'Fail cooling CU-2';
-  pushAlert(W.fault ? 'crit' : 'ok', W.fault ? 'CU-2 compressor tripped; rows E–H losing supply air' : 'CU-2 restored; supply air recovering');
-});
 document.querySelectorAll('input[name="mode"]').forEach(el => el.addEventListener('change', e => { W.mode = e.target.value; renderLegend(); }));
 $('orbit').addEventListener('click', () => setOrbit(!UI.orbitOn));
 setOrbit(controls.autoRotate);
@@ -156,8 +148,6 @@ function syncReplay() {
 }
 $('replay').addEventListener('input', e => { replay.ago = -Number(e.target.value); syncReplay(); updateHud(); });
 $('replayLive').addEventListener('click', () => { replay.ago = 0; $('replay').value = '0'; syncReplay(); updateHud(); });
-$('faultAdd').addEventListener('click', () => { let f = null; for (let n = 0; n < 5 && !f; n++) f = inject(); updateHud(); });
-$('faultClear').addEventListener('click', () => { clearAll(); updateHud(); });
 
 // ---------- Find a host or rack ----------
 {

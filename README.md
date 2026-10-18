@@ -55,20 +55,9 @@ Below that it shows per-core load for all 64 cores, CPU temperatures, fan speed,
 - KPI strip: requests/s, average CPU, network, IT load, PUE and the hottest inlet temperature.
 - Rack detail, **Live** tab: CPU, memory, power and network are rolled up from the rack's 12 servers (power also includes the two switches), with a count of servers in warning or critical state, inlet/exhaust temperature and 2-minute trends. A rack also turns amber when any of its servers is critical. Click a rack or use the arrow buttons.
 - Rack detail, **Inventory** tab: everything in the rack from U42 down (ToR switches, patch panel, OOB switch, free space, each server with model, drives, serial and in-service date, both PDUs), with live load and power per device and a rack total. **Hover a row** to outline that device in the rack; click a server row to pull it out.
-- Controls: traffic demand slider, **Replay**, traffic spike, **Inject hardware fault** / **Repair all faults**, cooling unit CU-2 failure (its aisles lose supply air and those racks' inlets climb), colour mode, **Stop/Start rotation** for the camera orbit and **Hide/Show airflow** for the air particles.
+- Controls: **Replay**, colour mode, **Stop/Start rotation** for the camera orbit and **Hide/Show airflow** for the air particles. The simulation runs at a steady 60% traffic demand with both cooling units healthy.
 - **Colour racks by** CPU load, inlet temperature or **power** (draw against each rack's 12 kW budget, which shows where there is capacity to add servers).
 - **Replay** scrubs back up to 10 minutes: the 3D view, rack panel and KPIs show the hall as it was (one snapshot a second) while the simulation keeps running; the header chip shows how far back you are and **back to live** returns. Sparklines and the pulled-out server stay live.
-
-## Hardware faults
-
-**Inject hardware fault** fails something at random somewhere in the hall:
-
-- **PSU**: the server keeps running on its second supply. In the pulled-out view the failed PSU's LED flashes red.
-- **NVMe drive**: RAID runs degraded while it rebuilds onto the hot spare; the drive's LED stays amber and the storage line says so.
-- **Fan**: that fan stops, the other five spin about 15% faster and the CPUs run about 6 °C hotter.
-- **ToR switch**: one of the rack's two switches goes down; its status LEDs flash red, every server's bond runs on the other link, and the NIC line for that switch says *link down*.
-
-Any fault makes its server a warning (amber status LED), which rolls up into the rack's counts; a switch outage makes the whole rack a warning. Each fault raises an alert, is listed in the server panel, and is named on the server's row in the inventory. **Repair all faults** clears them.
 
 ## Your own data
 
@@ -112,7 +101,7 @@ Phones and tablets (narrow screens or touch-only pointers) skip ambient occlusio
 | `js/hud.js` | KPI strip, rack and server panels, inventory, legend |
 | `js/alerts.js` | Alert feed |
 | `js/post.js` | Post-processing: ambient occlusion and bloom |
-| `js/faults.js` | Hardware faults: inject, repair, describe |
+| `js/faults.js` | Hardware fault state and descriptions read by the panels |
 | `js/replay.js` | Ten-minute snapshot ring buffer and the swap used while replaying |
 | `js/data.js` | Loads `data/hall.json` |
 | `js/live.js` | Polls the optional telemetry feed and applies it over the simulation |

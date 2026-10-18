@@ -85,7 +85,6 @@ summary { cursor: pointer; font-size: 10px; letter-spacing: 0.12em; text-transfo
 .row b { color: var(--fg); font-weight: 500; font-variant-numeric: tabular-nums; }
 input[type="range"] { width: 100%; accent-color: var(--cold); margin: 0; }
 .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-#crac[aria-pressed="true"] { color: var(--crit); border-color: var(--crit); }
 .tog::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: var(--cold); }
 .tog.off::before { background: transparent; box-shadow: inset 0 0 0 1px var(--muted); }
 .seg { border: 0; margin: 0; padding: 0; display: flex; gap: 0; flex-wrap: wrap; }
