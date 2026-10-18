@@ -14,6 +14,9 @@ export const COL = { ok: tok('--ok'), warn: tok('--warn'), crit: tok('--crit'), 
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const lc = h => new THREE.Color(h).convertSRGBToLinear();
 export const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+// Phones skip the floor reflection and ambient occlusion and use smaller shadow maps; ?quality=low or high overrides
+const QUALITY = new URLSearchParams(location.search).get('quality');
+export const LOW_POWER = QUALITY ? QUALITY === 'low' : matchMedia('(max-width: 720px), (pointer: coarse)').matches;
 
 // ---------- Colour scales (shared by 3D scene and legend) ----------
 export const STOPS = {
@@ -50,12 +53,17 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
 renderer.localClippingEnabled = true;
+// Only the viewed aisle's ceiling lights cast shadows; the maps are re-rendered when those lights move (see lights.js)
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false;
 // Rack view cut-away: geometry between the camera and the viewed rack is clipped. Far away = off.
 export const cutPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 1e6);
 export const scene = new THREE.Scene();
 const BG = lc(tok('--bg'));
 scene.background = BG;
-scene.fog = new THREE.Fog(BG, 24, 50);
+// A faint cool haze: fixtures, LEDs and far racks fall off with distance
+scene.fog = new THREE.FogExp2(lc('#15202a'), 0.024);
 export const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 100);
 export const HALL_VIEW = { pos: new THREE.Vector3(12.5, 10.5, 15.5), target: new THREE.Vector3(0, 0.4, 0) };
 camera.position.copy(HALL_VIEW.pos);
@@ -72,9 +80,22 @@ controls.autoRotate = !reduceMotion;
 // Image-based lighting gives the steel, rails and handles something to reflect.
 // Lights are physically based since three r155, so the old intensities are scaled by π.
 const pmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-scene.add(new THREE.HemisphereLight(0x9cc4e0, 0x0a0f14, 0.45 * Math.PI));
-const key = new THREE.DirectionalLight(0xdfefff, 0.55 * Math.PI); key.position.set(3, 8, 4); scene.add(key);
+// Its light boxes (radiance up to 100) are toned down: at that strength any glossy surface seen at a grazing angle
+// (a cabinet side in the gap between racks, an open door) catches one as a hot spot that the bloom blows up
+const roomEnv = new RoomEnvironment();
+roomEnv.traverse(o => { if (o.material && o.material.isMeshBasicMaterial) o.material.color.multiplyScalar(0.08); });
+scene.environment = pmrem.fromScene(roomEnv, 0.04).texture;
+// A low fill keeps the shadows from going black; the ceiling fixtures (lights.js) do the real lighting.
+scene.add(new THREE.HemisphereLight(0x9cc4e0, 0x0a0f14, 0.2 * Math.PI));
+const key = new THREE.DirectionalLight(0xdfefff, 0.16 * Math.PI); key.position.set(3, 8, 4); scene.add(key);
+// The shadow-casting spots (lights.js) stand in for 1.6 m panels. On a glossy surface a point light's highlight is a
+// hot pin-prick where the panel would leave a soft streak, so glossy materials widen the highlight of point, spot and
+// directional lights and keep their own gloss for the area lights and reflections.
+export function broadPunctualSpec(shader, rough) {
+  shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_begin>', THREE.ShaderChunk.lights_fragment_begin
+    .replace('vec3 geometryPosition', `float glossRough = material.roughness; material.roughness = max(glossRough, ${rough.toFixed(2)});\nvec3 geometryPosition`)
+    .replace('#if ( NUM_RECT_AREA_LIGHTS > 0 )', 'material.roughness = glossRough;\n#if ( NUM_RECT_AREA_LIGHTS > 0 )'));
+}
 
 // ---------- Hall geometry (metres) ----------
 // 8 rows of 12 racks. Rows face each other in pairs across 1.8 m cold aisles; back to back they share
@@ -115,6 +136,9 @@ export const coolingUnit = z => coolsSouth(z) ? 1 : 0;
 // ---------- Canvas textures ----------
 let seed = 7;
 export const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+// Separate stream for wear and finish variation, so adding visual detail never shifts the generated serials and dates
+let vseed = 2027;
+export const vrnd = () => (vseed = (vseed * 48271) % 2147483647) / 2147483647;
 export function canvasTex(w, h, draw, data) {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   draw(c.getContext('2d'), w, h);
