@@ -6,7 +6,7 @@ import { racks } from './racks.js';
 
 export const RING = 600;                       // seconds kept
 const RK = ['load', 'inlet', 'power', 'mem', 'net', 'exhaust', 'swPower'], RS = ['status', 'svWarn', 'svCrit'];
-const GK = ['rps', 'cpu', 'net', 'it', 'cool', 'pue', 'maxIn'];
+const GK = ['cpu', 'net', 'it', 'maxIn'];
 const nR = racks.length, servers = racks.flatMap(r => r.servers), nS = servers.length;
 const rk = new Float32Array(RING * nR * RK.length), rs = new Uint8Array(RING * nR * RS.length);
 const svL = new Float32Array(RING * nS), svS = new Uint8Array(RING * nS);

@@ -116,10 +116,10 @@ export const U = 0.0445, U0 = 0.075, U_TOP = U0 + 42 * U, FRONT = RACK_D / 2;
 export const uY = (u, h) => U0 + (u - 1 + h / 2) * U;   // centre height of a device at U u, h units tall
 // Workloads, one per pair of rows; arrays elsewhere (hostnames, hardware, VLANs) are indexed by kind
 export const KINDS = [
-  { role: 'Web front-end', aff: 1.0, base: 0.55, net: 36, rps: 3100 },
-  { role: 'API services', aff: 0.8, base: 0.5, net: 30, rps: 1400 },
-  { role: 'Database', aff: 0.45, base: 0.45, net: 22, rps: 0 },
-  { role: 'Batch and analytics', aff: 0.1, base: 0.5, net: 14, rps: 0 }
+  { role: 'Web front-end', aff: 1.0, base: 0.55, net: 36 },
+  { role: 'API services', aff: 0.8, base: 0.5, net: 30 },
+  { role: 'Database', aff: 0.45, base: 0.45, net: 22 },
+  { role: 'Batch and analytics', aff: 0.1, base: 0.5, net: 14 }
 ];
 const COLD_W = 1.8, HOT_W = 1.2;
 export const ROWS = [], COLD = [], HACS = [];
