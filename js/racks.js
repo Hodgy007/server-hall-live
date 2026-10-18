@@ -1,7 +1,7 @@
 // Cabinets and everything mounted in them. Fronts face the cold aisle, rears the hot aisle.
 import { THREE, scene, lc, COL, rnd, vrnd, labelTex, RACK_W, RACK_H, RACK_D, COLS, PITCH, SERVERS, ROWS, U, U0, U_TOP, FRONT, uY, ease, reduceMotion } from './core.js';
 import { HALL, fill } from './data.js';
-import { sideTexes, roughTex, topTex, topTexB, railTex, bezelTex, plinthTex, contactTex, doorTexes, doorAlphas, plateMat, drawFront, drawRear, drawSwFans, drawSwPorts, drawPatch, drawBlank } from './textures.js';
+import { sideTexes, roughTex, topTex, topTexB, railTex, bezelTex, plinthTex, contactTex, doorTexes, doorAlphas, plateMat, drawFront, drawRear, drawFront1U, drawRear1U, drawSwFans, drawSwPorts, drawPatch, drawBlank } from './textures.js';
 
 export const racks = [], cabinets = [];
 const colGeo = new THREE.BoxGeometry(0.5, 1, 0.05); colGeo.translate(0, 0.5, 0);
@@ -15,6 +15,26 @@ function cabinetFinish(vendor) {
   return { color: new THREE.Color(k * (1 + h), k, k * (1 - h)), rough: vendor ? 0.62 : 0.7 + vrnd() * 0.18 };
 }
 
+// ---------- Server models ----------
+// The Dell PowerEdge models in the hall. Each rack holds twelve of one model, picked at random; a rack of 1U
+// servers fills U1–12 and is blanked above. Memory is 32 GB RDIMMs in every slot; power is idle and flat-out watts.
+export const MODELS = {
+  R7725:   { u: 2, sockets: 2, vendor: 'amd', dimms: 24, channels: 12, cpu: 'AMD EPYC 9355', cores: 32, ghz: 3.55, w: [260, 900] },
+  R7725xd: { u: 2, sockets: 2, vendor: 'amd', dimms: 24, channels: 12, cpu: 'AMD EPYC 9375F', cores: 32, ghz: 3.8, w: [280, 960] },
+  R7715:   { u: 2, sockets: 1, vendor: 'amd', dimms: 24, channels: 12, cpu: 'AMD EPYC 9535', cores: 64, ghz: 2.4, w: [220, 700] },
+  R6725:   { u: 1, sockets: 2, vendor: 'amd', dimms: 24, channels: 12, cpu: 'AMD EPYC 9335', cores: 32, ghz: 3.0, w: [240, 820] },
+  R6715:   { u: 1, sockets: 1, vendor: 'amd', dimms: 24, channels: 12, cpu: 'AMD EPYC 9535', cores: 64, ghz: 2.4, w: [200, 650] },
+  R770:    { u: 2, sockets: 2, vendor: 'intel', dimms: 32, channels: 8, cpu: 'Intel Xeon 6737P', cores: 32, ghz: 2.9, w: [280, 950] },
+  R770AP:  { u: 2, sockets: 2, vendor: 'intel', dimms: 24, channels: 12, cpu: 'Intel Xeon 6978P', cores: 120, w: [400, 1200] },
+  R670:    { u: 1, sockets: 2, vendor: 'intel', dimms: 32, channels: 8, cpu: 'Intel Xeon 6737P', cores: 32, ghz: 2.9, w: [260, 880] },
+  R570:    { u: 2, sockets: 1, vendor: 'intel', dimms: 16, channels: 8, cpu: 'Intel Xeon 6737P', cores: 32, ghz: 2.9, w: [180, 520] },
+  R470:    { u: 1, sockets: 1, vendor: 'intel', dimms: 16, channels: 8, cpu: 'Intel Xeon 6737P', cores: 32, ghz: 2.9, w: [170, 500] }
+};
+for (const k in MODELS) MODELS[k].key = k;
+// Its own random stream, so the layout of models never shifts the generated serials or the cabinet finishes
+let mseed = 4099;
+const pickModel = () => { const keys = Object.keys(MODELS); mseed = (mseed * 16807) % 2147483647; return MODELS[keys[Math.floor(mseed / 2147483647 * keys.length)]]; };
+
 ROWS.forEach((row, ri) => {
   for (let c = 0; c < COLS; c++) {
     const x = (c - (COLS - 1) / 2) * PITCH;
@@ -25,7 +45,7 @@ ROWS.forEach((row, ri) => {
     const mesh = new THREE.Mesh(cabGeo, [sideM, sideM, topM, darkInside, darkInside, darkInside]);
     mesh.position.set(x, RACK_H / 2, row.z); mesh.castShadow = mesh.receiveShadow = true; scene.add(mesh);
     const r = {
-      id: row.id + String(c + 1).padStart(2, '0'), ri, kind: row.kind, c, row, x, z: row.z, face: row.face, mesh, mats: [sideM, topM], vendor, wear, finish: finish.color,
+      id: row.id + String(c + 1).padStart(2, '0'), ri, kind: row.kind, c, row, x, z: row.z, face: row.face, mesh, mats: [sideM, topM], vendor, wear, finish: finish.color, model: pickModel(),
       phase: rnd() * 20, base: row.base + (rnd() - 0.5) * 0.18, memBase: rnd() * 0.18, inletOffset: (rnd() - 0.5) * 1.2,
       demand: 0.4, load: 0.4, mem: 0.5, inlet: 20, exhaust: 30, power: 0, swPower: 0, net: 0, cpuLvl: 0, tLvl: 0, svLvl: 0, status: 0, svWarn: 0, svCrit: 0,
       hist: [], ihist: [], pktAcc: 0, leds: []
@@ -42,32 +62,39 @@ export const byId = Object.fromEntries(racks.map(r => [r.id, r]));
 
 // ---------- Servers: front plates, rear plates, status LEDs (instanced) ----------
 const PLATE_D = 0.012, LED_Z = FRONT + 0.016;
-const sv2U = new THREE.BoxGeometry(0.52, 2 * U - 0.0016, PLATE_D), dev1U = new THREE.BoxGeometry(0.52, U - 0.0012, PLATE_D);
+const dev1U = new THREE.BoxGeometry(0.52, U - 0.0012, PLATE_D);
 const nPlates = racks.length * SERVERS;
-export const plates = new THREE.InstancedMesh(sv2U, plateMat(512, 86, drawFront, { metalness: 0.6, roughness: 0.55 }), nPlates);
-export const rears = new THREE.InstancedMesh(sv2U, plateMat(512, 86, drawRear, { glow: true }), nPlates);
+// Server faces for each chassis height; the pulled-out model uses the same front
+export const FACE = {
+  2: { front: plateMat(512, 86, drawFront, { metalness: 0.6, roughness: 0.55 }), rear: plateMat(512, 86, drawRear, { glow: true }) },
+  1: { front: plateMat(512, 44, drawFront1U, { metalness: 0.6, roughness: 0.55 }), rear: plateMat(512, 44, drawRear1U, { glow: true }) }
+};
+// One instanced mesh per face and height. userData.servers maps an instance to its server (for picking), and the
+// svIdx attribute carries the server's index (for the thermal camera)
+export const plateMeshes = [], rearMeshes = [];
+const faceMesh = {};
+[2, 1].forEach(h => {
+  const n = racks.filter(r => r.model.u === h).length * SERVERS; if (!n) return;
+  const geo = new THREE.BoxGeometry(0.52, h * U - (h === 2 ? 0.0016 : 0.0012), PLATE_D);
+  geo.setAttribute('svIdx', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
+  [1, -1].forEach(side => {
+    const m = new THREE.InstancedMesh(geo, side > 0 ? FACE[h].front : FACE[h].rear, n);
+    m.userData.servers = []; m.userData.face = side > 0 ? 'front' : 'rear';
+    faceMesh[h + '|' + side] = m; (side > 0 ? plateMeshes : rearMeshes).push(m);
+  });
+});
 export const leds = new THREE.InstancedMesh(new THREE.BoxGeometry(0.016, 0.016, 0.008), new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }), nPlates * 2);
 // LED colours sit above 1.0 so the bloom pass picks them up
 export const LED = {
   act: lc('#5dffa5').multiplyScalar(2.4), off: lc('#0d1a14'), idle: lc('#2a6e9a').multiplyScalar(2),
   warn: lc('#ffbe3b').multiplyScalar(2.2), crit: lc('#ff4a3d').multiplyScalar(2.6), dark: lc('#1a0d0c')
 };
-const plateM = [], rearM = [], ledM = [], ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
+const ledM = [], ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 export const HOST = ['web', 'api', 'db', 'batch'];
-// Per-row hardware: Dell PowerEdge 2U dual-socket AMD servers (2× 32-core EPYC 9005, 24 DIMMs, 8 NVMe bays);
-// the database rows use the storage-dense R7725xd
-export const MODEL = ['Dell PowerEdge R7725', 'Dell PowerEdge R7725', 'Dell PowerEdge R7725xd', 'Dell PowerEdge R7725'];
-// 24 × 32 GB DDR5 RDIMMs: EPYC 9005 has 12 memory channels per socket, one DIMM on each
-export const DIMMS = 24, MEM_GB = 768;
+// Drives differ by workload row, whatever the model
 export const DRIVE = ['8× 960 GB NVMe', '8× 1.92 TB NVMe', '8× 7.68 TB NVMe', '8× 3.84 TB NVMe'];
 export const DRIVE_TB = [7.68, 15.36, 61.44, 30.72];
-// Two 32-core AMD EPYC 9005 ("Turin") sockets in every server; the part differs by workload
-export const CPU = [
-  { name: 'AMD EPYC 9335', ghz: 3.0 },
-  { name: 'AMD EPYC 9355', ghz: 3.55 },
-  { name: 'AMD EPYC 9375F', ghz: 3.8 },
-  { name: 'AMD EPYC 9335', ghz: 3.0 }
-];
+const coresText = m => m.sockets === 2 ? `${m.cores} cores each${m.ghz ? ` at ${m.ghz} GHz` : ''}, ${m.cores * 2} in total` : `${m.cores} cores${m.ghz ? ` at ${m.ghz} GHz` : ''}`;
 const VLAN = [110, 120, 130, 140];
 const mac = (oui, n) => [oui >> 16 & 255, oui >> 8 & 255, oui & 255, 0x20 + (n >> 16 & 15), n >> 8 & 255, n & 255].map(b => b.toString(16).padStart(2, '0')).join(':');
 // Where the iDRAC (Dell's BMC) web console lives: "idracUrl" in data/hall.json (or the older "iloUrl"),
@@ -94,15 +121,16 @@ function mount(mesh, i, r, side, y, dz, x, store) {
   racks.forEach(r => {
     r.servers = [];
     for (let s = 0; s < SERVERS; s++) {
-      const u = 1 + s * 2, y = uY(u, 2);
+      const m = r.model, h = m.u, u = 1 + s * h, y = uY(u, h);
       const sv = {
-        r, s, idx: pi, y, u, host: `${HOST[r.kind]}-${r.id.toLowerCase()}-${String(s + 1).padStart(2, '0')}`,
+        r, s, idx: pi, y, u, h, host: `${HOST[r.kind]}-${r.id.toLowerCase()}-${String(s + 1).padStart(2, '0')}`,
         bias: 0.75 + rnd() * 0.5, memBias: 0.85 + rnd() * 0.3, phase: rnd() * 20, load: 0.4, stressLeft: 0, stressAmp: 0, hist: [],
         mem: 0.5, temp: 45, rpm: 4000, power: 500, net: 0, cLvl: 0, tLvl: 0, status: 0,
         serial: serviceTag(rnd()),
         installed: `20${25 + Math.floor(rnd() * 2)}-${String(1 + Math.floor(rnd() * 12)).padStart(2, '0')}`,
         os: OS[r.kind][Math.floor(rnd() * OS[r.kind].length)], diskUsed: 0.25 + rnd() * 0.5,
-        model: MODEL[r.kind], drives: DRIVE[r.kind], driveTB: DRIVE_TB[r.kind], cpu: `2× ${CPU[r.kind].name}`, cpuNote: `32 cores each at ${CPU[r.kind].ghz} GHz, 64 in total`,
+        model: `Dell PowerEdge ${m.key}`, spec: m, drives: DRIVE[r.kind], driveTB: DRIVE_TB[r.kind], cpu: `${m.sockets}× ${m.cpu}`, cpuNote: coresText(m),
+        memGB: m.dimms * 32,
         // NIC 1 and NIC 2 run to the same port on the rack's A and B top-of-rack switches (LACP bond);
         // the iDRAC port runs to the rack's out-of-band switch
         port: `Ethernet1/${s + 1}`, oobPort: `Gi1/0/${s + 1}`,
@@ -113,10 +141,13 @@ function mount(mesh, i, r, side, y, dz, x, store) {
         mac: [mac(0x000af7, pi * 4), mac(0x000af7, pi * 4 + 1)], iloMac: mac(0x001422, pi * 4 + 2)
       };
       r.servers.push(sv);
-      mount(plates, pi, r, 1, y, 0.007, 0, plateM);
-      mount(rears, pi, r, -1, y, 0.007, 0, rearM);
+      const fm = faceMesh[h + '|1'], rm = faceMesh[h + '|-1'], j = fm.userData.servers.length;
+      sv.slot = { fm, rm, j };
+      mount(fm, j, r, 1, y, 0.007); sv.slot.mf = m4.clone();
+      mount(rm, j, r, -1, y, 0.007); sv.slot.mr = m4.clone();
+      fm.userData.servers.push(sv); rm.userData.servers.push(sv); fm.geometry.attributes.svIdx.array[j] = pi;
       // slight finish variation so no two chassis read as copies
-      tint.setScalar(0.86 + rnd() * 0.14); plates.setColorAt(pi, tint); rears.setColorAt(pi, tint);
+      tint.setScalar(0.86 + rnd() * 0.14); fm.setColorAt(j, tint); rm.setColorAt(j, tint);
       pi++;
       for (let k = 0; k < 2; k++) {
         m4.makeTranslation(r.x + r.face * (0.19 + k * 0.035), y, r.z + r.face * LED_Z);
@@ -126,7 +157,7 @@ function mount(mesh, i, r, side, y, dz, x, store) {
     }
   });
 }
-scene.add(plates, rears, leds);
+scene.add(...plateMeshes, ...rearMeshes, leds);
 
 // Real inventory from data/hall.json replaces the generated values slot by slot: racks.<id>.servers.U<n>
 const SET = { host: 'host', serial: 'serial', installed: 'installed', model: 'model', drives: 'drives', driveTB: 'driveTB', cpu: 'cpu', cpuNote: 'cpuNote',
@@ -147,25 +178,28 @@ export const byHost = new Map(racks.flatMap(r => r.servers.map(sv => [sv.host, s
 
 // Hide or restore a server's plates and LEDs while it is pulled out
 export function setInstance(sv, show) {
-  plates.setMatrixAt(sv.idx, show ? plateM[sv.idx] : ZERO);
-  rears.setMatrixAt(sv.idx, show ? rearM[sv.idx] : ZERO);
+  const { fm, rm, j, mf, mr } = sv.slot;
+  fm.setMatrixAt(j, show ? mf : ZERO); rm.setMatrixAt(j, show ? mr : ZERO);
   for (let k = 0; k < 2; k++) leds.setMatrixAt(sv.idx * 2 + k, show ? ledM[sv.idx * 2 + k] : ZERO);
-  plates.instanceMatrix.needsUpdate = true; rears.instanceMatrix.needsUpdate = true; leds.instanceMatrix.needsUpdate = true;
+  fm.instanceMatrix.needsUpdate = true; rm.instanceMatrix.needsUpdate = true; leds.instanceMatrix.needsUpdate = true;
 }
 
-// ---------- Switches, OOB switch, patch panel, blanking panels (front blanks cover U25–40; U39–40 are rear-mounted) ----------
+// ---------- Switches, OOB switch, patch panel, blanking panels (front blanks cover the free U up to U40; U39–40 are rear-mounted) ----------
 const swFans = new THREE.InstancedMesh(dev1U, plateMat(512, 44, drawSwFans, { glow: true }), racks.length * 2);
 const swPorts = new THREE.InstancedMesh(dev1U, plateMat(512, 44, drawSwPorts, { glow: true }), racks.length * 2);
 const patch = new THREE.InstancedMesh(dev1U, plateMat(512, 44, drawPatch), racks.length);
 const oob = new THREE.InstancedMesh(dev1U, swPorts.material, racks.length);
 const blankMat = plateMat(512, 44, drawBlank, { metalness: 0.5, roughness: 0.75 });
 blankMat.color.setScalar(0.8);
-const blanks = new THREE.InstancedMesh(dev1U, blankMat, racks.length * 16);
+// Servers fill U1 up to SERVERS × height; everything above that to U40 is blanked
+export const topU = r => SERVERS * r.model.u;
+const blanks = new THREE.InstancedMesh(dev1U, blankMat, racks.reduce((n, r) => n + 40 - topU(r), 0));
+let nb = 0;
 racks.forEach((r, i) => {
   [41, 42].forEach((u, k) => { mount(swFans, i * 2 + k, r, 1, uY(u, 1), 0.007); mount(swPorts, i * 2 + k, r, -1, uY(u, 1), 0.007); });
   mount(patch, i, r, -1, uY(40, 1), 0.007);
   mount(oob, i, r, -1, uY(39, 1), 0.007);
-  for (let u = 25; u <= 40; u++) mount(blanks, i * 16 + u - 25, r, 1, uY(u, 1), 0.006);
+  for (let u = topU(r) + 1; u <= 40; u++) mount(blanks, nb++, r, 1, uY(u, 1), 0.006);
 });
 scene.add(swFans, swPorts, patch, oob, blanks);
 // Switch status LEDs, on the fan side and the port side of both ToR switches: index = rack * 4 + switch * 2 + face
