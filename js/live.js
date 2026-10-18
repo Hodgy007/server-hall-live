@@ -3,7 +3,6 @@
 // Anything it leaves out, or stops reporting for three intervals, falls back to the simulation.
 import { HALL } from './data.js';
 import { byHost, byId } from './racks.js';
-import { pushAlert } from './alerts.js';
 
 const T = HALL.telemetry || {}, EVERY = (T.intervalSeconds || 10) * 1000;
 export const live = { enabled: !!T.url, servers: 0, at: 0, error: null };
@@ -22,10 +21,8 @@ async function poll() {
     let n = 0;
     for (const [host, v] of Object.entries(d.servers || {})) { const sv = byHost.get(host); if (sv) { sv.live = { ...pick(v, SV_KEYS), at: now }; n++; } }
     for (const [id, v] of Object.entries(d.racks || {})) { const r = byId[id]; if (r) r.live = { ...pick(v, RACK_KEYS), at: now }; }
-    if (!live.at || live.error) pushAlert('info', `Live telemetry connected · ${n} server${n === 1 ? '' : 's'} reporting`);
     live.servers = n; live.at = now; live.error = null;
   } catch (e) {
-    if (!live.error) pushAlert('warn', `Telemetry feed ${T.url} unreachable (${e.message}); showing simulated values`);
     live.error = e;
   }
 }

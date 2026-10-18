@@ -6,7 +6,7 @@ import { racks } from './racks.js';
 export const FAULTS = [];
 racks.forEach(r => { r.torDown = [false, false]; r.servers.forEach(sv => { sv.faults = []; }); });
 
-// What a fault means, in words, for panels and alerts
+// What a fault means, in words, for the panels
 export function describe(f) {
   const id = f.r.id.toLowerCase();
   switch (f.kind) {
