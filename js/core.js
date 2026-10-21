@@ -114,6 +114,7 @@ export const ROOM = { x: 6.0, z: 10.6, h: 3.7 };
 // 42U cabinets at true scale (1U = 44.5 mm): servers U1–24, blanking U25–38, OOB switch U39, patch panel U40, ToR switches U41–42
 export const U = 0.0445, U0 = 0.075, U_TOP = U0 + 42 * U, FRONT = RACK_D / 2;
 export const uY = (u, h) => U0 + (u - 1 + h / 2) * U;   // centre height of a device at U u, h units tall
+export const plateH = h => h * U - (h === 2 ? 0.0016 : 0.0012);   // a device face, h units tall, less the gap to its neighbours
 // Workloads, one per pair of rows; arrays elsewhere (hostnames, hardware, VLANs) are indexed by kind
 export const KINDS = [
   { role: 'Web front-end', aff: 1.0, base: 0.55, net: 36 },

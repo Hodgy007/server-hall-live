@@ -1,5 +1,5 @@
 // Procedural textures for cabinets and rack-mounted hardware, all drawn on canvas.
-import { THREE, canvasTex, speckle } from './core.js';
+import { THREE, canvasTex, speckle, plateH, SERVERS } from './core.js';
 
 // ---------- Wear ----------
 // Rubs where the powder coat is worn towards bare steel, and darker marks from trolleys, boots and cable reels
@@ -95,17 +95,19 @@ const alphaStd = canvasTex(DOOR_W, DOOR_H, (g, w, h) => doorHoles(g, w, h, '#fff
 export const doorAlphas = [alphaStd, alphaStd, alphaStd, canvasTex(DOOR_W, DOOR_H, (g, w, h) => doorHoles(g, w, h, '#ffffff', '#1a1a1a', true), true)];
 
 // ---------- Rack-mounted hardware ----------
-// Each face is drawn three times: colour, height map for bump shading, and glow (LEDs only).
-const BUMP = { base: '#808080', ear: '#a8a8a8', handle: '#ffffff', hole: '#000000', caddy: '#909090', latch: '#d0d0d0', panel: '#707070', tag: '#c0c0c0', psu: '#989898', slot: '#a0a0a0', port: '#101010', cable: '#e0e0e0', led: '#000000', vga: '#202020' };
-const PAL = { base: '#2b343d', ear: '#3a4550', handle: '#a3aeb8', hole: '#080a0d', caddy: '#1f262d', latch: '#8f9aa4', panel: '#161c22', tag: '#d2d9df', psu: '#2a323a', slot: '#29313a', port: '#090c0f', cable: '#33b5c9', led: '#000000', vga: '#2d5fa8' };
+// Each face is drawn three times: colour, height map for bump shading, and glow (LEDs only). Faces are laid out on a
+// 512-wide grid (about 1 px per mm) and drawn at twice that resolution, so the detail holds close up.
+const BUMP = { base: '#808080', ear: '#a8a8a8', handle: '#ffffff', hole: '#000000', latch: '#d0d0d0', panel: '#707070', tag: '#c0c0c0', psu: '#989898', slot: '#a0a0a0', port: '#101010', cable: '#e0e0e0', led: '#000000', vga: '#202020',
+  bezel: '#a0a0a0', carrier: '#989898', face: '#b0b0b0', hex: '#8c8c8c', btn: '#e0e0e0', pipe: '#b4b4b4', pwr: '#c8c8c8', usb: '#181818', icon: '#a8a8a8', cage: '#c0c0c0' };
+const PAL = { base: '#2b343d', ear: '#3a4550', handle: '#a3aeb8', hole: '#080a0d', latch: '#8f9aa4', panel: '#161c22', tag: '#d2d9df', psu: '#2a323a', slot: '#29313a', port: '#090c0f', cable: '#33b5c9', led: '#000000', vga: '#2d5fa8',
+  bezel: '#16191c', carrier: '#1b1e22', face: '#24282d', hex: '#1d2125', btn: '#6f777e', pipe: '#26302b', pwr: '#2f8f55', usb: '#0b0d0f', icon: '#59636c', cage: '#7d868e' };
 const GLOW = Object.fromEntries(Object.keys(PAL).map(k => [k, '#000000']));
-GLOW.led = '#46ff9a';
+GLOW.led = '#46ff9a'; GLOW.pwr = '#1c7a3e';
 export function plateMat(w, h, draw, opts) {
   const { glow, ...rest } = opts || {};
-  const tex = canvasTex(w, h, (g) => draw(g, w, h, PAL));
-  const bump = canvasTex(w, h, (g) => draw(g, w, h, BUMP), true);
-  const m = new THREE.MeshStandardMaterial(Object.assign({ map: tex, bumpMap: bump, bumpScale: 0.6, roughnessMap: roughTex, metalness: 0.55, roughness: 0.7 }, rest));
-  if (glow) { m.emissiveMap = canvasTex(w, h, (g) => draw(g, w, h, GLOW)); m.emissive = new THREE.Color(0xffffff); m.emissiveIntensity = 2.2; }
+  const at = (P, data) => canvasTex(w * 2, h * 2, (g) => { g.scale(2, 2); draw(g, w, h, P); }, data);
+  const m = new THREE.MeshStandardMaterial(Object.assign({ map: at(PAL), bumpMap: at(BUMP, true), bumpScale: 0.6, roughnessMap: roughTex, metalness: 0.55, roughness: 0.7 }, rest));
+  if (glow) { m.emissiveMap = at(GLOW); m.emissive = new THREE.Color(0xffffff); m.emissiveIntensity = 2.2; }
   return m;
 }
 function ears(g, w, h, P) {
@@ -119,25 +121,101 @@ function grille(g, cx, cy, r, P) {
   for (let k = r; k > 2; k -= 4) { g.beginPath(); g.arc(cx, cy, k, 0, Math.PI * 2); g.stroke(); }
   g.beginPath(); g.moveTo(cx - r, cy); g.lineTo(cx + r, cy); g.moveTo(cx, cy - r); g.lineTo(cx, cy + r); g.stroke();
 }
-// 2U server front: rack ears with handles, 8 NVMe caddies, honeycomb intake, control panel (LEDs are separate meshes)
-export function drawFront(g, w, h, P) {
-  g.fillStyle = P.base; g.fillRect(0, 0, w, h);
-  ears(g, w, h, P);
-  [0, w - 22].forEach(x => { g.strokeStyle = P.handle; g.lineWidth = 4; g.strokeRect(x + 7, 14, 8, h - 28); });
-  for (let i = 0; i < 8; i++) {
-    const x = 28 + i * 36;
-    g.fillStyle = P.caddy; g.fillRect(x, 5, 33, h - 10);
-    g.fillStyle = P.hole;
-    for (let y = 10; y < h * 0.52; y += 5) for (let xx = x + 4; xx < x + 30; xx += 5) g.fillRect(xx, y, 2.4, 2.4);
-    g.fillStyle = P.latch; g.fillRect(x + 3, h - 27, 27, 15);
-    g.fillStyle = P.hole; g.fillRect(x + 3, h - 20, 27, 1.5); g.fillRect(x + 25, h - 35, 4, 4);
+// Hexagonal perforation, as in Dell's front grilles and drive carriers
+function hexes(g, x0, y0, x1, y1, r, P) {
+  g.fillStyle = P.hole; g.beginPath();
+  const dx = r * 1.5 + 0.8, dy = r * 1.732 + 0.8;
+  for (let c = 0, x = x0 + r; x <= x1 - r; c++, x += dx) {
+    for (let y = y0 + r * 0.866 + (c % 2) * dy / 2; y <= y1 - r * 0.866; y += dy) {
+      g.moveTo(x + r, y);
+      for (let k = 1; k < 6; k++) g.lineTo(x + r * Math.cos(k * Math.PI / 3), y + r * Math.sin(k * Math.PI / 3));
+      g.closePath();
+    }
   }
-  g.fillStyle = P.hole;
-  for (let y = 9, k = 0; y < h - 6; y += 6, k++) for (let x = 326 + (k % 2) * 3.5; x < 426; x += 7) { g.beginPath(); g.arc(x, y, 2.3, 0, Math.PI * 2); g.fill(); }
-  g.fillStyle = P.panel; g.fillRect(430, 5, 56, h - 10);
-  g.fillStyle = P.tag; g.fillRect(436, h - 19, 44, 8);
+  g.fill();
 }
-// 2U server rear: two hot-swap PSUs, I/O, SFP28 with fibre leads, PCIe slot covers
+const screw = (g, x, y, P) => { g.fillStyle = P.latch; g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill(); g.fillStyle = P.hole; g.fillRect(x - 2, y - 0.4, 4, 0.8); };
+
+// ---------- Server fronts (Dell PowerEdge, no bezel) ----------
+// The status LEDs are separate meshes in the left ear, in metres from the face centre: activity below, system health and ID above
+export const FRONT_LED = { x: -0.249, y: { 2: [-0.004, 0.02], 1: [-0.0105, 0.0105] } };
+// The raised parts of the face, in grid pixels, for the relief geometry: the two ears and the eight drive carriers
+export const FRONT_RELIEF = h => [[0, 0, 22, h], [490, 0, 22, h], ...Array.from({ length: 8 }, (_, i) => [28 + i * 36, h > 50 ? 4 : 3, 33, h - (h > 50 ? 8 : 6)])];
+// Left control panel: windows for the two LEDs, the status icons (drive, temperature, electrical, memory, PCIe), a slam latch.
+// Right control panel: power button with its green ring, USB and the iDRAC Direct port.
+function frontEars(g, w, h, P) {
+  const two = h > 50, ly = FRONT_LED.y[two ? 2 : 1].map(y => h / 2 - y / plateH(two ? 2 : 1) * h);
+  [0, w - 22].forEach(x => {
+    g.fillStyle = P.bezel; g.fillRect(x, 0, 22, h);
+    g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(x + 1, 0, 1, h);
+    g.fillStyle = P.hole; g.fillRect(x === 0 ? 21 : x, 0, 1, h);
+  });
+  ly.forEach(y => { g.fillStyle = P.hole; g.fillRect(2, y - 9.5, 18, 19); g.fillStyle = P.panel; g.fillRect(3, y - 8.5, 16, 17); });
+  if (two) {
+    g.fillStyle = P.latch; g.fillRect(4, 2.5, 14, 7); g.fillStyle = P.hole; g.fillRect(6, 5, 10, 1.2);
+    g.fillStyle = P.icon; for (let k = 0; k < 5; k++) g.fillRect(8.5, 59 + k * 4, 5, 2.4);
+    screw(g, 11, h - 6, P);
+    g.fillStyle = P.latch; g.fillRect(w - 18, 2.5, 14, 7); g.fillStyle = P.hole; g.fillRect(w - 16, 5, 10, 1.2);
+    screw(g, w - 11, h - 6, P);
+  }
+  const bx = w - 11, by = two ? 25 : 11, br = two ? 6 : 5;
+  g.fillStyle = P.pwr; g.beginPath(); g.arc(bx, by, br, 0, Math.PI * 2); g.fill();
+  g.fillStyle = P.panel; g.beginPath(); g.arc(bx, by, br - 1.3, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = P.icon; g.lineWidth = 0.9; g.beginPath(); g.arc(bx, by, br * 0.45, -Math.PI * 0.3, Math.PI * 1.3); g.moveTo(bx, by - br * 0.6); g.lineTo(bx, by - br * 0.1); g.stroke();
+  const uy = two ? 40 : 21;
+  g.fillStyle = P.cage; g.fillRect(w - 17, uy, 12, 6); g.fillStyle = P.usb; g.fillRect(w - 16, uy + 1, 10, 4); g.fillStyle = P.panel; g.fillRect(w - 15, uy + 1, 8, 1.6);
+  g.fillStyle = P.cage; g.fillRect(w - 15, uy + (two ? 11 : 9), 8, 3.4); g.fillStyle = P.usb; g.fillRect(w - 14.4, uy + (two ? 11.6 : 9.6), 6.8, 2.2);
+  g.fillStyle = P.pipe; g.fillRect(w - 12.5, uy + (two ? 17 : 14), 3, 1.6);
+}
+// NVMe carrier: in 2U two light pipes and the release button over a hex-vented handle; in 1U the button sits at the side
+function carrier(g, x, y, ww, hh, P, two) {
+  g.fillStyle = P.carrier; g.fillRect(x, y, ww, hh);
+  g.fillStyle = 'rgba(255,255,255,0.06)'; g.fillRect(x, y, ww, 0.8); g.fillRect(x, y, 0.8, hh);
+  if (two) {
+    g.fillStyle = P.pipe; g.fillRect(x + 4, y + 3, 4, 2.4); g.fillRect(x + 10, y + 3, 4, 2.4);
+    g.fillStyle = P.btn; g.fillRect(x + 19, y + 2, 11, 8);
+    g.fillStyle = P.hole; g.beginPath(); g.moveTo(x + 22, y + 4); g.lineTo(x + 27, y + 6); g.lineTo(x + 22, y + 8); g.fill();
+    g.fillStyle = P.face; g.fillRect(x + 2.5, y + 13, ww - 5, hh - 16);
+    hexes(g, x + 4, y + 15, x + ww - 4, y + hh * 0.66, 2.1, P);
+    g.fillStyle = P.hole; g.fillRect(x + 6, y + hh - 13, ww - 12, 1.2);
+    g.fillStyle = P.bezel; g.fillRect(x + 6, y + hh - 10, ww - 12, 5);
+  } else {
+    g.fillStyle = P.face; g.fillRect(x + 2, y + 2, ww - 13, hh - 4);
+    hexes(g, x + 3.5, y + 3.5, x + ww - 12.5, y + hh - 3.5, 1.9, P);
+    g.fillStyle = P.btn; g.fillRect(x + ww - 9, y + 3, 7, 9);
+    g.fillStyle = P.hole; g.beginPath(); g.moveTo(x + ww - 7.5, y + 5); g.lineTo(x + ww - 3.5, y + 7.5); g.lineTo(x + ww - 7.5, y + 10); g.fill();
+    g.fillStyle = P.pipe; g.fillRect(x + ww - 8, y + hh - 9, 5, 2); g.fillRect(x + ww - 8, y + hh - 5.5, 5, 2);
+  }
+}
+// 1U and 2U fronts: eight NVMe carriers lined up with the pulled-out model's drives, a hex grille over the empty bays,
+// and in 2U the pull-out information tag
+export function drawFront(g, w, h, P) {
+  const two = h > 50, m = two ? 4 : 3;
+  g.fillStyle = P.bezel; g.fillRect(0, 0, w, h);
+  g.fillStyle = P.hole; g.fillRect(25, m - 2, 294, h - 2 * m + 4);
+  for (let i = 0; i < 8; i++) carrier(g, 28 + i * 36, m, 33, h - 2 * m, P, two);
+  g.fillStyle = P.hex; g.fillRect(322, m - 1, 166, h - 2 * m + 2);
+  hexes(g, 325, m + 1, 485, h - m - (two ? 9 : 1), two ? 3.1 : 2.6, P);
+  if (two) {
+    g.fillStyle = P.hole; g.fillRect(420, h - m - 7, 62, 4);
+    g.fillStyle = P.latch; g.fillRect(424, h - m - 6.2, 52, 2.4);
+  }
+  frontEars(g, w, h, P);
+}
+
+// ---------- Server rears ----------
+// Rear I/O, centres in grid pixels: the iDRAC port, and the OCP NIC's four SFP28 cages along one line
+const REAR_IO = { 2: { idrac: [258, 21], ocp: [284, 304, 330, 350], ocpY: 43.5 }, 1: { idrac: [150, 18], ocp: [208, 228, 254, 274], ocpY: 13.5 } };
+// Where the patch leads plug in: the iDRAC port, then the first two cages (NIC 1, NIC 2)
+export const REAR_PORTS = Object.fromEntries([1, 2].map(h => { const io = REAR_IO[h]; return [h, [io.idrac, [io.ocp[0], io.ocpY], [io.ocp[1], io.ocpY]]]; }));
+// SFP28 cage centred on (cx, cy) and its link light; only the two cabled ports are lit
+function sfp(g, cx, cy, P, lit) {
+  const x = cx - 8, y = cy - 5.5;
+  g.fillStyle = P.cage; g.fillRect(x, y, 16, 11);
+  g.fillStyle = P.port; g.fillRect(x + 1.5, y + 1.5, 13, 8);
+  g.fillStyle = lit ? P.led : P.panel; g.fillRect(x + 6, y - 5, 4, 3);
+}
+// 2U server rear: two hot-swap PSUs, I/O, the OCP NIC's SFP28 cages, PCIe slot covers
 export function drawRear(g, w, h, P) {
   g.fillStyle = P.base; g.fillRect(0, 0, w, h);
   ears(g, w, h, P);
@@ -148,37 +226,18 @@ export function drawRear(g, w, h, P) {
     g.fillStyle = P.handle; g.fillRect(x + 70, 10, 6, h - 20);
     g.fillStyle = P.led; g.fillRect(x + 48, 8, 6, 4);
   });
-  g.fillStyle = P.port; g.fillRect(202, 18, 12, 6); g.fillRect(202, 30, 12, 6); g.fillRect(250, 14, 16, 14);
+  const { idrac: [ix, iy], ocp, ocpY } = REAR_IO[2];
+  g.fillStyle = P.port; g.fillRect(202, 18, 12, 6); g.fillRect(202, 30, 12, 6); g.fillRect(ix - 8, iy - 7, 16, 14);
   g.fillStyle = P.vga; g.fillRect(220, 16, 24, 11);
-  g.fillStyle = P.led; g.fillRect(251, 15, 3, 2); g.fillRect(262, 15, 3, 2);
-  [276, 296, 322, 342].forEach(x => {
-    g.fillStyle = P.port; g.fillRect(x, 38, 16, 11);
-    g.fillStyle = P.cable; g.fillRect(x + 3, 47, 10, h - 47);
-    g.fillStyle = P.led; g.fillRect(x + 6, 33, 4, 3);
-  });
+  g.fillStyle = P.led; g.fillRect(ix - 7, iy - 6, 3, 2); g.fillRect(ix + 4, iy - 6, 3, 2);
+  ocp.forEach((x, k) => sfp(g, x, ocpY, P, k < 2));
   for (let i = 0; i < 4; i++) {
     const x = 368 + i * 29;
     g.fillStyle = P.slot; g.fillRect(x, 4, 25, h - 8);
     g.fillStyle = P.hole; for (let y = 10; y < h - 10; y += 6) g.fillRect(x + 6, y, 13, 2);
   }
 }
-// 1U server front: rack ears with handles, eight NVMe carriers lined up with the 2U ones, honeycomb intake, control panel
-export function drawFront1U(g, w, h, P) {
-  g.fillStyle = P.base; g.fillRect(0, 0, w, h);
-  ears(g, w, h, P);
-  [0, w - 22].forEach(x => { g.strokeStyle = P.handle; g.lineWidth = 3; g.strokeRect(x + 7, 8, 8, h - 16); });
-  for (let i = 0; i < 8; i++) {
-    const x = 28 + i * 36;
-    g.fillStyle = P.caddy; g.fillRect(x, 4, 33, h - 8);
-    g.fillStyle = P.hole; for (let xx = x + 4; xx < x + 22; xx += 4) g.fillRect(xx, 8, 2, h - 16);
-    g.fillStyle = P.latch; g.fillRect(x + 23, 8, 7, h - 16);
-  }
-  g.fillStyle = P.hole;
-  for (let y = 7, k = 0; y < h - 4; y += 6, k++) for (let x = 326 + (k % 2) * 3.5; x < 426; x += 7) { g.beginPath(); g.arc(x, y, 2.3, 0, Math.PI * 2); g.fill(); }
-  g.fillStyle = P.panel; g.fillRect(430, 4, 56, h - 8);
-  g.fillStyle = P.tag; g.fillRect(436, h - 14, 44, 6);
-}
-// 1U server rear: a power supply at each side, OCP NIC with fibre leads, a low-profile PCIe slot, I/O
+// 1U server rear: a power supply at each side, the OCP NIC's SFP28 cages, a low-profile PCIe slot, I/O
 export function drawRear1U(g, w, h, P) {
   g.fillStyle = P.base; g.fillRect(0, 0, w, h);
   ears(g, w, h, P);
@@ -189,13 +248,10 @@ export function drawRear1U(g, w, h, P) {
     g.fillStyle = P.handle; g.fillRect(x + 74, 7, 5, h - 14);
     g.fillStyle = P.led; g.fillRect(x + 60, 6, 6, 4);
   });
-  g.fillStyle = P.port; g.fillRect(124, 10, 12, 6); g.fillRect(124, 22, 12, 6); g.fillRect(142, 12, 16, 12);
+  const { idrac: [ix, iy], ocp, ocpY } = REAR_IO[1];
+  g.fillStyle = P.port; g.fillRect(124, 10, 12, 6); g.fillRect(124, 22, 12, 6); g.fillRect(ix - 8, iy - 6, 16, 12);
   g.fillStyle = P.vga; g.fillRect(164, 12, 22, 10);
-  [200, 220, 246, 266].forEach(x => {
-    g.fillStyle = P.port; g.fillRect(x, 8, 16, 11);
-    g.fillStyle = P.cable; g.fillRect(x + 3, 17, 10, h - 17);
-    g.fillStyle = P.led; g.fillRect(x + 6, 4, 4, 3);
-  });
+  ocp.forEach((x, k) => sfp(g, x, ocpY, P, k < 2));
   g.fillStyle = P.slot; g.fillRect(296, 4, 100, h - 8);
   g.fillStyle = P.hole; for (let x = 304; x < 390; x += 8) g.fillRect(x, 10, 4, h - 20);
 }
@@ -205,12 +261,15 @@ export function drawSwFans(g, w, h, P) {
   for (let i = 0; i < 5; i++) { g.fillStyle = P.psu; g.fillRect(32 + i * 62, 3, 56, h - 6); grille(g, 60 + i * 62, h / 2, 17, P); }
   [350, 420].forEach(x => { g.fillStyle = P.psu; g.fillRect(x, 3, 64, h - 6); g.fillStyle = P.handle; g.fillRect(x + 54, 8, 5, h - 16); g.fillStyle = P.port; g.fillRect(x + 8, 10, 18, h - 20); g.fillStyle = P.led; g.fillRect(x + 32, 8, 6, 4); });
 }
+// Port n (from 1) of a switch's 48 access ports, odd ones on top as switches number them: its centre in grid pixels
+export const SW_PORT = n => [34 + ((n - 1) >> 1) * 14.5, (n - 1) & 1 ? 31.5 : 12.5];
+// One port per server takes its patch lead (lit); the rest stand empty. The 100G uplinks carry fibre to the riser.
 export function drawSwPorts(g, w, h, P) {
   g.fillStyle = P.base; g.fillRect(0, 0, w, h); ears(g, w, h, P);
-  for (let i = 0; i < 24; i++) for (let k = 0; k < 2; k++) {
-    const x = 28 + i * 14.5, y = k ? h - 19 : 6;
-    g.fillStyle = P.port; g.fillRect(x, y, 12, 13);
-    if ((i * 7 + k * 3) % 5 < 4) { g.fillStyle = P.led; g.fillRect(x + 2, k ? y + 14 : y - 4, 3, 2); g.fillStyle = P.cable; g.fillRect(x + 3, y + 3, 6, 7); }
+  for (let n = 1; n <= 48; n++) {
+    const [cx, cy] = SW_PORT(n), x = cx - 6, y = cy - 6.5;
+    g.fillStyle = P.cage; g.fillRect(x, y, 12, 13); g.fillStyle = P.port; g.fillRect(x + 1, y + 1, 10, 11);
+    g.fillStyle = n <= SERVERS ? P.led : P.panel; g.fillRect(x + 2, (n - 1) & 1 ? y + 14 : y - 4, 3, 2);
   }
   for (let i = 0; i < 4; i++) for (let k = 0; k < 2; k++) {
     const x = 384 + i * 25, y = k ? h - 19 : 6;
