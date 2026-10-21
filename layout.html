@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Layout Editor · Server Hall Live</title>
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
+<link rel="stylesheet" href="css/editor.css">
+</head>
+<body>
+<header class="bar">
+  <div class="title">
+    <div class="eyebrow">Server Hall Live</div>
+    <h1>Layout editor</h1>
+  </div>
+  <div class="acts">
+    <button id="openFile" type="button">Open file</button>
+    <input id="fileIn" type="file" accept=".json,application/json" hidden>
+    <button id="download" type="button">Download JSON</button>
+    <button id="toViewer" type="button" class="primary">Show in viewer</button>
+    <a href="index.html" class="linkish">Back to the viewer</a>
+  </div>
+  <p class="src" id="src" role="status"></p>
+</header>
+
+<main class="wrap">
+  <aside class="side">
+    <section>
+      <h2>Halls</h2>
+      <ul class="halls" id="halls"></ul>
+      <button id="addHall" type="button">Add hall</button>
+    </section>
+    <section id="hallProps">
+      <h2>This hall</h2>
+      <label>Building <input id="hBuilding" type="text" autocomplete="off"></label>
+      <label>Room <input id="hRoom" type="text" autocomplete="off"></label>
+      <div class="pair">
+        <label>Columns <input id="hW" type="number" min="4" max="200"></label>
+        <label>Rows <input id="hH" type="number" min="4" max="200"></label>
+      </div>
+      <p class="note" id="hSize"></p>
+      <button id="delHall" type="button" class="danger">Delete hall</button>
+    </section>
+  </aside>
+
+  <section class="canvasWrap">
+    <div class="tools" role="radiogroup" aria-label="Tool">
+      <button type="button" data-tool="rackS" role="radio" aria-checked="true" title="Rack whose front faces south (down). Drag along a row to place several.">Rack ↓</button>
+      <button type="button" data-tool="rackN" role="radio" aria-checked="false" title="Rack whose front faces north (up). Drag along a row to place several.">Rack ↑</button>
+      <button type="button" data-tool="P" role="radio" aria-checked="false" title="Vented floor tile: the cold aisle in front of racks">Vented tile</button>
+      <button type="button" data-tool="H" role="radio" aria-checked="false" title="Contained hot aisle between rack rears">Hot aisle</button>
+      <button type="button" data-tool="." role="radio" aria-checked="false" title="Plain floor; also removes racks">Floor / erase</button>
+      <button type="button" data-tool="select" role="radio" aria-checked="false" title="Pick a rack to rename, turn or delete it">Select</button>
+      <label class="prefix">Next rack <input id="prefix" type="text" value="A" size="4" autocomplete="off" aria-label="Rack name prefix"><b id="nextId"></b></label>
+      <label class="zoom">Zoom <input id="zoom" type="range" min="10" max="44" value="26"></label>
+      <button id="undo" type="button" title="Undo (Ctrl+Z)">Undo</button>
+    </div>
+    <div class="scroller"><canvas id="grid"></canvas></div>
+    <p class="legend"><span class="k rack"></span>Rack (bright edge = front) <span class="k p"></span>Vented tile <span class="k h"></span>Hot aisle <span class="k f"></span>Floor · Each tile is 0.6 m. A rack takes two tiles front to back; the number on it is how many servers the file puts in it.</p>
+  </section>
+
+  <aside class="side right">
+    <section id="rackBox" hidden>
+      <h2>Rack <span id="rTitle"></span></h2>
+      <label>Name <input id="rName" type="text" autocomplete="off"></label>
+      <div class="pair">
+        <button id="rTurn" type="button">Turn round</button>
+        <button id="rDel" type="button" class="danger">Delete rack</button>
+      </div>
+      <p class="note" id="rNote"></p>
+      <ul class="svlist" id="rServers"></ul>
+    </section>
+    <section>
+      <h2>Problems <span id="probN"></span></h2>
+      <ul class="probs" id="probs"></ul>
+    </section>
+  </aside>
+</main>
+<script type="module" src="js/editor.js"></script>
+</body>
+</html>

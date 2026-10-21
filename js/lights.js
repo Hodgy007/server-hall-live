@@ -1,14 +1,18 @@
 // Ceiling lighting. The panel fixtures never move or dim, so the light they put on every surface is worked out
-// once at start-up into a grid through the hall that lit materials look up, instead of evaluating 21 area lights
+// once at start-up into a grid through the hall that lit materials look up, instead of evaluating dozens of area lights
 // for every pixel of every frame. In the cold aisle you are looking at, shadow-casting spot lights take over most
 // of that aisle's fixtures so racks and overhead services throw real shadows. Also faint shafts of light in the
 // haze under the cold-aisle fixtures.
 import { THREE, scene, renderer, controls, lc, LOW_POWER, COLD, HACS, ROOM, cutPlane } from './core.js';
 
-// Cold-aisle fixtures run down the middle of the aisle; over a hot aisle they sit between the chimneys
-const FX_X = [-2.6, 0, 2.6], FX_XH = [-1.28, 1.28], FX_W = 1.6, FX_D = 0.16, FX_Y = ROOM.h - 0.03, FX_COL = 0xdcecff;
+// Cold-aisle fixtures run down the middle of the aisle about every 2.4 m; over a hot aisle they sit between the chimneys.
+// A hall with no vented tiles gets rows of fixtures across the whole room instead.
+const FX_W = 1.6, FX_D = 0.16, FX_Y = ROOM.h - 0.03, FX_COL = 0xdcecff;
+const along = (x0, x1, step) => { const n = Math.max(1, Math.round((x1 - x0) / step)); return Array.from({ length: n }, (_, i) => x0 + (i + 0.5) * (x1 - x0) / n); };
+const between = xs => xs.length > 1 ? xs.slice(1).map((x, i) => (x + xs[i]) / 2) : [xs[0] - 1.28, xs[0] + 1.28];
+const workAisles = COLD.length ? COLD.map(a => ({ z: a.z, x0: a.x0, x1: a.x1 })) : along(-ROOM.z + 0.6, ROOM.z - 0.6, 3).map(z => ({ z, x0: -ROOM.x + 0.6, x1: ROOM.x - 0.6 }));
 // Panel luminance in nits: cold aisles are lit for work, hot aisles sit above the containment roof and run dimmer
-const AISLES = COLD.map((z, k) => ({ z, k, xs: FX_X, lum: 40 })).concat(HACS.map(H => ({ z: H.zc, xs: FX_XH, lum: 20 })));
+const AISLES = workAisles.map((a, k) => ({ z: a.z, k, xs: along(a.x0, a.x1, 2.4), lum: 40 })).concat(HACS.map(H => ({ z: H.zc, xs: between(H.chimneys), lum: 20 })));
 const m4 = new THREE.Matrix4();
 
 // Fixture panels, bright enough to bloom
@@ -20,9 +24,11 @@ const m4 = new THREE.Matrix4();
 }
 
 // ---------- Baked fixture light ----------
-// Grid points every ~0.37 m hold, for six directions (±x, ±y, ±z), the diffuse light arriving from the fixtures
-// (luminance × form factor). A surface blends the three directions its normal leans towards (an "ambient cube").
-const NX = 33, NY = 12, NZ = 57, N = NX * NY * NZ;
+// Grid points about every 0.37 m (coarser in a very large hall) hold, for six directions (±x, ±y, ±z), the diffuse light
+// arriving from the fixtures (luminance × form factor). A surface blends the three directions its normal leans towards
+// (an "ambient cube").
+const cells = (len, max) => Math.max(9, Math.min(max, Math.round(len / 0.37) + 1));
+const NX = cells(2 * ROOM.x, 72), NY = 12, NZ = cells(2 * ROOM.z, 96), N = NX * NY * NZ;
 const GMIN = new THREE.Vector3(-ROOM.x, 0, -ROOM.z), GSTEP = new THREE.Vector3(2 * ROOM.x / (NX - 1), ROOM.h / (NY - 1), 2 * ROOM.z / (NZ - 1));
 const DIRS = [[1, 0, 0], [0, 1, 0], [0, 0, 1], [-1, 0, 0], [0, -1, 0], [0, 0, -1]];
 const LY = FX_Y - 0.021;   // emitting face of the panels
@@ -120,11 +126,26 @@ export function bakedLighting(m) {
   m.customProgramCacheKey = () => 'baked|' + prevKey;
 }
 
+// Every material under root, once: subtle reflections (just enough for steel to read as steel), the baked fixture
+// light, and the rack-view cut, which clips everything but the room shell
+export function prepare(root) {
+  root.traverse(o => {
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+      if (!m) continue;
+      if (m.isMeshStandardMaterial && !m.userData.baked) {
+        m.envMapIntensity = m.userData.envMapIntensity ?? (m.metalness > 0.6 ? 0.22 : 0.12);
+        bakedLighting(m); m.userData.baked = true;
+      }
+      if (!m.userData.noClip) { m.clippingPlanes = [cutPlane]; m.clipShadows = true; }
+    }
+  });
+}
+
 // ---------- Shadows in the viewed aisle ----------
 // The baked light has no shadows, so in the cold aisle nearest the camera's target a spot light under each fixture
 // takes over most of that fixture's output and casts it. Changing aisle fades the spots out, moves them, fades them back.
 const SHARE = 0.75, FADE = 0.35;
-const spots = FX_X.map(() => {
+const spots = Array.from({ length: Math.min(5, Math.max(...AISLES.filter(a => a.k !== undefined).map(a => a.xs.length))) }, () => {
   const s = new THREE.SpotLight(FX_COL, 0, 0, 1.0, 0.9, 2);
   s.castShadow = true;
   s.shadow.mapSize.setScalar(LOW_POWER ? 512 : 1024);
@@ -135,8 +156,10 @@ const spots = FX_X.map(() => {
 });
 const SH = { aisle: null, s: 0, cut: NaN };
 function moveSpots(a) {
+  // an aisle with more fixtures than spots keeps the middle ones; spots it does not need stay dark
+  const first = Math.max(0, Math.floor((a.xs.length - spots.length) / 2));
   spots.forEach((s, i) => {
-    const x = a.xs[i];
+    const x = a.xs[first + i]; s.userData.on = x !== undefined; if (!s.userData.on) return;
     s.position.set(x, FX_Y - 0.05, a.z); s.target.position.set(x, 0, a.z); s.target.updateMatrixWorld();
   });
   // the baked light to subtract where the spots take over
@@ -195,8 +218,9 @@ const shaftMat = new THREE.ShaderMaterial({
   transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, clipping: true
 });
 {
-  const shafts = new THREE.InstancedMesh(shaftGeo, shaftMat, COLD.length * FX_X.length);
-  COLD.forEach((z, i) => FX_X.forEach((x, k) => { m4.makeTranslation(x, 0, z); shafts.setMatrixAt(i * FX_X.length + k, m4); }));
+  const work = AISLES.filter(a => a.k !== undefined), shafts = new THREE.InstancedMesh(shaftGeo, shaftMat, work.reduce((n, a) => n + a.xs.length, 0));
+  let n = 0;
+  work.forEach(a => a.xs.forEach(x => { m4.makeTranslation(x, 0, a.z); shafts.setMatrixAt(n++, m4); }));
   shafts.renderOrder = 3; scene.add(shafts);
 }
 
@@ -211,7 +235,7 @@ export function updateLights(dt) {
   } else SH.s = Math.min(1, SH.s + dt / FADE);
   const a = SH.aisle;
   // A spot's intensity (candela) matching the panel straight below it is luminance × area
-  spots.forEach(s => { s.intensity = SHARE * SH.s * a.lum * FX_W * FX_D; });
+  spots.forEach(s => { s.intensity = s.userData.on ? SHARE * SH.s * a.lum * FX_W * FX_D : 0; });
   BAKE.bakeShare.value = SHARE * SH.s;
   // The rack-view cut-away also clips shadow casters, so the maps follow it
   if (cutPlane.constant !== SH.cut) { SH.cut = cutPlane.constant; renderer.shadowMap.needsUpdate = true; }

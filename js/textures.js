@@ -1,5 +1,5 @@
 // Procedural textures for cabinets and rack-mounted hardware, all drawn on canvas.
-import { THREE, canvasTex, speckle, plateH, SERVERS } from './core.js';
+import { THREE, canvasTex, speckle, plateH } from './core.js';
 
 // ---------- Wear ----------
 // Rubs where the powder coat is worn towards bare steel, and darker marks from trolleys, boots and cable reels
@@ -98,9 +98,9 @@ export const doorAlphas = [alphaStd, alphaStd, alphaStd, canvasTex(DOOR_W, DOOR_
 // Each face is drawn three times: colour, height map for bump shading, and glow (LEDs only). Faces are laid out on a
 // 512-wide grid (about 1 px per mm) and drawn at twice that resolution, so the detail holds close up.
 const BUMP = { base: '#808080', ear: '#a8a8a8', handle: '#ffffff', hole: '#000000', latch: '#d0d0d0', panel: '#707070', tag: '#c0c0c0', psu: '#989898', slot: '#a0a0a0', port: '#101010', cable: '#e0e0e0', led: '#000000', vga: '#202020',
-  bezel: '#a0a0a0', carrier: '#989898', face: '#b0b0b0', hex: '#8c8c8c', btn: '#e0e0e0', pipe: '#b4b4b4', pwr: '#c8c8c8', usb: '#181818', icon: '#a8a8a8', cage: '#c0c0c0' };
+  bezel: '#a0a0a0', carrier: '#989898', face: '#b0b0b0', hex: '#8c8c8c', btn: '#e0e0e0', pipe: '#b4b4b4', pwr: '#c8c8c8', usb: '#181818', icon: '#a8a8a8', cage: '#c0c0c0', uid: '#c0c0c0' };
 const PAL = { base: '#2b343d', ear: '#3a4550', handle: '#a3aeb8', hole: '#080a0d', latch: '#8f9aa4', panel: '#161c22', tag: '#d2d9df', psu: '#2a323a', slot: '#29313a', port: '#090c0f', cable: '#33b5c9', led: '#000000', vga: '#2d5fa8',
-  bezel: '#16191c', carrier: '#1b1e22', face: '#24282d', hex: '#1d2125', btn: '#6f777e', pipe: '#26302b', pwr: '#2f8f55', usb: '#0b0d0f', icon: '#59636c', cage: '#7d868e' };
+  bezel: '#16191c', carrier: '#1b1e22', face: '#24282d', hex: '#1d2125', btn: '#6f777e', pipe: '#26302b', pwr: '#2f8f55', usb: '#0b0d0f', icon: '#59636c', cage: '#7d868e', uid: '#1f4f8f' };
 const GLOW = Object.fromEntries(Object.keys(PAL).map(k => [k, '#000000']));
 GLOW.led = '#46ff9a'; GLOW.pwr = '#1c7a3e';
 export function plateMat(w, h, draw, opts) {
@@ -138,9 +138,7 @@ const screw = (g, x, y, P) => { g.fillStyle = P.latch; g.beginPath(); g.arc(x, y
 
 // ---------- Server fronts (Dell PowerEdge, no bezel) ----------
 // The status LEDs are separate meshes in the left ear, in metres from the face centre: activity below, system health and ID above
-export const FRONT_LED = { x: -0.249, y: { 2: [-0.004, 0.02], 1: [-0.0105, 0.0105] } };
-// The raised parts of the face, in grid pixels, for the relief geometry: the two ears and the eight drive carriers
-export const FRONT_RELIEF = h => [[0, 0, 22, h], [490, 0, 22, h], ...Array.from({ length: 8 }, (_, i) => [28 + i * 36, h > 50 ? 4 : 3, 33, h - (h > 50 ? 8 : 6)])];
+const FRONT_LED = { x: -0.249, y: { 2: [-0.004, 0.02], 1: [-0.0105, 0.0105] } };
 // Left control panel: windows for the two LEDs, the status icons (drive, temperature, electrical, memory, PCIe), a slam latch.
 // Right control panel: power button with its green ring, USB and the iDRAC Direct port.
 function frontEars(g, w, h, P) {
@@ -206,8 +204,6 @@ export function drawFront(g, w, h, P) {
 // ---------- Server rears ----------
 // Rear I/O, centres in grid pixels: the iDRAC port, and the OCP NIC's four SFP28 cages along one line
 const REAR_IO = { 2: { idrac: [258, 21], ocp: [284, 304, 330, 350], ocpY: 43.5 }, 1: { idrac: [150, 18], ocp: [208, 228, 254, 274], ocpY: 13.5 } };
-// Where the patch leads plug in: the iDRAC port, then the first two cages (NIC 1, NIC 2)
-export const REAR_PORTS = Object.fromEntries([1, 2].map(h => { const io = REAR_IO[h]; return [h, [io.idrac, [io.ocp[0], io.ocpY], [io.ocp[1], io.ocpY]]]; }));
 // SFP28 cage centred on (cx, cy) and its link light; only the two cabled ports are lit
 function sfp(g, cx, cy, P, lit) {
   const x = cx - 8, y = cy - 5.5;
@@ -255,6 +251,148 @@ export function drawRear1U(g, w, h, P) {
   g.fillStyle = P.slot; g.fillRect(296, 4, 100, h - 8);
   g.fillStyle = P.hole; for (let x = 304; x < 390; x += 8) g.fillRect(x, 10, 4, h - 20);
 }
+// ---------- HPE ProLiant (no bezel) ----------
+// Front: the serial-label pull tab on the left ear; eight SFF Smart Carriers, each with its round activity ring and a
+// release latch; a square-perforated vent with the status lights at its right (the LEDs are meshes, at HPE_LED); on
+// the right ear the power button with its ring, the UID button, USB and the iLO service port.
+const HPE_LED = { x: 0.205, y: { 2: [-0.012, 0.012], 1: [-0.0105, 0.0105] } };
+function squares(g, x0, y0, x1, y1, s, P) {
+  g.fillStyle = P.hole;
+  for (let y = y0; y + s <= y1; y += s + 1.4) for (let x = x0; x + s <= x1; x += s + 1.4) g.fillRect(x, y, s, s);
+}
+export function drawFrontHPE(g, w, h, P) {
+  const two = h > 50, m = two ? 4 : 3, ly = HPE_LED.y[two ? 2 : 1].map(y => h / 2 - y / plateH(two ? 2 : 1) * h);
+  g.fillStyle = P.bezel; g.fillRect(0, 0, w, h);
+  [0, w - 22].forEach(x => { g.fillStyle = P.ear; g.fillRect(x, 0, 22, h); g.fillStyle = P.hole; g.fillRect(x === 0 ? 21 : x, 0, 1, h); });
+  g.fillStyle = P.latch; g.fillRect(3, h / 2 - 4, 15, 8); g.fillStyle = P.hole; g.fillRect(5, h / 2 - 0.6, 11, 1.2);
+  g.fillStyle = P.hole; g.fillRect(25, m - 2, 294, h - 2 * m + 4);
+  for (let i = 0; i < 8; i++) {
+    const x = 28 + i * 36, y = m, hh = h - 2 * m;
+    g.fillStyle = P.carrier; g.fillRect(x, y, 33, hh);
+    g.fillStyle = 'rgba(255,255,255,0.06)'; g.fillRect(x, y, 33, 0.8);
+    g.strokeStyle = P.pipe; g.lineWidth = 1.4; g.beginPath(); g.arc(x + 9, y + (two ? 8 : 7), two ? 4 : 3, 0, Math.PI * 2); g.stroke();
+    squares(g, x + 4, y + (two ? 16 : 3), x + 30, y + hh - (two ? 16 : 3), 2, P);
+    if (two) { g.fillStyle = P.btn; g.fillRect(x + 4, y + hh - 12, 25, 8); g.fillStyle = P.hole; g.fillRect(x + 8, y + hh - 9, 17, 1.4); }
+    else { g.fillStyle = P.btn; g.fillRect(x + 22, y + 3, 8, hh - 6); }
+  }
+  g.fillStyle = P.hex; g.fillRect(322, m - 1, 166, h - 2 * m + 2);
+  squares(g, 326, m + 2, 438, h - m - 2, 2.6, P);
+  ly.forEach(y => { g.fillStyle = P.hole; g.fillRect(449, y - 9.5, 18, 19); g.fillStyle = P.panel; g.fillRect(450, y - 8.5, 16, 17); });
+  const bx = w - 11, by = two ? 20 : 11, br = two ? 6 : 5;
+  g.fillStyle = P.pwr; g.beginPath(); g.arc(bx, by, br, 0, Math.PI * 2); g.fill();
+  g.fillStyle = P.panel; g.beginPath(); g.arc(bx, by, br - 1.3, 0, Math.PI * 2); g.fill();
+  g.fillStyle = P.uid; g.fillRect(w - 16, two ? 32 : 19, 10, two ? 8 : 6);
+  if (two) {
+    g.fillStyle = P.cage; g.fillRect(w - 17, 48, 12, 6); g.fillStyle = P.usb; g.fillRect(w - 16, 49, 10, 4);
+    g.fillStyle = P.cage; g.fillRect(w - 15, 60, 8, 3.4); g.fillStyle = P.usb; g.fillRect(w - 14.4, 60.6, 6.8, 2.2);
+  }
+}
+// Rear: PCIe slot covers across the top in three risers (one in 1U), and along the bottom the OCP NIC's SFP28 cages,
+// the dedicated iLO port with USB and VGA, and the two power supplies side by side at the right
+const HPE_IO = { 2: { oob: [240, 66], ocp: [158, 178, 198], ocpY: 66 }, 1: { oob: [222, 22], ocp: [140, 160, 180], ocpY: 22 } };
+export function drawRearHPE(g, w, h, P) {
+  const two = h > 50, io = HPE_IO[two ? 2 : 1];
+  g.fillStyle = P.base; g.fillRect(0, 0, w, h); ears(g, w, h, P);
+  const slots = two ? Array.from({ length: 8 }, (_, i) => 28 + i * 58) : [28, 64];
+  slots.forEach(x => { g.fillStyle = P.slot; g.fillRect(x, 4, two ? 52 : 32, two ? 44 : h - 8); g.fillStyle = P.hole; for (let y = 10; y < (two ? 44 : h - 10); y += 6) g.fillRect(x + 6, y, two ? 40 : 20, 2); });
+  io.ocp.forEach((x, k) => sfp(g, x, io.ocpY, P, k < 2));
+  const [ox, oy] = io.oob;
+  g.fillStyle = P.port; g.fillRect(ox - 8, oy - 7, 16, 14); g.fillStyle = P.led; g.fillRect(ox - 7, oy - 6, 3, 2); g.fillRect(ox + 4, oy - 6, 3, 2);
+  g.fillStyle = P.port; g.fillRect(ox + 14, oy - 8, 12, 6); g.fillRect(ox + 14, oy + 2, 12, 6);
+  g.fillStyle = P.vga; g.fillRect(ox + 32, oy - 5, 22, 10);
+  const pw = 72, py = two ? 52 : 3, ph = two ? h - 56 : h - 6;
+  [w - 26 - 2 * pw - 4, w - 26 - pw].forEach(x => {
+    g.fillStyle = P.psu; g.fillRect(x, py, pw, ph);
+    grille(g, x + 16, py + ph / 2, Math.min(13, ph / 2 - 2), P);
+    g.fillStyle = P.port; g.fillRect(x + 34, py + ph / 2 - 8, 14, 16);
+    g.fillStyle = P.handle; g.fillRect(x + 60, py + 4, 5, ph - 8);
+    g.fillStyle = P.led; g.fillRect(x + 50, py + 4, 5, 3);
+  });
+}
+
+// ---------- Generic chassis: any other make, and any 3U or 4U server ----------
+// Front: grey ears with pull handles, the status LEDs in the left ear, 3.5" carriers four across in rows (one row in
+// 1U, three in 2U, four in 3U, six in 4U), and a slotted vent at the right with the power button
+const GEN_ROWS = { 1: 1, 2: 3, 3: 4, 4: 6 };
+const genLed = (h, H) => h === 1 ? [-0.0105, 0.0105] : [H / 2 - 0.03, H / 2 - 0.012];
+const genBays = (h, ph) => {
+  const n = GEN_ROWS[h], m = 3, rh = (ph - 2 * m) / n, out = [];
+  for (let r = 0; r < n; r++) for (let c = 0; c < 4; c++) out.push([28 + c * 99, m + r * rh + 0.5, 96, rh - 1]);
+  return out;
+};
+export function drawFrontGeneric(g, w, ph, P, h) {
+  const H = plateH(h), ly = genLed(h, H).map(y => ph / 2 - y / H * ph);
+  g.fillStyle = P.bezel; g.fillRect(0, 0, w, ph);
+  [0, w - 22].forEach(x => {
+    g.fillStyle = P.ear; g.fillRect(x, 0, 22, ph); g.fillStyle = P.hole; g.fillRect(x === 0 ? 21 : x, 0, 1, ph);
+    const hy = Math.max(...ly) + 12;
+    if (ph - hy - 6 > 10) { g.strokeStyle = P.handle; g.lineWidth = 3; g.strokeRect(x + 7, hy, 8, ph - hy - 6); }
+  });
+  ly.forEach(y => { g.fillStyle = P.hole; g.fillRect(2, y - 9.5, 18, 19); g.fillStyle = P.panel; g.fillRect(3, y - 8.5, 16, 17); });
+  g.fillStyle = P.hole; g.fillRect(25, 1, 404, ph - 2);
+  for (const [x, y, bw, bh] of genBays(h, ph)) {
+    g.fillStyle = P.carrier; g.fillRect(x, y, bw, bh);
+    g.fillStyle = 'rgba(255,255,255,0.06)'; g.fillRect(x, y, bw, 0.8);
+    g.fillStyle = P.hole; for (let xx = x + 5; xx < x + 60; xx += 4) g.fillRect(xx, y + 4, 2, bh - 8);
+    g.fillStyle = P.btn; g.fillRect(x + 66, y + bh / 2 - 4, 22, 8);
+    g.fillStyle = P.pipe; g.fillRect(x + 90, y + 4, 3, 2.4); g.fillRect(x + 90, y + 9, 3, 2.4);
+  }
+  g.fillStyle = P.hex; g.fillRect(432, 1, 56, ph - 2);
+  g.fillStyle = P.hole; for (let x = 436; x < 484; x += 5) g.fillRect(x, 6, 2.4, ph - 12);
+  g.fillStyle = P.pwr; g.beginPath(); g.arc(w - 11, Math.min(ph - 9, 12), 5, 0, Math.PI * 2); g.fill();
+  g.fillStyle = P.panel; g.beginPath(); g.arc(w - 11, Math.min(ph - 9, 12), 3.7, 0, Math.PI * 2); g.fill();
+}
+// Rear: the BMC port, USB, VGA and two SFP28 cages at the left, PCIe slot covers in the middle, power supplies at the right
+const genIO = (h, ph) => { const y = h === 1 ? 22 : ph - 22; return { oob: [44, y], ocp: [84, 104], y }; };
+export function drawRearGeneric(g, w, ph, P, h) {
+  const io = genIO(h, ph);
+  g.fillStyle = P.base; g.fillRect(0, 0, w, ph); ears(g, w, ph, P);
+  const [ox, oy] = io.oob;
+  g.fillStyle = P.port; g.fillRect(ox - 8, oy - 7, 16, 14); g.fillStyle = P.led; g.fillRect(ox - 7, oy - 6, 3, 2); g.fillRect(ox + 4, oy - 6, 3, 2);
+  io.ocp.forEach(x => sfp(g, x, io.y, P, true));
+  g.fillStyle = P.port; g.fillRect(122, io.y - 8, 12, 6); g.fillRect(122, io.y + 2, 12, 6);
+  g.fillStyle = P.vga; g.fillRect(140, io.y - 5, 22, 10);
+  const slotTop = 4, slotH = h === 1 ? ph - 8 : ph - 44;
+  for (let x = 172; x < 352; x += 30) { g.fillStyle = P.slot; g.fillRect(x, slotTop, 26, slotH); g.fillStyle = P.hole; for (let y = slotTop + 6; y < slotTop + slotH - 4; y += 6) g.fillRect(x + 6, y, 14, 2); }
+  const n = h === 1 ? 1 : 2, psH = (ph - 8 - (n - 1) * 3) / n;
+  for (let k = 0; k < n; k++) {
+    const y = 4 + k * (psH + 3), x = h === 1 ? 400 : 362;
+    g.fillStyle = P.psu; g.fillRect(x, y, w - 26 - x, psH);
+    grille(g, x + 18, y + psH / 2, Math.min(14, psH / 2 - 2), P);
+    g.fillStyle = P.port; g.fillRect(x + 40, y + psH / 2 - 8, 14, 16);
+    g.fillStyle = P.handle; g.fillRect(w - 26 - 10, y + 4, 5, psH - 8);
+  }
+}
+
+// ---------- Faces by maker and height ----------
+// What each kind of server looks like: its front and rear drawings (grid pixels high), the raised parts of the front
+// for the relief geometry, the two status LEDs (metres from the face centre: activity, then health) and the rear ports
+// its patch leads plug into (out-of-band first, then NIC 1 and NIC 2). Dell and HPE in 1U and 2U; anything else, or
+// taller, is the generic chassis.
+export const gridH = h => h === 1 ? 44 : 43 * h;
+const earsAnd = (ph, bays) => [[0, 0, 22, ph], [490, 0, 22, ph], ...bays];
+const sff8 = ph => Array.from({ length: 8 }, (_, i) => [28 + i * 36, ph > 50 ? 4 : 3, 33, ph - (ph > 50 ? 8 : 6)]);
+const faces = new Map();
+export function faceSpec(family, h) {
+  const k = (family === 'dell' || family === 'hpe') && h <= 2 ? `${family}|${h}` : `other|${h}`;
+  if (faces.has(k)) return faces.get(k);
+  const ph = gridH(h), f = k.split('|')[0];
+  let spec;
+  if (f === 'dell') {
+    const io = REAR_IO[h];
+    spec = { front: drawFront, rear: h === 1 ? drawRear1U : drawRear, relief: earsAnd(ph, sff8(ph)), led: { x: FRONT_LED.x, y: FRONT_LED.y[h] }, ports: [io.idrac, [io.ocp[0], io.ocpY], [io.ocp[1], io.ocpY]] };
+  } else if (f === 'hpe') {
+    const io = HPE_IO[h];
+    spec = { front: drawFrontHPE, rear: drawRearHPE, relief: earsAnd(ph, sff8(ph)), led: { x: HPE_LED.x, y: HPE_LED.y[h] }, ports: [io.oob, [io.ocp[0], io.ocpY], [io.ocp[1], io.ocpY]] };
+  } else {
+    const io = genIO(h, ph);
+    spec = { front: (g, w, hh, P) => drawFrontGeneric(g, w, hh, P, h), rear: (g, w, hh, P) => drawRearGeneric(g, w, hh, P, h), relief: earsAnd(ph, genBays(h, ph)),
+      led: { x: FRONT_LED.x, y: genLed(h, plateH(h)) }, ports: [io.oob, [io.ocp[0], io.y], [io.ocp[1], io.y]] };
+  }
+  Object.assign(spec, { key: k, family: f, h, ph });
+  faces.set(k, spec);
+  return spec;
+}
 // 1U switch, fan/PSU side (faces the cold aisle) and port side (faces the hot aisle)
 export function drawSwFans(g, w, h, P) {
   g.fillStyle = P.base; g.fillRect(0, 0, w, h); ears(g, w, h, P);
@@ -263,13 +401,13 @@ export function drawSwFans(g, w, h, P) {
 }
 // Port n (from 1) of a switch's 48 access ports, odd ones on top as switches number them: its centre in grid pixels
 export const SW_PORT = n => [34 + ((n - 1) >> 1) * 14.5, (n - 1) & 1 ? 31.5 : 12.5];
-// One port per server takes its patch lead (lit); the rest stand empty. The 100G uplinks carry fibre to the riser.
+// The first 24 ports are cabled to servers (lit); the rest stand empty. The 100G uplinks carry fibre to the riser.
 export function drawSwPorts(g, w, h, P) {
   g.fillStyle = P.base; g.fillRect(0, 0, w, h); ears(g, w, h, P);
   for (let n = 1; n <= 48; n++) {
     const [cx, cy] = SW_PORT(n), x = cx - 6, y = cy - 6.5;
     g.fillStyle = P.cage; g.fillRect(x, y, 12, 13); g.fillStyle = P.port; g.fillRect(x + 1, y + 1, 10, 11);
-    g.fillStyle = n <= SERVERS ? P.led : P.panel; g.fillRect(x + 2, (n - 1) & 1 ? y + 14 : y - 4, 3, 2);
+    g.fillStyle = n <= 24 ? P.led : P.panel; g.fillRect(x + 2, (n - 1) & 1 ? y + 14 : y - 4, 3, 2);
   }
   for (let i = 0; i < 4; i++) for (let k = 0; k < 2; k++) {
     const x = 384 + i * 25, y = k ? h - 19 : 6;

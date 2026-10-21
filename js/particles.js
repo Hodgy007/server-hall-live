@@ -1,8 +1,8 @@
 // Particle systems: hot-aisle exhaust, cold-aisle supply air, network packets on the trays.
-import { THREE, scene, lc, COL, clamp, grad, canvasTex, RACK_H, RACK_D, TRAY_Y, TRAY_X, ROOM, HACS, COLD, ROW_HALF, coolingUnit } from './core.js';
+import { THREE, scene, lc, COL, clamp, grad, canvasTex, RACK_H, RACK_D, TRAY_Y, TRAY_X, ROOM, HACS, COLD, coolingUnit } from './core.js';
 import { W } from './state.js';
 import { racks } from './racks.js';
-import { RISER_DZ } from './hall.js';
+import { RISER_DZ, SPINE_Z } from './hall.js';
 
 const glow = canvasTex(64, 64, (g) => {
   const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
@@ -20,13 +20,16 @@ export function makePoints(n, size, parent) {
   return { geo, pos, col, n, pts };
 }
 const tmp = new THREE.Color();
-// Each rack whose rear faces a contained hot aisle gets that aisle; the outer rows (A, H) blow towards the end walls
-racks.forEach(r => { const rear = r.z - r.face * RACK_D / 2; r.hac = HACS.find(H => Math.abs(rear - H.zc) < 0.7) || null; });
+// Each rack whose rear opens into a contained hot aisle gets that aisle; the others blow out into the room
+racks.forEach(r => {
+  const rear = r.z - r.face * RACK_D / 2;
+  r.hac = HACS.find(H => r.x > H.x0 - 0.05 && r.x < H.x1 + 0.05 && rear > H.z0 - 0.05 && rear < H.z1 + 0.05) || null;
+});
 const contained = r => r.hac !== null;
 
 // ---------- Hot-aisle exhaust ----------
 // Contained rows: air rises to the roof, runs to the nearest chimney and leaves upwards.
-export const heat = makePoints(2400, 0.17); const hp = [];
+export const heat = makePoints(racks.length ? 2400 : 0, 0.17); const hp = [];
 function spawnHeat(i, scatter) {
   const p = hp[i] || (hp[i] = {}); const r = racks[(Math.random() * racks.length) | 0]; p.r = r; p.duct = 0;
   p.life = contained(r) ? 4.5 + Math.random() * 2.5 : 2.4 + Math.random() * 1.8; p.age = scatter ? Math.random() * p.life : 0;
@@ -70,13 +73,14 @@ function stepHeat(p, o, dt) {
 }
 
 // ---------- Cold-aisle supply air from the perforated tiles ----------
-export const cold = makePoints(900, 0.13); const cp = [];
+// Each particle belongs to one aisle and comes up through one of its tiles
+export const cold = makePoints(COLD.length ? 900 : 0, 0.13); const cp = [];
 function spawnCold(i, scatter) {
   const p = cp[i] || (cp[i] = {}); p.aisle = i % COLD.length;
   p.life = 2 + Math.random() * 1.5; p.age = scatter ? Math.random() * p.life : 0;
   p.vy = 0.35 + Math.random() * 0.3; p.vz = (Math.random() < 0.5 ? -1 : 1) * (0.08 + Math.random() * 0.14);
-  const o = i * 3;
-  cold.pos[o] = (Math.random() - 0.5) * 2 * ROW_HALF; cold.pos[o + 1] = 0.02 + (scatter ? p.vy * p.age : 0); cold.pos[o + 2] = COLD[p.aisle] + (Math.random() - 0.5) * 1.1;
+  const o = i * 3, tiles = COLD[p.aisle].tiles, [tx, tz] = tiles[(Math.random() * tiles.length) | 0];
+  cold.pos[o] = tx + (Math.random() - 0.5) * 0.55; cold.pos[o + 1] = 0.02 + (scatter ? p.vy * p.age : 0); cold.pos[o + 2] = tz + (Math.random() - 0.5) * 0.55;
 }
 for (let i = 0; i < cold.n; i++) spawnCold(i, true);
 const coldC = lc(COL.cold);
@@ -84,7 +88,7 @@ const coldC = lc(COL.cold);
 // ---------- Network packets: rack top → riser → row tray → spine → uplink panel in the east wall ----------
 racks.forEach(r => {
   const zr = r.z - r.face * RISER_DZ;
-  const pts = [[r.x, RACK_H, zr], [r.x, TRAY_Y, zr], [r.x, TRAY_Y, r.z], [TRAY_X, TRAY_Y, r.z], [TRAY_X, TRAY_Y, 0], [ROOM.x - 0.1, TRAY_Y, 0]].map(a => new THREE.Vector3(...a));
+  const pts = [[r.x, RACK_H, zr], [r.x, TRAY_Y, zr], [r.x, TRAY_Y, r.row.z], [TRAY_X, TRAY_Y, r.row.z], [TRAY_X, TRAY_Y, SPINE_Z], [ROOM.x - 0.1, TRAY_Y, SPINE_Z]].map(a => new THREE.Vector3(...a));
   const cum = [0]; for (let k = 1; k < pts.length; k++) cum.push(cum[k - 1] + pts[k].distanceTo(pts[k - 1]));
   r.path = { pts, cum, len: cum[cum.length - 1] };
 });
@@ -115,7 +119,7 @@ export function updateParticles(dt, perfMats) {
 
   // cold
   // CU-1 feeds the northern cold aisles, CU-2 the southern ones; a CU-2 failure starves its aisles
-  const unitFlow = [1 - W.faultLevel * 0.25, 1 - W.faultLevel * 0.85], flow = COLD.map(z => unitFlow[coolingUnit(z)]);
+  const unitFlow = [1 - W.faultLevel * 0.25, 1 - W.faultLevel * 0.85], flow = COLD.map(a => unitFlow[coolingUnit(a.z)]);
   for (let i = 0; i < cold.n; i++) {
     const p = cp[i]; p.age += dt;
     if (p.age > p.life) spawnCold(i, false);

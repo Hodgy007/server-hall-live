@@ -1,6 +1,7 @@
 {
-  "_about": "Site data for Server Hall Live. With no racks listed everything is generated and simulated. See data/hall.example.json for the full format.",
+  "_about": "Site data for Server Hall Live. With no halls listed the demo hall is generated. data/hall.example.json is a worked example; the README describes every field, and the layout editor (layout.html) draws the halls for you.",
   "domain": "hall2.local",
-  "idracUrl": "https://{ip}/",
-  "racks": {}
+  "oobUrl": "https://{ip}/",
+  "halls": [],
+  "servers": []
 }

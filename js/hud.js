@@ -1,7 +1,8 @@
 // HUD: KPI strip, rack panel (Live and Inventory tabs), server panel, legend.
-import { $, COL, STOPS, cssGrad, SERVERS, esc } from './core.js';
+import { $, COL, STOPS, cssGrad, esc, RACK_KW } from './core.js';
 import { W, G, UI, SV } from './state.js';
-import { iloUrl, DOMAIN, topU, highlight, unhighlight } from './racks.js';
+import { racks, iloUrl, DOMAIN, freeCount, highlight, unhighlight } from './racks.js';
+import { fmtGB, fmtMem } from './site.js';
 import { describe, rackFaults } from './faults.js';
 
 const SHORT = { psu: k => `PSU ${k + 1} failed`, disk: k => `drive ${k + 1} failed`, fan: k => `fan ${k + 1} failed` };
@@ -40,45 +41,74 @@ function drawSpark(cv, data, o) {
   g.fillStyle = o.color; g.beginPath(); g.arc(lx, ly, 2.5, 0, Math.PI * 2); g.fill();
 }
 
-// Server strip (one cell per server, U1 → U24)
-const elevBtns = Array.from({ length: SERVERS }, (_, s) => {
-  const b = document.createElement('button'); b.type = 'button';
-  b.addEventListener('click', () => hooks.open(UI.selected.servers[s]));
-  $('rElev').append(b); return b;
-});
+// Server strip: one cell per server in the selected rack, bottom up; rebuilt when the rack changes
+let elevRack = null, elevBtns = [];
+function buildElev(r) {
+  elevRack = r; $('rElev').textContent = '';
+  $('rElev').style.gridTemplateColumns = `repeat(${Math.min(19, Math.max(1, r.servers.length))}, minmax(0, 1fr))`;
+  elevBtns = r.servers.map(sv => {
+    const b = document.createElement('button'); b.type = 'button';
+    b.addEventListener('click', () => hooks.open(sv));
+    $('rElev').append(b); return b;
+  });
+}
+// The servers in a rack, in a few words: "12 servers · Dell PowerEdge R7725" or "9 servers · 3 models"
+const rackSummary = r => {
+  const models = [...new Set(r.servers.map(sv => sv.model))], n = r.servers.length;
+  return n ? `${n} server${n > 1 ? 's' : ''} · ${models.length === 1 ? models[0] : models.length + ' models'}` : 'No servers recorded';
+};
+
+// ---------- The selected server's record ----------
+// Built when a server is pulled out; only the memory in use and link state change after that
+const row = (dt, html) => `<div><dt>${dt}</dt><dd>${html}</dd></div>`;
+const sub = parts => parts.filter(Boolean).map(esc).join(' · ');
+const diskLine = d => `${d.count > 1 ? d.count + '× ' : ''}${d.sizeGB ? fmtGB(d.sizeGB) + ' ' : ''}${esc(d.type || 'disk')}${d.model ? ' ' + esc(d.model) : ''}` +
+  (d.raid ? ` <span>· ${esc(d.raid)}</span>` : '');
+const sanLine = d => `${esc(d.name || d.type || 'volume')} <span>· ${sub([d.type !== d.name && d.type, d.array, d.protocol, d.sizeGB ? fmtGB(d.sizeGB) : '', d.lun !== undefined && d.lun !== '' ? 'LUN ' + d.lun : ''])}</span>`;
+let specFor = null;
+function renderSpecs(sv) {
+  specFor = sv;
+  const n = sv.rec, m = sv.spec, tag = n.family === 'dell' ? 'Service Tag' : 'Serial';
+  const dpc = m.dimms / (m.channels * m.sockets), per = n.memory.gb / m.dimms;
+  const local = n.localDisks.length ? n.localDisks.map(diskLine).join('<br>') + ` <span>· ${sv.driveTB.toFixed(1)} TB raw, ${Math.round(sv.diskUsed * 100)}% used</span>` : '<span>None recorded</span>';
+  const nics = n.nics.length ? n.nics : [];
+  $('sSpecs').innerHTML =
+    row('Server', `${esc(sv.host)}.${esc(DOMAIN)} <span>· ${esc(sv.model)} · ${tag} ${esc(sv.serial)}${n.installed ? ' · in service ' + esc(n.installed) : ''}</span>`) +
+    row('Location', `${esc(n.building || '—')} / ${esc(n.room || '—')} <span>· rack ${esc(n.rack)} · ${uSpan(sv)}${n.role ? ' · ' + esc(n.role) : ''}</span>`) +
+    row('Processor', `${esc(sv.cpu)} <span>· ${esc(sv.cpuNote)}</span>`) +
+    row('OS', `${esc(sv.os[0])}${sv.os[1] ? ` <span>· kernel ${esc(sv.os[1])}</span>` : ''}`) +
+    row('Memory', `${fmtMem(n.memory.gb)} ${esc(n.memory.type)} <span>· ${m.dimms} × ${fmtMem(per)}${Number.isInteger(dpc) && dpc <= 2 ? `, ${dpc === 1 ? 'one DIMM' : 'two DIMMs'} on each of ${m.channels} channels per socket` : ''} · <b id="spMemUse"></b> in use</span>`) +
+    row('Local disks', local) +
+    row('Attached', n.attachedDisks.length ? n.attachedDisks.map(sanLine).join('<br>') : '<span>None</span>') +
+    row('Network', n.ips.length ? n.ips.map(a => `${a.iface ? esc(a.iface) + ' ' : ''}${esc(a.address)} <span>· ${sub([a.vlan !== undefined && a.vlan !== '' ? 'VLAN ' + a.vlan : '', a.gateway && 'gateway ' + a.gateway])}</span>`).join('<br>') : '<span>No addresses recorded</span>') +
+    nics.map((c, k) => row(`NIC ${k + 1}`, `${esc(c.name)}${c.switch || c.port ? ` → ${esc([c.switch, c.port].filter(Boolean).join(' '))}` : ''} <span>· ${sub([c.speed && (/\d$/.test(c.speed) ? c.speed + ' GbE' : c.speed), c.bond, c.mac])}</span><em class="bad" id="spLink${k}"></em>`)).join('') +
+    row(`OOB (${esc(sv.oobName)})`, sv.ilo || n.oob.port ? `${esc(sv.ilo || 'address not recorded')} <span>· ${sub([[n.oob.switch, n.oob.port].filter(Boolean).join(' '), n.oob.mac])}</span>` : '<span>Not recorded</span>');
+  const ilo = $('sIlo'); ilo.href = iloUrl(sv); ilo.hidden = !sv.ilo;
+  ilo.textContent = `Open ${sv.oobName} console ↗`; ilo.setAttribute('aria-label', `Open the ${sv.oobName} console for ${sv.host} at ${sv.ilo}`);
+}
 
 export function updateHud() {
   const cpuL = G.cpu > 0.85 ? 2 : G.cpu > 0.7 ? 1 : 0;
   $('kCpu').textContent = Math.round(G.cpu * 100) + '%'; $('kCpu').className = 'v ' + lvlClass(cpuL);
   $('kNet').innerHTML = Math.round(G.net) + '<small>Gbps</small>';
-  $('kNetSub').textContent = Math.round(G.net / 32) + '% of 3.2T hall uplinks';
+  // uplinks: about 33 Gb/s per rack to the meet-me room; power: each rack's budget
+  const upl = racks.length * 33.3;
+  $('kNetSub').textContent = upl ? `${Math.round(G.net / upl * 100)}% of ${upl >= 1000 ? (upl / 1000).toFixed(1) + 'T' : Math.round(upl) + 'G'} hall uplinks` : 'no racks';
   $('kPow').innerHTML = Math.round(G.it) + '<small>kW</small>';
-  $('kPowSub').textContent = 'of 1,152 kW provisioned';
+  $('kPowSub').textContent = `of ${(racks.length * RACK_KW).toLocaleString('en-US')} kW provisioned`;
   const inL = G.maxIn > 32 ? 2 : G.maxIn > 27 ? 1 : 0;
-  $('kIn').innerHTML = G.maxIn.toFixed(1) + '<small>°C</small>'; $('kIn').className = 'v ' + lvlClass(inL);
-  $('kInSub').textContent = 'at ' + G.maxInRack.id + ' · limit 27 °C';
+  $('kIn').innerHTML = G.maxInRack ? G.maxIn.toFixed(1) + '<small>°C</small>' : '—'; $('kIn').className = 'v ' + lvlClass(inL);
+  $('kInSub').textContent = G.maxInRack ? 'at ' + G.maxInRack.id + ' · limit 27 °C' : '';
 
   if (SV.open && SV.sel) {
-    const sv = SV.sel, tl = t => t > 95 ? 2 : t > 85 ? 1 : 0;
+    const sv = SV.sel, tl = t => t > 95 ? 2 : t > 85 ? 1 : 0, m = sv.spec;
+    if (specFor !== sv) renderSpecs(sv);
     $('sHost').textContent = sv.host;
-    $('sMeta').textContent = `Rack ${sv.r.id} · ${uSpan(sv)} · ${sv.r.row.role}`;
-    const id = sv.r.id.toLowerCase(), tb = sv.driveTB;
-    $('spHost').innerHTML = `${esc(sv.host)}.${esc(DOMAIN)} <span>· ${esc(sv.model)} · Service Tag ${esc(sv.serial)}</span>`;
-    $('spCpu').innerHTML = `${esc(sv.cpu)} <span>· ${esc(sv.cpuNote)}</span>`;
-    $('spOs').innerHTML = `${esc(sv.os[0])} <span>· Linux kernel ${esc(sv.os[1])}</span>`;
-    const m = sv.spec, dpc = m.dimms / (m.channels * m.sockets);
-    $('spRam').innerHTML = `${sv.memGB} GB DDR5-6400 RDIMM <span>· ${m.dimms} × 32 GB, ${dpc === 1 ? 'one DIMM' : 'two DIMMs'} on each of ${m.channels} channels per socket · ${Math.round(SV.mem * sv.memGB)} GB in use</span>`;
-    const diskF = sv.faults.find(f => f.kind === 'disk');
-    $('spDisk').innerHTML = `${esc(sv.drives)} <span>· ${tb.toFixed(1)} TB raw · ${(tb * sv.diskUsed).toFixed(1)} TB used (${Math.round(sv.diskUsed * 100)}%)</span>` +
-      (diskF ? ` <em class="bad">· drive ${diskF.k + 1} failed, RAID degraded</em>` : '');
-    $('spNet').innerHTML = `bond0 ${esc(sv.ip)}/24 <span>· VLAN ${esc(sv.vlan)} · gateway ${esc(sv.gw)} · LACP 802.3ad · MTU 9000</span>`;
-    [0, 1].forEach(k => {
-      $('spNic' + (k + 1)).innerHTML = `ens1f${k} → tor-${id}-${'ab'[k]} ${esc(sv.port)} <span>· 25 GbE · ${esc(sv.mac[k])}</span>` + (sv.r.torDown[k] ? ' <em class="bad">· link down</em>' : '');
-    });
+    $('sMeta').textContent = `Rack ${sv.r.id} · ${uSpan(sv)} · ${sv.rec.role || sv.r.prof.role}`;
+    $('spMemUse').textContent = fmtMem(SV.mem * sv.memGB);
+    sv.rec.nics.forEach((c, k) => { const el = $('spLink' + k); if (el) el.textContent = k < 2 && sv.r.torDown[k] ? ' · link down' : ''; });
     const fl = $('sFaults'), all = sv.faults.concat(rackFaults(sv.r).filter(f => !f.sv));
     fl.hidden = !all.length; fl.innerHTML = all.map(f => `<li>${describe(f)}</li>`).join('');
-    $('spIlo').innerHTML = `${esc(sv.ilo)} <span>· oob-${id} ${esc(sv.oobPort)} · 1 GbE · ${esc(sv.iloMac)}</span>`;
-    const ilo = $('sIlo'); if (ilo.dataset.ip !== sv.ilo) { ilo.dataset.ip = sv.ilo; ilo.href = iloUrl(sv); ilo.setAttribute('aria-label', `Open the iDRAC console for ${sv.host} at ${sv.ilo}`); }
     $('sStatus').textContent = statusText[SV.status]; $('sStatus').className = 'pill ' + statusClass[SV.status];
     $('sCoresL').textContent = `Per-core load, ${m.cores * m.sockets} cores`; $('sCoresR').textContent = m.sockets > 1 ? 'CPU0 · CPU1' : 'CPU0';
     $('sCpuV').textContent = Math.round(sv.load * 100) + '%'; $('sCpuV').className = lvlClass(SV.cLvl);
@@ -96,7 +126,8 @@ export function updateHud() {
     return;
   }
 
-  const r = UI.selected;
+  const r = UI.selected; if (!r) return;
+  if (elevRack !== r) buildElev(r);
   elevBtns.forEach((b, s) => {
     const sv = r.servers[s];
     b.style.background = cssGrad('load', sv.load);
@@ -104,22 +135,22 @@ export function updateHud() {
     b.title = `${sv.host} · U${sv.u} · CPU ${Math.round(sv.load * 100)}%`;
   });
   $('rId').textContent = 'Rack ' + r.id;
-  $('rRole').textContent = `${r.row.role} · Row ${r.row.id}`;
+  $('rRole').textContent = `${r.prof.role} · Row ${r.row.id}`;
   $('rStatus').textContent = statusText[r.status]; $('rStatus').className = 'pill ' + statusClass[r.status];
   const cpu = r.load * 100;
   $('rCpu').textContent = Math.round(cpu) + '%';
   $('rCpuBar').style.width = cpu.toFixed(1) + '%'; $('rCpuBar').style.background = barColor(cpu, 85, 95);
-  const memTB = SERVERS * r.servers[0].memGB / 1000;
+  const memTB = r.servers.reduce((t, sv) => t + sv.memGB, 0) / 1000;
   $('rMem').textContent = (r.mem * memTB).toFixed(1) + ' of ' + memTB.toFixed(1) + ' TB';
-  $('rElevL').textContent = `Servers, U1 → U${topU(r)} · ${r.model.key}`;
+  $('rElevL').textContent = rackSummary(r);
   $('rMemBar').style.width = (r.mem * 100).toFixed(1) + '%'; $('rMemBar').style.background = barColor(r.mem * 100, 85, 95);
   $('rIn').textContent = r.inlet.toFixed(1) + ' °C'; $('rIn').className = lvlClass(r.tLvl);
   $('rEx').textContent = r.exhaust.toFixed(1) + ' °C';
-  $('rPow').textContent = r.power.toFixed(1) + ' / 12 kW';
+  $('rPow').textContent = r.power.toFixed(1) + ` / ${RACK_KW} kW`;
   $('rNet').textContent = r.net.toFixed(1) + ' Gb/s';
-  const nOk = SERVERS - r.svWarn - r.svCrit;
+  const nOk = r.servers.length - r.svWarn - r.svCrit;
   const nf = rackFaults(r).length;
-  $('rRoll').innerHTML = `<span>Rolled up from <b>${SERVERS}</b> servers</span><span><b>${nOk}</b> OK</span>` +
+  $('rRoll').innerHTML = `<span>Rolled up from <b>${r.servers.length}</b> servers</span><span><b>${nOk}</b> OK</span>` +
     (r.svWarn ? `<span class="w">${r.svWarn} warning</span>` : '') + (r.svCrit ? `<span class="c">${r.svCrit} critical</span>` : '') +
     (nf ? `<span class="w">${nf} hardware fault${nf > 1 ? 's' : ''}</span>` : '');
   if (!$('rInv').hidden) updateInv(r);
@@ -128,6 +159,7 @@ export function updateHud() {
 export function updateSparks() {
   drawSpark($('sCpu'), G.cpuHist, { color: COL.cold, min: 0, max: 100, thr: 85 });
   if (SV.open && SV.sel) { drawSpark($('sSpark'), SV.sel.hist, { color: COL.cold, min: 0, max: 100, thr: 85 }); return; }
+  if (!UI.selected) return;
   drawSpark($('rSpark'), UI.selected.hist, { color: COL.cold, min: 0, max: 100, thr: 85 });
   drawSpark($('rSparkT'), UI.selected.ihist, { color: COL.cold, min: 17, max: 34, thr: 27 });
 }
@@ -179,28 +211,38 @@ function buildInv(r) {
     }
     tb.append(tr); return tr;
   };
-  const id = r.id.toLowerCase();
+  const id = r.id.toLowerCase(), n = r.servers.length;
   ['a', 'b'].forEach((ab, k) => invRows.push({ kind: 'sw', k, tr: add('U' + (42 - k), `tor-${id}-${ab}`, `ToR switch · 48× 25G + 8× 100G
-Ethernet1/1–${SERVERS} → servers' NIC ${k + 1}`, '', () => highlight(r, 42 - k, 1, -1)) }));
+${n ? `Ethernet ports → ${n} servers' NIC ${k + 1}` : 'no servers cabled'}`, '', () => highlight(r, 42 - k, 1, -1)) }));
   add('U40', `pp-${id}`, 'Patch panel · 48-port LC fibre (rear)', '', () => highlight(r, 40, 1, -1));
   add('U39', `oob-${id}`, `OOB switch · 48× 1GbE (rear)
-Gi1/0/1–${SERVERS} → servers' iDRAC`, '', () => highlight(r, 39, 1, -1));
-  const top = topU(r), free = 38 - top;
-  add(`U${top + 1}–38`, 'Empty', `${free}U · blanking panels fitted`, 'empty', () => highlight(r, top + 1, free, 1));
-  for (let s = SERVERS - 1; s >= 0; s--) {
-    const sv = r.servers[s];
-    const tr = add(uSpan(sv), sv.host, `${sv.model} · ${sv.drives}\nService Tag ${sv.serial} · in service ${sv.installed}`, 'sv', () => highlight(r, sv.u, sv.h, 1));
-    tr.tabIndex = 0; tr.setAttribute('aria-label', `Pull out ${sv.host}`);
-    tr.addEventListener('click', () => hooks.open(sv));
-    tr.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); hooks.open(sv); } });
-    invRows.push({ kind: 'sv', sv, tr });
+${n ? `→ ${n} servers' out-of-band ports` : 'no servers cabled'}`, '', () => highlight(r, 39, 1, -1));
+  // U38 down to U1: each server where its top U is, runs of free U as one "Empty" row
+  const at = new Map(r.servers.map(sv => [sv.u + sv.h - 1, sv]));
+  for (let u = 38; u >= 1;) {
+    const sv = at.get(u);
+    if (sv) {
+      const tr = add(uSpan(sv), sv.host, `${sv.model} · ${sv.drives}\n${sv.rec.family === 'dell' ? 'Service Tag' : 'Serial'} ${sv.serial} · in service ${sv.installed}`, 'sv', () => highlight(r, sv.u, sv.h, 1));
+      tr.tabIndex = 0; tr.setAttribute('aria-label', `Pull out ${sv.host}`);
+      tr.addEventListener('click', () => hooks.open(sv));
+      tr.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); hooks.open(sv); } });
+      invRows.push({ kind: 'sv', sv, tr });
+      u -= sv.h; continue;
+    }
+    let lo = u;
+    while (lo > 1 && !at.get(lo - 1) && !r.servers.some(s => lo - 1 >= s.u && lo - 1 < s.u + s.h)) lo--;
+    const top = u, cnt = top - lo + 1;
+    add(cnt > 1 ? `U${lo}–${top}` : `U${top}`, 'Empty', `${cnt}U · blanking panel${cnt > 1 ? 's' : ''} fitted`, 'empty', () => highlight(r, lo, cnt, 1));
+    u = lo - 1;
   }
   ['a', 'b'].forEach((ab, k) => invRows.push({ kind: 'pdu', tr: add('0U', `pdu-${id}-${ab}`, 'Vertical PDU · 3-phase · 22 kW (rear)', '', () => highlight(r, 1, 42, -1, (k ? 1 : -1) * 0.278, 0.04)) }));
-  const tot = add('', 'Rack total', `${SERVERS} servers + 2 switches`, 'tot', () => highlight(r, 1, 42, 1));
+  const tot = add('', 'Rack total', `${n} servers + 2 switches`, 'tot', () => highlight(r, 1, 42, 1));
   tot.querySelector('b').style.color = 'var(--cold)';
   invRows.push({ kind: 'tot', tr: tot });
-  $('invSum').innerHTML = `<b>${SERVERS}</b> servers · <b>${SERVERS * r.model.cores * r.model.sockets}</b> cores · <b>${(SERVERS * r.servers[0].memGB / 1000).toFixed(1)} TB</b> RAM · <b>${r.servers.reduce((a, sv) => a + sv.driveTB, 0).toFixed(0)} TB</b> NVMe<br>` +
-    `<b>2</b> ToR switches · <b>1</b> OOB switch · <b>2</b> PDUs · <b>1</b> patch panel · <b>${38 - topU(r)}U</b> free of 42U`;
+  const cores = r.servers.reduce((t, sv) => t + sv.spec.cores * sv.spec.sockets, 0), ram = r.servers.reduce((t, sv) => t + sv.memGB, 0) / 1000;
+  const disk = r.servers.reduce((t, sv) => t + sv.driveTB, 0), san = r.servers.reduce((t, sv) => t + sv.rec.attachedDisks.reduce((a, d) => a + (d.sizeGB || 0) * d.count, 0), 0) / 1000;
+  $('invSum').innerHTML = `<b>${n}</b> servers · <b>${cores.toLocaleString('en-US')}</b> cores · <b>${ram.toFixed(1)} TB</b> RAM · <b>${disk.toFixed(0)} TB</b> local disk` + (san ? ` · <b>${san.toFixed(0)} TB</b> attached` : '') + '<br>' +
+    `<b>2</b> ToR switches · <b>1</b> OOB switch · <b>2</b> PDUs · <b>1</b> patch panel · <b>${freeCount(r)}U</b> free of 42U`;
 }
 function updateInv(r) {
   if (invRack !== r) { unhighlight(); buildInv(r); }

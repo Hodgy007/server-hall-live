@@ -19,7 +19,7 @@ async function poll() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const d = await res.json(), now = performance.now();
     let n = 0;
-    for (const [host, v] of Object.entries(d.servers || {})) { const sv = byHost.get(host); if (sv) { sv.live = { ...pick(v, SV_KEYS), at: now }; n++; } }
+    for (const [host, v] of Object.entries(d.servers || {})) { const sv = byHost.get(host.toLowerCase()); if (sv) { sv.live = { ...pick(v, SV_KEYS), at: now }; n++; } }
     for (const [id, v] of Object.entries(d.racks || {})) { const r = byId[id]; if (r) r.live = { ...pick(v, RACK_KEYS), at: now }; }
     live.servers = n; live.at = now; live.error = null;
   } catch (e) {
