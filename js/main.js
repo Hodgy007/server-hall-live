@@ -1,7 +1,7 @@
 // Entry point: wires the scene, simulation, HUD and interaction together and runs the frame loop.
 import { THREE, $, canvas, renderer, scene, camera, controls, clamp, SERVERS, COLS, ROOM, cutPlane, esc } from './core.js';
 import { W, UI, SV } from './state.js';
-import { racks, byId, byHost, cabinets, plateMeshes, rearMeshes, selBox, setDoor, doorOpen, updateDoors } from './racks.js';
+import { racks, byId, byHost, cabinets, plateMeshes, rearMeshes, selBox, setDoor, doorOpen, updateDoors, updateCabling } from './racks.js';
 import './hall.js';
 import { updateLights, bakedLighting } from './lights.js';
 import { setThermal, updateThermal } from './thermal.js';
@@ -264,6 +264,7 @@ function frame(now) {
   updateVisuals(dt);
   updateThermal(dt);
   updateDoors(dt);
+  updateCabling(camera.position.distanceTo(controls.target));
   updateServerModel(dt);
   updateCam(dt);
   moveView(dt);

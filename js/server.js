@@ -4,7 +4,8 @@
 // the fan wall, the CPU sockets with their heatsinks and DIMMs, then PCIe risers, OCP NIC, BOSS boot module, PSUs.
 import { THREE, scene, lc, COL, clamp, grad, gradIn, LST, U, ease, reduceMotion, canvasTex, speckle } from './core.js';
 import { W, SV } from './state.js';
-import { racks, FACE, LED, setInstance, doorOpen } from './racks.js';
+import { racks, FACE, faceGeo, LED, setInstance, doorOpen } from './racks.js';
+import { FRONT_LED } from './textures.js';
 import { makePoints } from './particles.js';
 
 export const SRV = new THREE.Group(); SRV.visible = false; scene.add(SRV);
@@ -59,8 +60,8 @@ function build(m) {
   box(0.5, 0.004, 0.9, steel, 0, YB + 0.0025, 0);
   box(0.006, H - 0.005, 0.9, steel, -0.252, 0, 0); box(0.006, H - 0.005, 0.9, steel, 0.252, 0, 0);
   box(0.006, 0.016, 0.95, darkMetal, -0.262, YB + 0.0165, -0.9); box(0.006, 0.016, 0.95, darkMetal, 0.262, YB + 0.0165, -0.9);
-  box(0.52, H - (two ? 0.0016 : 0.0012), 0.012, FACE[m.u].front, 0, 0, 0.456);
-  V.frontLed = [0, 1].map(k => box(0.016, Math.min(0.016, H * 0.4), 0.008, basic(), 0.19 + k * 0.035, 0, 0.466));
+  const face = new THREE.Mesh(faceGeo(m.u), FACE[m.u].front); face.position.z = 0.456; g.add(face);
+  V.frontLed = [0, 1].map(k => box(0.016, 0.016, 0.008, basic(), FRONT_LED.x, FRONT_LED.y[m.u][k], 0.466));
 
   // ---------- Front: eight NVMe drives in carriers lined up with the front plate, backplane, cables ----------
   const dh = two ? 0.068 : 0.03, dy = YB + 0.0045 + dh / 2;

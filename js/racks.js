@@ -1,7 +1,8 @@
 // Cabinets and everything mounted in them. Fronts face the cold aisle, rears the hot aisle.
 import { THREE, scene, lc, COL, rnd, vrnd, labelTex, RACK_W, RACK_H, RACK_D, COLS, PITCH, SERVERS, ROWS, U, U0, U_TOP, FRONT, uY, ease, reduceMotion } from './core.js';
 import { HALL, fill } from './data.js';
-import { sideTexes, roughTex, topTex, topTexB, railTex, bezelTex, plinthTex, contactTex, doorTexes, doorAlphas, plateMat, drawFront, drawRear, drawFront1U, drawRear1U, drawSwFans, drawSwPorts, drawPatch, drawBlank } from './textures.js';
+import { sideTexes, roughTex, topTex, topTexB, railTex, bezelTex, plinthTex, contactTex, doorTexes, doorAlphas, plateMat, drawFront, drawRear, drawRear1U, drawSwFans, drawSwPorts, drawPatch, drawBlank, FRONT_LED, FRONT_RELIEF } from './textures.js';
+import { leadGeo, trunkGeo, cableMat } from './cabling.js';
 
 export const racks = [], cabinets = [];
 const colGeo = new THREE.BoxGeometry(0.5, 1, 0.05); colGeo.translate(0, 0.5, 0);
@@ -64,21 +65,39 @@ export const byId = Object.fromEntries(racks.map(r => [r.id, r]));
 const PLATE_D = 0.012, LED_Z = FRONT + 0.016;
 const dev1U = new THREE.BoxGeometry(0.52, U - 0.0012, PLATE_D);
 const nPlates = racks.length * SERVERS;
-// Server faces for each chassis height; the pulled-out model uses the same front
+// Server faces for each chassis height; the pulled-out model uses the same front. Fronts are moulded plastic, and
+// only the power buttons' rings glow.
 export const FACE = {
-  2: { front: plateMat(512, 86, drawFront, { metalness: 0.6, roughness: 0.55 }), rear: plateMat(512, 86, drawRear, { glow: true }) },
-  1: { front: plateMat(512, 44, drawFront1U, { metalness: 0.6, roughness: 0.55 }), rear: plateMat(512, 44, drawRear1U, { glow: true }) }
+  2: { front: plateMat(512, 86, drawFront, { glow: true, metalness: 0.2, roughness: 0.75 }), rear: plateMat(512, 86, drawRear, { glow: true }) },
+  1: { front: plateMat(512, 44, drawFront, { glow: true, metalness: 0.2, roughness: 0.75 }), rear: plateMat(512, 44, drawRear1U, { glow: true }) }
 };
+// The front's geometry: the plate, with the ears and drive carriers standing proud of it. UVs are projected straight
+// on, so the raised parts carry the same texture and their sides take the colour of their edges.
+export function faceGeo(h) {
+  const ph = h === 2 ? 86 : 44, H = h * U - (h === 2 ? 0.0016 : 0.0012), pos = [], nor = [], uv = [], idx = [];
+  [[0, 0, 512, ph, -PLATE_D / 2, PLATE_D / 2], ...FRONT_RELIEF(ph).map(([x, y, w, hh], i) => [x, y, w, hh, 0.004, i < 2 ? 0.0095 : 0.0085])].forEach(([x, y, w, hh, z0, z1]) => {
+    const b = new THREE.BoxGeometry(w / 512 * 0.52, hh / ph * H, z1 - z0);
+    b.translate(((x + w / 2) / 512 - 0.5) * 0.52, (0.5 - (y + hh / 2) / ph) * H, (z0 + z1) / 2);
+    const P = b.attributes.position, base = pos.length / 3;
+    for (let i = 0; i < P.count; i++) uv.push(P.getX(i) / 0.52 + 0.5, P.getY(i) / H + 0.5);
+    pos.push(...P.array); nor.push(...b.attributes.normal.array); idx.push(...Array.from(b.index.array, v => v + base));
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
+  return g;
+}
 // One instanced mesh per face and height. userData.servers maps an instance to its server (for picking), and the
 // svIdx attribute carries the server's index (for the thermal camera)
 export const plateMeshes = [], rearMeshes = [];
 const faceMesh = {};
 [2, 1].forEach(h => {
   const n = racks.filter(r => r.model.u === h).length * SERVERS; if (!n) return;
-  const geo = new THREE.BoxGeometry(0.52, h * U - (h === 2 ? 0.0016 : 0.0012), PLATE_D);
-  geo.setAttribute('svIdx', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
+  const geo = new THREE.BoxGeometry(0.52, h * U - (h === 2 ? 0.0016 : 0.0012), PLATE_D), front = faceGeo(h);
+  const svIdx = new THREE.InstancedBufferAttribute(new Float32Array(n), 1);
+  geo.setAttribute('svIdx', svIdx); front.setAttribute('svIdx', svIdx);
   [1, -1].forEach(side => {
-    const m = new THREE.InstancedMesh(geo, side > 0 ? FACE[h].front : FACE[h].rear, n);
+    const m = new THREE.InstancedMesh(side > 0 ? front : geo, side > 0 ? FACE[h].front : FACE[h].rear, n);
     m.userData.servers = []; m.userData.face = side > 0 ? 'front' : 'rear';
     faceMesh[h + '|' + side] = m; (side > 0 ? plateMeshes : rearMeshes).push(m);
   });
@@ -90,6 +109,24 @@ export const LED = {
   warn: lc('#ffbe3b').multiplyScalar(2.2), crit: lc('#ff4a3d').multiplyScalar(2.6), dark: lc('#1a0d0c')
 };
 const ledM = [], ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
+// Rear cabling (cabling.js): per height, each server slot's own leads and the rest of a cabinet's cabling, one
+// instance per cabinet of that height. The coarse twin of each mesh shares its instance matrices.
+const leadMeshes = {}, trunks = {}, cableMeshes = [];
+const cables = (geo, n) => {
+  const m = [new THREE.InstancedMesh(geo('fine'), cableMat, n), new THREE.InstancedMesh(geo('coarse'), cableMat, n)];
+  m[1].instanceMatrix = m[0].instanceMatrix; m[0].visible = false; cableMeshes.push(m);
+  return m;
+};
+[2, 1].forEach(h => {
+  const n = racks.filter(r => r.model.u === h).length; if (!n) return;
+  trunks[h] = cables(d => trunkGeo(h, d), n);
+  for (let s = 0; s < SERVERS; s++) leadMeshes[h + '|' + s] = cables(d => leadGeo(h, s, d), n);
+});
+// Fine cabling once the view closes in on something (a rack, a server, an aisle), coarse for the hall overview
+export function updateCabling(dist) {
+  const fine = dist < 9;
+  if (fine !== cableMeshes[0][0].visible) for (const [f, c] of cableMeshes) { f.visible = fine; c.visible = !fine; }
+}
 export const HOST = ['web', 'api', 'db', 'batch'];
 // Drives differ by workload row, whatever the model
 export const DRIVE = ['8× 960 GB NVMe', '8× 1.92 TB NVMe', '8× 7.68 TB NVMe', '8× 3.84 TB NVMe'];
@@ -118,7 +155,10 @@ function mount(mesh, i, r, side, y, dz, x, store) {
 }
 {
   let pi = 0, li = 0;
+  const nh = { 1: 0, 2: 0 };
   racks.forEach(r => {
+    const ci = nh[r.model.u]++;
+    mount(trunks[r.model.u][0], ci, r, -1, 0, 0);
     r.servers = [];
     for (let s = 0; s < SERVERS; s++) {
       const m = r.model, h = m.u, u = 1 + s * h, y = uY(u, h);
@@ -145,19 +185,20 @@ function mount(mesh, i, r, side, y, dz, x, store) {
       sv.slot = { fm, rm, j };
       mount(fm, j, r, 1, y, 0.007); sv.slot.mf = m4.clone();
       mount(rm, j, r, -1, y, 0.007); sv.slot.mr = m4.clone();
+      sv.slot.lm = leadMeshes[h + '|' + s][0]; sv.slot.lj = ci; mount(sv.slot.lm, ci, r, -1, y, 0); sv.slot.ml = m4.clone();
       fm.userData.servers.push(sv); rm.userData.servers.push(sv); fm.geometry.attributes.svIdx.array[j] = pi;
       // slight finish variation so no two chassis read as copies
       tint.setScalar(0.86 + rnd() * 0.14); fm.setColorAt(j, tint); rm.setColorAt(j, tint);
       pi++;
       for (let k = 0; k < 2; k++) {
-        m4.makeTranslation(r.x + r.face * (0.19 + k * 0.035), y, r.z + r.face * LED_Z);
+        m4.makeTranslation(r.x + r.face * FRONT_LED.x, y + FRONT_LED.y[h][k], r.z + r.face * LED_Z);
         leds.setMatrixAt(li, m4); ledM.push(m4.clone()); leds.setColorAt(li, LED.off);
         r.leds.push({ i: li, k, sv, on: rnd() < 0.5 }); li++;
       }
     }
   });
 }
-scene.add(...plateMeshes, ...rearMeshes, leds);
+scene.add(...plateMeshes, ...rearMeshes, leds, ...cableMeshes.flat());
 
 // Real inventory from data/hall.json replaces the generated values slot by slot: racks.<id>.servers.U<n>
 const SET = { host: 'host', serial: 'serial', installed: 'installed', model: 'model', drives: 'drives', driveTB: 'driveTB', cpu: 'cpu', cpuNote: 'cpuNote',
@@ -176,12 +217,12 @@ for (const r of racks) {
 }
 export const byHost = new Map(racks.flatMap(r => r.servers.map(sv => [sv.host, sv])));
 
-// Hide or restore a server's plates and LEDs while it is pulled out
+// Hide or restore a server's plates, LEDs and patch leads while it is pulled out
 export function setInstance(sv, show) {
-  const { fm, rm, j, mf, mr } = sv.slot;
-  fm.setMatrixAt(j, show ? mf : ZERO); rm.setMatrixAt(j, show ? mr : ZERO);
+  const { fm, rm, j, mf, mr, lm, lj, ml } = sv.slot;
+  fm.setMatrixAt(j, show ? mf : ZERO); rm.setMatrixAt(j, show ? mr : ZERO); lm.setMatrixAt(lj, show ? ml : ZERO);
   for (let k = 0; k < 2; k++) leds.setMatrixAt(sv.idx * 2 + k, show ? ledM[sv.idx * 2 + k] : ZERO);
-  fm.instanceMatrix.needsUpdate = true; rm.instanceMatrix.needsUpdate = true; leds.instanceMatrix.needsUpdate = true;
+  fm.instanceMatrix.needsUpdate = true; rm.instanceMatrix.needsUpdate = true; lm.instanceMatrix.needsUpdate = true; leds.instanceMatrix.needsUpdate = true;
 }
 
 // ---------- Switches, OOB switch, patch panel, blanking panels (front blanks cover the free U up to U40; U39–40 are rear-mounted) ----------
@@ -211,20 +252,23 @@ racks.forEach((r, i) => [42, 41].forEach((u, k) => [1, -1].forEach((side, j) => 
 })));
 scene.add(swLeds);
 
-// ---------- Cabinet frame: mounting rails, top bezel, vented plinth, rear cable looms ----------
+// ---------- Cabinet frame: mounting rails, top bezel, vented plinth, rear power loom ----------
 const rails = new THREE.InstancedMesh(new THREE.BoxGeometry(0.034, 42 * U + 0.01, 0.01), new THREE.MeshStandardMaterial({ map: railTex, metalness: 0.75, roughness: 0.45 }), racks.length * 4);
 const bezels = new THREE.InstancedMesh(new THREE.BoxGeometry(RACK_W, RACK_H - U_TOP, 0.014), new THREE.MeshStandardMaterial({ map: bezelTex, roughnessMap: roughTex, metalness: 0.5, roughness: 0.8 }), racks.length * 2);
 const plinths = new THREE.InstancedMesh(new THREE.BoxGeometry(RACK_W, U0, 0.014), new THREE.MeshStandardMaterial({ map: plinthTex, metalness: 0.4, roughness: 0.85 }), racks.length * 2);
-const looms = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.018, 0.018, 42 * U, 10), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, metalness: 0.05 }), racks.length * 2);
-const LOOM = [lc('#15191d'), lc('#2b9fb4')];   // power cords one side, fibre the other
+// Power cords bundled down the left of the rear (seen from behind) as far as the servers go; data cabling is on the right
+const looms = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.018, 0.018, 1, 10), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, metalness: 0.05 }), racks.length);
+const LOOM = lc('#15191d'), loomLen = new THREE.Vector3();
 racks.forEach((r, i) => {
+  const len = topU(r) * U + 0.06;
+  mount(looms, i, r, -1, U0 + len / 2 - 0.03, 0.04, r.face * 0.236);
+  looms.getMatrixAt(i, m4); looms.setMatrixAt(i, m4.scale(loomLen.set(1, len, 1)));
+  looms.setColorAt(i, tint.copy(LOOM).multiplyScalar(0.85 + rnd() * 0.3));
   [-1, 1].forEach((s, k) => {
     mount(rails, i * 4 + k * 2, r, 1, U0 + 21 * U, 0.004, s * 0.278);
     mount(rails, i * 4 + k * 2 + 1, r, -1, U0 + 21 * U, 0.004, s * 0.278);
     mount(bezels, i * 2 + k, r, s, (U_TOP + RACK_H) / 2, 0.007); bezels.setColorAt(i * 2 + k, r.finish);
     mount(plinths, i * 2 + k, r, s, U0 / 2, 0.007); plinths.setColorAt(i * 2 + k, r.finish);
-    mount(looms, i * 2 + k, r, -1, U0 + 21 * U, 0.04, s * 0.236);
-    tint.copy(LOOM[k]).multiplyScalar(0.85 + rnd() * 0.3); looms.setColorAt(i * 2 + k, tint);
   });
 });
 scene.add(rails, bezels, plinths, looms);
