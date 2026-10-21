@@ -39,6 +39,16 @@ h1 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 3
 #hallView { background: var(--panel); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .findmsg { font-size: 10.5px; color: var(--warn); }
 .chip { border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cold); background: rgba(79, 195, 232, 0.08); }
+.chip.warn { color: var(--warn); background: rgba(242, 180, 65, 0.1); cursor: pointer; }
+/* Site bar: which hall, where the data came from, and anything wrong with it */
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.hallpick select { font: inherit; font-size: 11px; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 5px 8px; max-width: 60vw; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.hallpick select:focus-visible { outline: 2px solid var(--cold); outline-offset: 1px; }
+.site .src { font-size: 10.5px; color: var(--muted); }
+.linkish { font: inherit; font-size: 10.5px; color: var(--cold); background: none; border: 0; padding: 2px; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.probs { pointer-events: auto; margin: 2px 0 0; padding: 8px 10px 8px 26px; max-width: min(560px, 92vw); max-height: 30vh; overflow: auto; font-size: 10.5px; line-height: 1.45; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.probs li::marker { color: var(--warn); }
+#dropZone { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(8, 12, 16, 0.72); border: 2px dashed var(--cold); font-size: 15px; color: var(--fg); pointer-events: none; }
 
 .kpis { display: grid; grid-template-columns: repeat(4, minmax(112px, 1fr)); gap: 8px; }
 .kpi { padding: 8px 10px; display: grid; gap: 2px; min-width: 0; }
@@ -132,7 +142,7 @@ summary { cursor: pointer; font-size: 10px; letter-spacing: 0.12em; text-transfo
 .inv .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; background: var(--ok); }
 .inv .dot.warn { background: var(--warn); } .inv .dot.crit { background: var(--crit); }
 .srvp { width: 340px; max-width: 100%; padding: 12px; display: grid; gap: 10px; }
-.srvp { max-height: calc(100vh - 190px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.srvp { max-height: calc(100vh - 230px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 .specs { margin: 0; display: grid; gap: 3px; font-size: 10.5px; line-height: 1.4; }
 .specs div { display: grid; grid-template-columns: 64px 1fr; gap: 8px; }
 .specs dt { font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding-top: 1px; }

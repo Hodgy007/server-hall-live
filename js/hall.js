@@ -1,6 +1,7 @@
 // The room around the racks: raised floor, walls and ceiling, hot-aisle containment, cable trays,
 // overhead busway and the uplink panel to the meet-me room.
-import { THREE, scene, lc, COL, vrnd, broadPunctualSpec, canvasTex, labelTex, speckle, ROWS, COLD, HACS, RACK_H, ROW_HALF, TRAY_Y, TRAY_X, ROOM } from './core.js';
+import { THREE, scene, lc, COL, vrnd, broadPunctualSpec, canvasTex, labelTex, speckle, ROWS, COLD, HACS, RACK_H, TILE, TRAY_Y, TRAY_X, ROOM } from './core.js';
+import { HALL } from './data.js';
 import { racks } from './racks.js';
 
 const m4 = new THREE.Matrix4();
@@ -44,8 +45,8 @@ floorMat.userData.noClip = true;
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(2 * ROOM.x, 2 * ROOM.z), floorMat);
 floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
 
-// Perforated (vented) tiles down every cold aisle: bare steel grates that catch the light, with supply air
-// glowing faintly through the holes. One material per aisle so a cooling failure can dim it.
+// Perforated (vented) tiles wherever the grid has them: bare steel grates that catch the light, with supply air
+// glowing faintly through the holes. One material per cold aisle so a cooling failure can dim it.
 function perfDraw(g, solid, hole, frame) {
   g.fillStyle = solid; g.fillRect(0, 0, 128, 128);
   g.fillStyle = hole;
@@ -55,15 +56,15 @@ function perfDraw(g, solid, hole, frame) {
 const perfTex = canvasTex(128, 128, g => { perfDraw(g, '#3a454e', '#04070a', '#1e252b'); speckle(g, 128, 128, 1500, 0.06); });
 const perfBump = canvasTex(128, 128, g => perfDraw(g, '#b0b0b0', '#000000', '#404040'), true);
 const perfGlow = canvasTex(128, 128, g => perfDraw(g, '#000000', '#7fd6f2', '#000000'));
-const PERF_W = 2 * ROW_HALF + 0.4, PERF_D = 1.2;
-for (const t of [perfTex, perfBump, perfGlow]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(PERF_W / 0.6, PERF_D / 0.6); }
 export const perfMats = [];
-COLD.forEach(z => {
+const perfGeo = new THREE.PlaneGeometry(TILE, TILE); perfGeo.rotateX(-Math.PI / 2);
+COLD.forEach(a => {
   const m = new THREE.MeshStandardMaterial({ map: perfTex, bumpMap: perfBump, bumpScale: 1.5, metalness: 0.6, roughness: 0.4,
     emissiveMap: perfGlow, emissive: lc('#8fb8c8'), emissiveIntensity: 0.4 });
   m.userData.noClip = true; m.userData.envMapIntensity = 0.015; m.onBeforeCompile = sh => broadPunctualSpec(sh, 0.55);
-  const p = new THREE.Mesh(new THREE.PlaneGeometry(PERF_W, PERF_D), m);
-  p.rotation.x = -Math.PI / 2; p.position.set(0, 0.003, z); p.receiveShadow = true; scene.add(p); perfMats.push(m);
+  const p = new THREE.InstancedMesh(perfGeo, m, a.tiles.length);
+  a.tiles.forEach(([x, z], i) => p.setMatrixAt(i, m4.makeTranslation(x, 0.003, z)));
+  p.receiveShadow = true; scene.add(p); perfMats.push(m);
 });
 
 // ---------- Walls and suspended ceiling ----------
@@ -83,7 +84,7 @@ function wall(len, x, z, ry) {
 }
 wall(2 * ROOM.x, 0, -ROOM.z, 0); wall(2 * ROOM.x, 0, ROOM.z, Math.PI);
 wall(2 * ROOM.z, -ROOM.x, 0, Math.PI / 2); wall(2 * ROOM.z, ROOM.x, 0, -Math.PI / 2);
-{ const s = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.4), new THREE.MeshBasicMaterial({ map: labelTex('HALL 2', '#8299a8'), transparent: true }));
+{ const s = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.4), new THREE.MeshBasicMaterial({ map: labelTex(HALL.room.toUpperCase().slice(0, 12), '#8299a8'), transparent: true }));
   s.position.set(-ROOM.x + 0.01, 3.0, 0); s.rotation.y = Math.PI / 2; scene.add(s); }
 
 const ceilTex = canvasTex(128, 128, (g) => {
@@ -105,7 +106,8 @@ HACS.forEach(H => {
   const bar = (w, h, d, x, y, z) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), frameMat); b.position.set(x, y, z); b.castShadow = true; scene.add(b); };
   const roof = new THREE.Mesh(new THREE.BoxGeometry(W, 0.01, D), glassMat);
   roof.position.set(XM, H.top + 0.005, Z); roof.renderOrder = 2; scene.add(roof);
-  for (let k = 0; k <= 12; k++) bar(0.03, 0.035, D, H.x0 + k * W / 12, H.top + 0.02, Z);
+  const nb = Math.max(2, Math.round(W / 0.6));
+  for (let k = 0; k <= nb; k++) bar(0.03, 0.035, D, H.x0 + k * W / nb, H.top + 0.02, Z);
   bar(W, 0.035, 0.03, XM, H.top + 0.02, H.z0); bar(W, 0.035, 0.03, XM, H.top + 0.02, H.z1);
   // End doors: two sliding glass leaves in a frame, with a "HOT AISLE" sign above
   [H.x0, H.x1].forEach((x, i) => {
@@ -145,9 +147,13 @@ function tray(x0, z0, x1, z1) {
   const b = new THREE.Mesh(alongX ? new THREE.BoxGeometry(len, 0.035, 0.16) : new THREE.BoxGeometry(0.16, 0.035, len), bundleMat);
   b.position.set(cx, y + 0.025, cz); b.castShadow = true; scene.add(b);
 }
-ROWS.forEach(row => tray(-ROW_HALF - 0.1, row.z, TRAY_X, row.z));
-tray(TRAY_X, ROWS[0].z - 0.15, TRAY_X, ROWS[ROWS.length - 1].z + 0.15);   // spine
-tray(TRAY_X, 0, ROOM.x - 0.06, 0);                                       // to the uplink panel in the east wall
+// A tray over each row, a spine along the east end of the rows, and a run from the middle of the spine to the uplink panel
+export const SPINE_Z = ROWS.length ? (ROWS[0].z + ROWS[ROWS.length - 1].z) / 2 : 0;
+ROWS.forEach(row => tray(row.x0 - 0.1, row.z, TRAY_X, row.z));
+if (ROWS.length) {
+  if (ROWS.length > 1) tray(TRAY_X, ROWS[0].z - 0.15, TRAY_X, ROWS[ROWS.length - 1].z + 0.15);
+  if (ROOM.x - 0.06 - TRAY_X > 0.3) tray(TRAY_X, SPINE_Z, ROOM.x - 0.06, SPINE_Z);
+}
 {
   const rg = new THREE.InstancedMesh(new THREE.BoxGeometry(0.02, 0.012, 0.3), trayMat, rungs.length);
   rungs.forEach(([x, y, z, ax], i) => { m4.makeRotationY(ax ? 0 : Math.PI / 2).setPosition(x, y, z); rg.setMatrixAt(i, m4); });
@@ -175,12 +181,12 @@ export const uplinkStripMat = new THREE.MeshBasicMaterial({ color: lc(COL.cold),
 {
   const x = ROOM.x - 0.06;
   const panel = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 1.3), new THREE.MeshStandardMaterial({ color: 0x141b23, metalness: 0.6, roughness: 0.45 }));
-  panel.position.set(x, TRAY_Y - 0.05, 0); scene.add(panel);
+  panel.position.set(x, TRAY_Y - 0.05, SPINE_Z); scene.add(panel);
   for (let i = 0; i < 4; i++) {
-    const s = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.02, 1.1), uplinkStripMat); s.position.set(x - 0.065, TRAY_Y - 0.25 + i * 0.1, 0); scene.add(s);
+    const s = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.02, 1.1), uplinkStripMat); s.position.set(x - 0.065, TRAY_Y - 0.25 + i * 0.1, SPINE_Z); scene.add(s);
   }
   const l = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.2), new THREE.MeshBasicMaterial({ map: labelTex('UPLINKS · MMR', COL.cold), transparent: true, toneMapped: false }));
-  l.position.set(x - 0.07, TRAY_Y - 0.5, 0); l.rotation.y = -Math.PI / 2; scene.add(l);
+  l.position.set(x - 0.07, TRAY_Y - 0.5, SPINE_Z); l.rotation.y = -Math.PI / 2; scene.add(l);
 }
 
 // ---------- Overhead busway with a tap-off box, power drop and status LED per rack (instanced) ----------
@@ -188,12 +194,12 @@ export let tapLeds;
 {
   const busMat = new THREE.MeshStandardMaterial({ color: 0x3a434c, metalness: 0.7, roughness: 0.45 });
   const stripeMat = new THREE.MeshStandardMaterial({ color: lc('#c9a227'), roughness: 0.6 });
-  const BUS_Y = 2.42, BUS_L = 2 * ROW_HALF + 0.3;
+  const BUS_Y = 2.42;
   ROWS.forEach(row => {
-    const z = row.z + row.face * 0.26;
-    const bus = new THREE.Mesh(new THREE.BoxGeometry(BUS_L, 0.1, 0.13), busMat); bus.position.set(0, BUS_Y, z); bus.castShadow = true; scene.add(bus);
-    const stripe = new THREE.Mesh(new THREE.BoxGeometry(BUS_L, 0.012, 0.132), stripeMat); stripe.position.set(0, BUS_Y + 0.03, z); scene.add(stripe);
-    for (let k = -ROW_HALF + 0.3; k < ROW_HALF; k += 2.4) {
+    const z = row.z + row.face * 0.26, L = row.x1 - row.x0 + 0.3, xm = (row.x0 + row.x1) / 2;
+    const bus = new THREE.Mesh(new THREE.BoxGeometry(L, 0.1, 0.13), busMat); bus.position.set(xm, BUS_Y, z); bus.castShadow = true; scene.add(bus);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(L, 0.012, 0.132), stripeMat); stripe.position.set(xm, BUS_Y + 0.03, z); scene.add(stripe);
+    for (let k = row.x0 + 0.3; k < row.x1; k += 2.4) {
       const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, ROOM.h - BUS_Y, 6), rodMat);
       rod.position.set(k, (ROOM.h + BUS_Y) / 2, z); scene.add(rod);
     }

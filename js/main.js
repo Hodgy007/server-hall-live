@@ -1,9 +1,9 @@
 // Entry point: wires the scene, simulation, HUD and interaction together and runs the frame loop.
-import { THREE, $, canvas, renderer, scene, camera, controls, clamp, SERVERS, COLS, ROOM, cutPlane, esc } from './core.js';
+import { THREE, $, canvas, renderer, scene, camera, controls, clamp, ROOM, cutPlane, esc } from './core.js';
 import { W, UI, SV } from './state.js';
-import { racks, byId, byHost, cabinets, plateMeshes, rearMeshes, selBox, setDoor, doorOpen, updateDoors, updateCabling } from './racks.js';
+import { racks, byId, byHost, allServers, cabinets, plateMeshes, rearMeshes, selBox, setDoor, doorOpen, updateDoors, updateCabling } from './racks.js';
 import './hall.js';
-import { updateLights, bakedLighting } from './lights.js';
+import { updateLights, prepare } from './lights.js';
 import { setThermal, updateThermal } from './thermal.js';
 import { heat, cold } from './particles.js';
 import { SRV, srvMeshes, air, shim, mountServer, updateServerModel } from './server.js';
@@ -13,6 +13,8 @@ import { flyHall, flyRack, flyServer, updateCam, setOrbit, releaseCut } from './
 import { hooks, updateHud, updateSparks, drawCores, renderLegend } from './hud.js';
 import { live, fresh } from './live.js';
 import { render, resizePost } from './post.js';
+import { SITE, HALL, SITE_HOSTS } from './data.js';
+import { goHall } from './sitebar.js';
 
 // ---------- Selection, doors, pulling servers out ----------
 function select(r, openDoor = true) {
@@ -60,8 +62,14 @@ function setLink(kind, id) {
 function followLink() {
   const m = /^#(rack|host)=(.+)$/.exec(location.hash); if (!m) return;
   const id = decodeURIComponent(m[2]);
-  if (m[1] === 'host') { const sv = byHost.get(id) || byHost.get(id.toLowerCase()); if (sv) openServer(sv); }
-  else { const r = byId[id.toUpperCase()]; if (r) focusRack(r); }
+  // a host or rack in another hall switches to that hall
+  if (m[1] === 'host') {
+    const sv = byHost.get(id.toLowerCase()), other = SITE_HOSTS.get(id.toLowerCase());
+    if (sv) openServer(sv); else if (other && other !== HALL.id) goHall(other, `host=${encodeURIComponent(id)}`);
+  } else {
+    const r = byId[id.toUpperCase()], other = SITE.halls.find(h => h !== HALL && h.grid.racks.some(x => x.id === id.toUpperCase()));
+    if (r) focusRack(r); else if (other) goHall(other.id, `rack=${encodeURIComponent(id.toUpperCase())}`);
+  }
 }
 window.addEventListener('hashchange', followLink);
 
@@ -119,7 +127,7 @@ canvas.addEventListener('pointerup', e => {
 
 // ---------- Panel buttons and controls ----------
 $('sBack').addEventListener('click', closeServer);
-$('sNext').addEventListener('click', () => { const sv = SV.sel; if (sv) openServer(sv.r.servers[(sv.s + 1) % SERVERS]); });
+$('sNext').addEventListener('click', () => { const sv = SV.sel; if (sv) openServer(sv.r.servers[(sv.s + 1) % sv.r.servers.length]); });
 $('sStress').addEventListener('click', () => {
   const sv = SV.sel; if (!sv) return;
   sv.stressLeft = sv.stressLeft > 0 ? 0 : 20;
@@ -159,16 +167,15 @@ $('hallView').addEventListener('click', hallView);
 
 // ---------- Header chip: live feed or simulation ----------
 function syncChip() {
-  $('liveChip').textContent = live.enabled && fresh(live) ? `Live data · ${live.servers} of ${racks.length * SERVERS} servers` : 'Simulated telemetry';
+  $('liveChip').textContent = live.enabled && fresh(live) ? `Live data · ${live.servers} of ${allServers.length} servers` : 'Simulated telemetry';
 }
 
 // ---------- Find a host or rack ----------
 {
-  const dl = $('hosts');
-  for (const r of racks) {
-    const o = document.createElement('option'); o.value = r.id; dl.append(o);
-    for (const sv of r.servers) { const h = document.createElement('option'); h.value = sv.host; dl.append(h); }
-  }
+  // every rack and host in the site; ones in another hall switch to it
+  const dl = $('hosts'), add = v => { const o = document.createElement('option'); o.value = v; dl.append(o); };
+  for (const h of SITE.halls) for (const r of h.grid.racks) add(r.id);
+  for (const sv of SITE.servers) add(sv.host);
 }
 function find(q, exactOnly) {
   q = q.trim().toLowerCase(); if (!q) return false;
@@ -176,6 +183,9 @@ function find(q, exactOnly) {
   const sv = byHost.get(q), r = byId[q.toUpperCase()];
   if (sv) { openServer(sv); msg.textContent = ''; return true; }
   if (r) { focusRack(r); msg.textContent = ''; return true; }
+  const elsewhere = SITE_HOSTS.get(q), otherRack = SITE.halls.find(h => h !== HALL && h.grid.racks.some(x => x.id === q.toUpperCase()));
+  if (elsewhere && elsewhere !== HALL.id) { goHall(elsewhere, 'host=' + encodeURIComponent(q)); return true; }
+  if (otherRack) { goHall(otherRack.id, 'rack=' + encodeURIComponent(q.toUpperCase())); return true; }
   if (exactOnly) return false;
   const part = [...byHost.values()].find(s => s.host.includes(q));
   if (part) { openServer(part); $('find').value = part.host; msg.textContent = ''; return true; }
@@ -191,8 +201,8 @@ document.addEventListener('keydown', e => {
   else if (e.key === '/' && !typing) { e.preventDefault(); $('find').focus(); }
   // Rack view: walk along the row; screen-right is +x for front-facing rows and −x for the others
   else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !typing && UI.cutRack && !/BUTTON/.test(document.activeElement.tagName)) {
-    const r = UI.cutRack, c = r.c + (e.key === 'ArrowRight' ? 1 : -1) * r.face;
-    if (c >= 0 && c < COLS) { e.preventDefault(); focusRack(byId[r.row.id + String(c + 1).padStart(2, '0')]); }
+    const r = UI.cutRack, next = r.row.racks[r.row.racks.indexOf(r) + (e.key === 'ArrowRight' ? 1 : -1) * r.face];
+    if (next) { e.preventDefault(); focusRack(next); }
   }
   else if (!typing && MOVE[e.key.toLowerCase()] && !e.ctrlKey && !e.metaKey && !e.altKey && !(e.key.startsWith('Arrow') && /BUTTON/.test(document.activeElement.tagName))) {
     e.preventDefault(); held.add(e.key.toLowerCase());
@@ -234,25 +244,15 @@ function resize() {
 window.addEventListener('resize', resize);
 if (window.innerWidth <= 720) { $('opsBox').open = false; setRackMin(true); }
 
-// Keep reflections subtle (just enough for steel to read as steel); let the rack-view cut clip everything but the room shell
-scene.traverse(o => {
-  const ms = Array.isArray(o.material) ? o.material : [o.material];
-  for (const m of ms) {
-    if (!m) continue;
-    if (m.isMeshStandardMaterial && !m.userData.baked) {
-      m.envMapIntensity = m.userData.envMapIntensity ?? (m.metalness > 0.6 ? 0.22 : 0.12);
-      bakedLighting(m); m.userData.baked = true;
-    }
-    if (!m.userData.noClip) { m.clippingPlanes = [cutPlane]; m.clipShadows = true; }
-  }
-});
+// Reflections, the baked fixture light and the rack-view cut for everything built so far (lights.js)
+prepare(scene);
 
 // ---------- Boot: pre-run two minutes of telemetry so trends are populated ----------
 for (let i = 0; i < 480; i++) step(0.25);
 renderLegend();
-UI.selected = byId.A03;
+UI.selected = byId.A03 || racks[0] || null;
 resize();
-select(UI.selected, false);
+if (UI.selected) select(UI.selected, false); else $('rackPanel').hidden = true;   // a hall with no racks yet
 syncChip();
 followLink();
 

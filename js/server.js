@@ -1,11 +1,12 @@
-// The pulled-out server: an open-lid Dell PowerEdge at true scale, local +z = front, and its per-core telemetry.
-// One model is built for each server model in the hall (1U or 2U, one or two sockets, AMD or Intel, 16 to 32 DIMMs)
-// and the one matching the server you pull out is shown. Front to back: eight NVMe drives and their backplane,
+// The pulled-out server: an open-lid rack server at true scale, local +z = front, and its per-core telemetry.
+// A model is built for each kind of server (its face, 1U to 4U, sockets, AMD or Intel, DIMM count) when one is first
+// pulled out, and reused for the next of its kind. Front to back: eight NVMe drives and their backplane,
 // the fan wall, the CPU sockets with their heatsinks and DIMMs, then PCIe risers, OCP NIC, BOSS boot module, PSUs.
 import { THREE, scene, lc, COL, clamp, grad, gradIn, LST, U, ease, reduceMotion, canvasTex, speckle } from './core.js';
 import { W, SV } from './state.js';
-import { racks, FACE, faceGeo, LED, setInstance, doorOpen } from './racks.js';
-import { FRONT_LED } from './textures.js';
+import { faceMats, faceGeo, LED, setInstance, doorOpen } from './racks.js';
+import { faceSpec } from './textures.js';
+import { prepare } from './lights.js';
 import { makePoints } from './particles.js';
 
 export const SRV = new THREE.Group(); SRV.visible = false; scene.add(SRV);
@@ -44,7 +45,7 @@ const dimmGeo = new THREE.BoxGeometry(0.0035, 0.031, 0.133);
 function build(m) {
   const g = new THREE.Group(); g.visible = false; SRV.add(g);
   const V = { g, m, rotors: [], sinkMats: [], dimmMats: [], driveLeds: [], cpuLabels: [], meshes: [] };
-  const H = m.u * U, YB = -H / 2, BT = YB + 0.00725, two = m.u === 2;   // height, bottom, top of the system board
+  const H = m.u * U, YB = -H / 2, BT = YB + 0.00725, two = m.u >= 2;   // height, bottom, top of the system board
   const box = (w, h, d, mat, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); o.position.set(x, y, z); g.add(o); return o; };
   const many = (geo, mat, pts) => { const o = new THREE.InstancedMesh(geo, mat, pts.length); pts.forEach(([x, y, z], i) => o.setMatrixAt(i, M4.makeTranslation(x, y, z))); g.add(o); return o; };
   // a printed label lying flat; redrawn when a different server is pulled out
@@ -60,8 +61,8 @@ function build(m) {
   box(0.5, 0.004, 0.9, steel, 0, YB + 0.0025, 0);
   box(0.006, H - 0.005, 0.9, steel, -0.252, 0, 0); box(0.006, H - 0.005, 0.9, steel, 0.252, 0, 0);
   box(0.006, 0.016, 0.95, darkMetal, -0.262, YB + 0.0165, -0.9); box(0.006, 0.016, 0.95, darkMetal, 0.262, YB + 0.0165, -0.9);
-  const face = new THREE.Mesh(faceGeo(m.u), FACE[m.u].front); face.position.z = 0.456; g.add(face);
-  V.frontLed = [0, 1].map(k => box(0.016, 0.016, 0.008, basic(), FRONT_LED.x, FRONT_LED.y[m.u][k], 0.466));
+  const fspec = faceSpec(m.family, m.u), face = new THREE.Mesh(faceGeo(fspec), faceMats(fspec).front); face.position.z = 0.456; g.add(face);
+  V.frontLed = [0, 1].map(k => box(0.016, 0.016, 0.008, basic(), fspec.led.x, fspec.led.y[k], 0.466));
 
   // ---------- Front: eight NVMe drives in carriers lined up with the front plate, backplane, cables ----------
   const dh = two ? 0.068 : 0.03, dy = YB + 0.0045 + dh / 2;
@@ -158,18 +159,20 @@ function build(m) {
   g.traverse(o => { if (o.isMesh) { o.userData.srv = true; V.meshes.push(o); } });
   return V;
 }
-// One model per server model present in the hall, built up front so the start-up pass gives them lighting and clipping
+// One model per kind of server, built when the first of its kind is pulled out and given the hall's lighting and clipping
 const VARIANTS = new Map();
-for (const r of racks) if (!VARIANTS.has(r.model.key)) VARIANTS.set(r.model.key, build(r.model));
-let cur = VARIANTS.values().next().value;
+const variant = m => { if (!VARIANTS.has(m.key)) { const v = build(m); prepare(v.g); VARIANTS.set(m.key, v); } return VARIANTS.get(m.key); };
+let cur = null;
 const PSU_OK = lc(COL.ok).multiplyScalar(2);
 
-// Print the model, service tag and CPU labels for the server being pulled out
+// Print the model, serial and CPU labels for the server being pulled out, in its maker's colour (Dell blue, HPE green)
+const LABEL = { dell: ['#1f7bd1', 'Service Tag'], hpe: ['#01a982', 'Serial'], other: ['#5b6670', 'Serial'] };
 function printLabels(sv) {
+  const [ink, tag] = LABEL[sv.spec.family];
   cur.tagLabel((g, w, h) => {
-    g.fillStyle = '#f2f3f4'; g.fillRect(0, 0, w, h); g.fillStyle = '#1f7bd1'; g.fillRect(0, 0, w, 16);
-    g.fillStyle = '#ffffff'; g.font = '600 12px "IBM Plex Mono", monospace'; g.fillText(sv.model.replace(/^Dell /, ''), 6, 12);
-    g.fillStyle = '#16181a'; g.font = '500 14px "IBM Plex Mono", monospace'; g.fillText('Service Tag ' + sv.serial, 6, 36);
+    g.fillStyle = '#f2f3f4'; g.fillRect(0, 0, w, h); g.fillStyle = ink; g.fillRect(0, 0, w, 16);
+    g.fillStyle = '#ffffff'; g.font = '600 12px "IBM Plex Mono", monospace'; g.fillText(sv.model.replace(new RegExp('^' + sv.rec.maker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' ', 'i'), ''), 6, 12);
+    g.fillStyle = '#16181a'; g.font = '500 14px "IBM Plex Mono", monospace'; g.fillText(`${tag} ${sv.serial}`, 6, 36);
     g.font = '400 11px "IBM Plex Mono", monospace'; g.fillText(sv.host, 6, 56);
     for (let x = 6; x < w - 6; x += 3) if ((x * 7) % 5 < 3) g.fillRect(x, 66, 2, h - 72);
   });
@@ -195,7 +198,6 @@ function resetShim(i, scatter) {
   shim.pos[o] = xs[i % xs.length] + (Math.random() - 0.5) * 0.08; shim.pos[o + 1] = 0.028 + (scatter ? Math.random() * 0.19 : 0); shim.pos[o + 2] = 0.02 + (Math.random() - 0.5) * 0.08;
 }
 const reseed = () => { for (let i = 0; i < air.n; i++) resetAir(i, true); for (let i = 0; i < shim.n; i++) resetShim(i, true); };
-reseed();
 
 const SLIDE = 0.8;
 export const slotPos = (sv, e, out) => out.set(sv.r.x, sv.y, sv.r.z + sv.r.face * (0.05 + SLIDE * e));
@@ -207,8 +209,8 @@ export function mountServer(sv) {
   if (SV.sel && SV.sel !== sv) { setInstance(SV.sel, true); SV.slide = 0; }
   SV.sel = sv; SV.open = true;
   setInstance(sv, false);
-  const v = VARIANTS.get(sv.spec.key);
-  if (v !== cur) { cur.g.visible = false; cur = v; reseed(); }
+  const v = variant(sv.spec);
+  if (v !== cur) { if (cur) cur.g.visible = false; cur = v; reseed(); }
   cur.g.visible = true; srvMeshes.length = 0; srvMeshes.push(...cur.meshes);
   printLabels(sv);
   SRV.rotation.y = sv.r.face > 0 ? 0 : Math.PI;

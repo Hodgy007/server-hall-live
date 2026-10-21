@@ -1,33 +1,5467 @@
 {
-  "_about": "Copy to data/hall.json and fill in. Every field is optional: anything left out keeps its generated value.",
-  "domain": "dc1.example.com",
-  "idracUrl": "https://{host}-idrac.dc1.example.com/",
-  "telemetry": { "url": "data/telemetry.example.json", "intervalSeconds": 10 },
-  "racks": {
-    "A01": {
-      "servers": {
-        "U1": {
-          "host": "web-a01-01",
-          "serial": "7XK2Q93",
-          "installed": "2025-06",
-          "model": "Dell PowerEdge R7725",
-          "cpu": "2× AMD EPYC 9335",
-          "cpuNote": "32 cores each at 3.0 GHz, 64 in total",
-          "os": "Ubuntu 22.04.4 LTS",
-          "kernel": "5.15",
-          "drives": "8× 960 GB NVMe",
-          "driveTB": 7.68,
-          "ip": "10.110.1.11",
-          "vlan": 110,
-          "gateway": "10.110.1.1",
-          "port": "Ethernet1/1",
-          "mac": ["00:0a:f7:20:00:00", "00:0a:f7:20:00:01"],
-          "idrac": "10.250.1.11",
-          "oobPort": "Gi1/0/1",
-          "idracMac": "00:14:22:20:00:02"
-        },
-        "U3": { "host": "web-a01-02", "serial": "7XK2Q94", "idrac": "10.250.1.12" }
-      }
-    }
+ "_about": "Example site file for Server Hall Live. Load it with Load file, or copy it to data/hall.json. See the README for every field.",
+ "domain": "corp.example.com",
+ "oobUrl": "https://{ip}/",
+ "halls": [
+  {
+   "building": "LON1",
+   "room": "Hall A",
+   "grid": [
+    ". . . . . . . . . . . . . .",
+    ". . . + + + + . . . . . . .",
+    ". . . A01:S A02:S A03:S A04:S . . . . . . .",
+    ". . . P P P P . . . . . . .",
+    ". . . P P P P . . . . . . .",
+    ". . . P P P P . . . . . . .",
+    ". . . B01:N B02:N B03:N B04:N . . . . . . .",
+    ". . . + + + + . . . . . . .",
+    ". . . H H H H . . . . . . .",
+    ". . . H H H H . . . . . . .",
+    ". . . + + . . . . . . . . .",
+    ". . . D01:S D02:S . . . . . . . . .",
+    ". . . P P . . . . . . . . .",
+    ". . . P P . . . . . . . . .",
+    ". . . . . . . . . . . . . ."
+   ]
+  },
+  {
+   "building": "MAN2",
+   "room": "Data Hall 1",
+   "grid": [
+    ". . . . . . . . . .",
+    ". . . + + + . . . .",
+    ". . . C01:S C02:S C03:S . . . .",
+    ". . . P P P . . . .",
+    ". . . P P P . . . .",
+    ". . . . . . . . . ."
+   ]
   }
+ ],
+ "servers": [
+  {
+   "host": "web-a01-01",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A01",
+   "u": 1,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R660",
+   "serial": "VWVZCBZ",
+   "installed": "2024-11",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.1.11/24",
+     "vlan": 110,
+     "gateway": "10.110.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.1.11",
+    "mac": "00:1b:21:00:00:04",
+    "switch": "oob-a01",
+    "port": "Gi1/0/1"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:05",
+     "switch": "tor-a01-a",
+     "port": "Ethernet1/1",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:06",
+     "switch": "tor-a01-b",
+     "port": "Ethernet1/1",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a01-02",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A01",
+   "u": 2,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R660",
+   "serial": "B6VK952",
+   "installed": "2025-07",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.1.12/24",
+     "vlan": 110,
+     "gateway": "10.110.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.1.12",
+    "mac": "00:1b:21:00:00:08",
+    "switch": "oob-a01",
+    "port": "Gi1/0/2"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:09",
+     "switch": "tor-a01-a",
+     "port": "Ethernet1/2",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:0a",
+     "switch": "tor-a01-b",
+     "port": "Ethernet1/2",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a01-03",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A01",
+   "u": 3,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R660",
+   "serial": "VA0432C",
+   "installed": "2023-10",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.1.13/24",
+     "vlan": 110,
+     "gateway": "10.110.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.1.13",
+    "mac": "00:1b:21:00:00:0c",
+    "switch": "oob-a01",
+    "port": "Gi1/0/3"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:0d",
+     "switch": "tor-a01-a",
+     "port": "Ethernet1/3",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:0e",
+     "switch": "tor-a01-b",
+     "port": "Ethernet1/3",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a01-04",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A01",
+   "u": 4,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R660",
+   "serial": "1WLVCEJ",
+   "installed": "2024-01",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.1.14/24",
+     "vlan": 110,
+     "gateway": "10.110.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.1.14",
+    "mac": "00:1b:21:00:00:10",
+    "switch": "oob-a01",
+    "port": "Gi1/0/4"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:11",
+     "switch": "tor-a01-a",
+     "port": "Ethernet1/4",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:12",
+     "switch": "tor-a01-b",
+     "port": "Ethernet1/4",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a01-05",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A01",
+   "u": 5,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R660",
+   "serial": "5WHS5GL",
+   "installed": "2023-09",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.1.15/24",
+     "vlan": 110,
+     "gateway": "10.110.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.1.15",
+    "mac": "00:1b:21:00:00:14",
+    "switch": "oob-a01",
+    "port": "Gi1/0/5"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:15",
+     "switch": "tor-a01-a",
+     "port": "Ethernet1/5",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:16",
+     "switch": "tor-a01-b",
+     "port": "Ethernet1/5",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a01-06",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A01",
+   "u": 6,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R660",
+   "serial": "J146R6J",
+   "installed": "2024-02",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.1.16/24",
+     "vlan": 110,
+     "gateway": "10.110.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.1.16",
+    "mac": "00:1b:21:00:00:18",
+    "switch": "oob-a01",
+    "port": "Gi1/0/6"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:19",
+     "switch": "tor-a01-a",
+     "port": "Ethernet1/6",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:1a",
+     "switch": "tor-a01-b",
+     "port": "Ethernet1/6",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a01-07",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A01",
+   "u": 7,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R660",
+   "serial": "10DD3XQ",
+   "installed": "2025-07",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.1.17/24",
+     "vlan": 110,
+     "gateway": "10.110.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.1.17",
+    "mac": "00:1b:21:00:00:1c",
+    "switch": "oob-a01",
+    "port": "Gi1/0/7"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:1d",
+     "switch": "tor-a01-a",
+     "port": "Ethernet1/7",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:1e",
+     "switch": "tor-a01-b",
+     "port": "Ethernet1/7",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a01-08",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A01",
+   "u": 8,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R660",
+   "serial": "S4CHM5K",
+   "installed": "2024-01",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.1.18/24",
+     "vlan": 110,
+     "gateway": "10.110.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.1.18",
+    "mac": "00:1b:21:00:00:20",
+    "switch": "oob-a01",
+    "port": "Gi1/0/8"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:21",
+     "switch": "tor-a01-a",
+     "port": "Ethernet1/8",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:22",
+     "switch": "tor-a01-b",
+     "port": "Ethernet1/8",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a01-09",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A01",
+   "u": 9,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R660",
+   "serial": "S78F603",
+   "installed": "2024-08",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.1.19/24",
+     "vlan": 110,
+     "gateway": "10.110.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.1.19",
+    "mac": "00:1b:21:00:00:24",
+    "switch": "oob-a01",
+    "port": "Gi1/0/9"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:25",
+     "switch": "tor-a01-a",
+     "port": "Ethernet1/9",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:26",
+     "switch": "tor-a01-b",
+     "port": "Ethernet1/9",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a01-10",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A01",
+   "u": 10,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R660",
+   "serial": "BCVZC8S",
+   "installed": "2025-07",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.1.20/24",
+     "vlan": 110,
+     "gateway": "10.110.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.1.20",
+    "mac": "00:1b:21:00:00:28",
+    "switch": "oob-a01",
+    "port": "Gi1/0/10"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:29",
+     "switch": "tor-a01-a",
+     "port": "Ethernet1/10",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:2a",
+     "switch": "tor-a01-b",
+     "port": "Ethernet1/10",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a02-01",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A02",
+   "u": 1,
+   "height": 1,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL360 Gen11",
+   "serial": "7RSD0HK1DB",
+   "installed": "2024-10",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.2.11/24",
+     "vlan": 110,
+     "gateway": "10.110.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.2.11",
+    "mac": "00:1b:21:00:00:2c",
+    "switch": "oob-a02",
+    "port": "Gi1/0/1"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:2d",
+     "switch": "tor-a02-a",
+     "port": "Ethernet1/1",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:2e",
+     "switch": "tor-a02-b",
+     "port": "Ethernet1/1",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a02-02",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A02",
+   "u": 2,
+   "height": 1,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL360 Gen11",
+   "serial": "629DVG0MJQ",
+   "installed": "2023-02",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.2.12/24",
+     "vlan": 110,
+     "gateway": "10.110.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.2.12",
+    "mac": "00:1b:21:00:00:30",
+    "switch": "oob-a02",
+    "port": "Gi1/0/2"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:31",
+     "switch": "tor-a02-a",
+     "port": "Ethernet1/2",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:32",
+     "switch": "tor-a02-b",
+     "port": "Ethernet1/2",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a02-03",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A02",
+   "u": 3,
+   "height": 1,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL360 Gen11",
+   "serial": "5DF0PPW8X8",
+   "installed": "2024-03",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.2.13/24",
+     "vlan": 110,
+     "gateway": "10.110.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.2.13",
+    "mac": "00:1b:21:00:00:34",
+    "switch": "oob-a02",
+    "port": "Gi1/0/3"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:35",
+     "switch": "tor-a02-a",
+     "port": "Ethernet1/3",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:36",
+     "switch": "tor-a02-b",
+     "port": "Ethernet1/3",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a02-04",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A02",
+   "u": 4,
+   "height": 1,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL360 Gen11",
+   "serial": "9KEFCACQX5",
+   "installed": "2024-01",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.2.14/24",
+     "vlan": 110,
+     "gateway": "10.110.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.2.14",
+    "mac": "00:1b:21:00:00:38",
+    "switch": "oob-a02",
+    "port": "Gi1/0/4"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:39",
+     "switch": "tor-a02-a",
+     "port": "Ethernet1/4",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:3a",
+     "switch": "tor-a02-b",
+     "port": "Ethernet1/4",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a02-05",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A02",
+   "u": 5,
+   "height": 1,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL360 Gen11",
+   "serial": "662ZGFRGSY",
+   "installed": "2024-09",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.2.15/24",
+     "vlan": 110,
+     "gateway": "10.110.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.2.15",
+    "mac": "00:1b:21:00:00:3c",
+    "switch": "oob-a02",
+    "port": "Gi1/0/5"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:3d",
+     "switch": "tor-a02-a",
+     "port": "Ethernet1/5",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:3e",
+     "switch": "tor-a02-b",
+     "port": "Ethernet1/5",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a02-06",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A02",
+   "u": 6,
+   "height": 1,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL360 Gen11",
+   "serial": "B48EX4HDD1",
+   "installed": "2023-05",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.2.16/24",
+     "vlan": 110,
+     "gateway": "10.110.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.2.16",
+    "mac": "00:1b:21:00:00:40",
+    "switch": "oob-a02",
+    "port": "Gi1/0/6"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:41",
+     "switch": "tor-a02-a",
+     "port": "Ethernet1/6",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:42",
+     "switch": "tor-a02-b",
+     "port": "Ethernet1/6",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a02-07",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A02",
+   "u": 7,
+   "height": 1,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL360 Gen11",
+   "serial": "SVF32BJP85",
+   "installed": "2024-03",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.2.17/24",
+     "vlan": 110,
+     "gateway": "10.110.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.2.17",
+    "mac": "00:1b:21:00:00:44",
+    "switch": "oob-a02",
+    "port": "Gi1/0/7"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:45",
+     "switch": "tor-a02-a",
+     "port": "Ethernet1/7",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:46",
+     "switch": "tor-a02-b",
+     "port": "Ethernet1/7",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a02-08",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A02",
+   "u": 8,
+   "height": 1,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL360 Gen11",
+   "serial": "VM821XNK21",
+   "installed": "2025-11",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.2.18/24",
+     "vlan": 110,
+     "gateway": "10.110.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.2.18",
+    "mac": "00:1b:21:00:00:48",
+    "switch": "oob-a02",
+    "port": "Gi1/0/8"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:49",
+     "switch": "tor-a02-a",
+     "port": "Ethernet1/8",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:4a",
+     "switch": "tor-a02-b",
+     "port": "Ethernet1/8",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a02-09",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A02",
+   "u": 9,
+   "height": 1,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL360 Gen11",
+   "serial": "4X4KL844VP",
+   "installed": "2025-01",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.2.19/24",
+     "vlan": 110,
+     "gateway": "10.110.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.2.19",
+    "mac": "00:1b:21:00:00:4c",
+    "switch": "oob-a02",
+    "port": "Gi1/0/9"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:4d",
+     "switch": "tor-a02-a",
+     "port": "Ethernet1/9",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:4e",
+     "switch": "tor-a02-b",
+     "port": "Ethernet1/9",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a02-10",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A02",
+   "u": 10,
+   "height": 1,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL360 Gen11",
+   "serial": "8MN5X4S1Y0",
+   "installed": "2025-11",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.2.20/24",
+     "vlan": 110,
+     "gateway": "10.110.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.2.20",
+    "mac": "00:1b:21:00:00:50",
+    "switch": "oob-a02",
+    "port": "Gi1/0/10"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:51",
+     "switch": "tor-a02-a",
+     "port": "Ethernet1/10",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:52",
+     "switch": "tor-a02-b",
+     "port": "Ethernet1/10",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a03-01",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A03",
+   "u": 1,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R660",
+   "serial": "QQ04557",
+   "installed": "2024-07",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.3.11/24",
+     "vlan": 110,
+     "gateway": "10.110.3.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.3.11",
+    "mac": "00:1b:21:00:00:54",
+    "switch": "oob-a03",
+    "port": "Gi1/0/1"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:55",
+     "switch": "tor-a03-a",
+     "port": "Ethernet1/1",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:56",
+     "switch": "tor-a03-b",
+     "port": "Ethernet1/1",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a03-02",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A03",
+   "u": 2,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R660",
+   "serial": "MQWVW5Z",
+   "installed": "2023-05",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.3.12/24",
+     "vlan": 110,
+     "gateway": "10.110.3.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.3.12",
+    "mac": "00:1b:21:00:00:58",
+    "switch": "oob-a03",
+    "port": "Gi1/0/2"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:59",
+     "switch": "tor-a03-a",
+     "port": "Ethernet1/2",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:5a",
+     "switch": "tor-a03-b",
+     "port": "Ethernet1/2",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a03-03",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A03",
+   "u": 3,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R660",
+   "serial": "5X1E7YY",
+   "installed": "2024-01",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.3.13/24",
+     "vlan": 110,
+     "gateway": "10.110.3.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.3.13",
+    "mac": "00:1b:21:00:00:5c",
+    "switch": "oob-a03",
+    "port": "Gi1/0/3"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:5d",
+     "switch": "tor-a03-a",
+     "port": "Ethernet1/3",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:5e",
+     "switch": "tor-a03-b",
+     "port": "Ethernet1/3",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a03-04",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A03",
+   "u": 4,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R660",
+   "serial": "PK9CAMV",
+   "installed": "2024-04",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.3.14/24",
+     "vlan": 110,
+     "gateway": "10.110.3.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.3.14",
+    "mac": "00:1b:21:00:00:60",
+    "switch": "oob-a03",
+    "port": "Gi1/0/4"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:61",
+     "switch": "tor-a03-a",
+     "port": "Ethernet1/4",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:62",
+     "switch": "tor-a03-b",
+     "port": "Ethernet1/4",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a03-05",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A03",
+   "u": 5,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R660",
+   "serial": "LRGCTCD",
+   "installed": "2024-04",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.3.15/24",
+     "vlan": 110,
+     "gateway": "10.110.3.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.3.15",
+    "mac": "00:1b:21:00:00:64",
+    "switch": "oob-a03",
+    "port": "Gi1/0/5"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:65",
+     "switch": "tor-a03-a",
+     "port": "Ethernet1/5",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:66",
+     "switch": "tor-a03-b",
+     "port": "Ethernet1/5",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a03-06",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A03",
+   "u": 6,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R660",
+   "serial": "LD88YN2",
+   "installed": "2025-02",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.3.16/24",
+     "vlan": 110,
+     "gateway": "10.110.3.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.3.16",
+    "mac": "00:1b:21:00:00:68",
+    "switch": "oob-a03",
+    "port": "Gi1/0/6"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:69",
+     "switch": "tor-a03-a",
+     "port": "Ethernet1/6",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:6a",
+     "switch": "tor-a03-b",
+     "port": "Ethernet1/6",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a03-07",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A03",
+   "u": 7,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R660",
+   "serial": "HA7VXHD",
+   "installed": "2024-07",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.3.17/24",
+     "vlan": 110,
+     "gateway": "10.110.3.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.3.17",
+    "mac": "00:1b:21:00:00:6c",
+    "switch": "oob-a03",
+    "port": "Gi1/0/7"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:6d",
+     "switch": "tor-a03-a",
+     "port": "Ethernet1/7",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:6e",
+     "switch": "tor-a03-b",
+     "port": "Ethernet1/7",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a03-08",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A03",
+   "u": 8,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R660",
+   "serial": "YLVL42H",
+   "installed": "2025-01",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.3.18/24",
+     "vlan": 110,
+     "gateway": "10.110.3.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.3.18",
+    "mac": "00:1b:21:00:00:70",
+    "switch": "oob-a03",
+    "port": "Gi1/0/8"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:71",
+     "switch": "tor-a03-a",
+     "port": "Ethernet1/8",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:72",
+     "switch": "tor-a03-b",
+     "port": "Ethernet1/8",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a03-09",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A03",
+   "u": 9,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R660",
+   "serial": "HNK18RW",
+   "installed": "2023-01",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.3.19/24",
+     "vlan": 110,
+     "gateway": "10.110.3.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.3.19",
+    "mac": "00:1b:21:00:00:74",
+    "switch": "oob-a03",
+    "port": "Gi1/0/9"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:75",
+     "switch": "tor-a03-a",
+     "port": "Ethernet1/9",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:76",
+     "switch": "tor-a03-b",
+     "port": "Ethernet1/9",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "web-a03-10",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A03",
+   "u": 10,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R660",
+   "serial": "HF937V6",
+   "installed": "2025-09",
+   "role": "Web front-end",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 512,
+    "dimms": 16,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.110.3.20/24",
+     "vlan": 110,
+     "gateway": "10.110.3.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.3.20",
+    "mac": "00:1b:21:00:00:78",
+    "switch": "oob-a03",
+    "port": "Gi1/0/10"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:79",
+     "switch": "tor-a03-a",
+     "port": "Ethernet1/10",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:7a",
+     "switch": "tor-a03-b",
+     "port": "Ethernet1/10",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "1.92 TB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "db-a04-01",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A04",
+   "u": 1,
+   "height": 2,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R760",
+   "serial": "P4CCXGB",
+   "installed": "2025-01",
+   "role": "Database",
+   "os": "Red Hat Enterprise Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "Intel Xeon Gold 6448Y",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 1024,
+    "dimms": 32,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.130.4.11/24",
+     "vlan": 130,
+     "gateway": "10.130.4.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.4.11",
+    "mac": "00:1b:21:00:00:7c",
+    "switch": "oob-a04",
+    "port": "Gi1/0/1"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:7d",
+     "switch": "tor-a04-a",
+     "port": "Ethernet1/1",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:7e",
+     "switch": "tor-a04-b",
+     "port": "Ethernet1/1",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 8,
+     "raid": "RAID 10"
+    },
+    {
+     "type": "M.2 SATA (BOSS-N1)",
+     "size": "480 GB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ],
+   "attachedDisks": [
+    {
+     "type": "SAN",
+     "array": "pure-x70-lon1",
+     "protocol": "FC",
+     "size": "40 TB",
+     "lun": 1,
+     "name": "db-a04-01-data"
+    },
+    {
+     "type": "SAN",
+     "array": "pure-x70-lon1",
+     "protocol": "FC",
+     "size": "4 TB",
+     "lun": 101,
+     "name": "db-a04-01-logs"
+    }
+   ]
+  },
+  {
+   "host": "db-a04-02",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A04",
+   "u": 3,
+   "height": 2,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R760",
+   "serial": "X2BEHNZ",
+   "installed": "2025-03",
+   "role": "Database",
+   "os": "Red Hat Enterprise Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "Intel Xeon Gold 6448Y",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 1024,
+    "dimms": 32,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.130.4.12/24",
+     "vlan": 130,
+     "gateway": "10.130.4.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.4.12",
+    "mac": "00:1b:21:00:00:80",
+    "switch": "oob-a04",
+    "port": "Gi1/0/2"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:81",
+     "switch": "tor-a04-a",
+     "port": "Ethernet1/2",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:82",
+     "switch": "tor-a04-b",
+     "port": "Ethernet1/2",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 8,
+     "raid": "RAID 10"
+    },
+    {
+     "type": "M.2 SATA (BOSS-N1)",
+     "size": "480 GB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ],
+   "attachedDisks": [
+    {
+     "type": "SAN",
+     "array": "pure-x70-lon1",
+     "protocol": "FC",
+     "size": "40 TB",
+     "lun": 2,
+     "name": "db-a04-02-data"
+    },
+    {
+     "type": "SAN",
+     "array": "pure-x70-lon1",
+     "protocol": "FC",
+     "size": "4 TB",
+     "lun": 102,
+     "name": "db-a04-02-logs"
+    }
+   ]
+  },
+  {
+   "host": "db-a04-03",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A04",
+   "u": 5,
+   "height": 2,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R760",
+   "serial": "RE5SQ8V",
+   "installed": "2024-04",
+   "role": "Database",
+   "os": "Red Hat Enterprise Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "Intel Xeon Gold 6448Y",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 1024,
+    "dimms": 32,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.130.4.13/24",
+     "vlan": 130,
+     "gateway": "10.130.4.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.4.13",
+    "mac": "00:1b:21:00:00:84",
+    "switch": "oob-a04",
+    "port": "Gi1/0/3"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:85",
+     "switch": "tor-a04-a",
+     "port": "Ethernet1/3",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:86",
+     "switch": "tor-a04-b",
+     "port": "Ethernet1/3",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 8,
+     "raid": "RAID 10"
+    },
+    {
+     "type": "M.2 SATA (BOSS-N1)",
+     "size": "480 GB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ],
+   "attachedDisks": [
+    {
+     "type": "SAN",
+     "array": "pure-x70-lon1",
+     "protocol": "FC",
+     "size": "40 TB",
+     "lun": 3,
+     "name": "db-a04-03-data"
+    },
+    {
+     "type": "SAN",
+     "array": "pure-x70-lon1",
+     "protocol": "FC",
+     "size": "4 TB",
+     "lun": 103,
+     "name": "db-a04-03-logs"
+    }
+   ]
+  },
+  {
+   "host": "db-a04-04",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A04",
+   "u": 7,
+   "height": 2,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R760",
+   "serial": "0QZMWLD",
+   "installed": "2023-12",
+   "role": "Database",
+   "os": "Red Hat Enterprise Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "Intel Xeon Gold 6448Y",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 1024,
+    "dimms": 32,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.130.4.14/24",
+     "vlan": 130,
+     "gateway": "10.130.4.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.4.14",
+    "mac": "00:1b:21:00:00:88",
+    "switch": "oob-a04",
+    "port": "Gi1/0/4"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:89",
+     "switch": "tor-a04-a",
+     "port": "Ethernet1/4",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:8a",
+     "switch": "tor-a04-b",
+     "port": "Ethernet1/4",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 8,
+     "raid": "RAID 10"
+    },
+    {
+     "type": "M.2 SATA (BOSS-N1)",
+     "size": "480 GB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ],
+   "attachedDisks": [
+    {
+     "type": "SAN",
+     "array": "pure-x70-lon1",
+     "protocol": "FC",
+     "size": "40 TB",
+     "lun": 4,
+     "name": "db-a04-04-data"
+    },
+    {
+     "type": "SAN",
+     "array": "pure-x70-lon1",
+     "protocol": "FC",
+     "size": "4 TB",
+     "lun": 104,
+     "name": "db-a04-04-logs"
+    }
+   ]
+  },
+  {
+   "host": "db-a04-05",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A04",
+   "u": 9,
+   "height": 2,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R760",
+   "serial": "7DFQ5KL",
+   "installed": "2024-12",
+   "role": "Database",
+   "os": "Red Hat Enterprise Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "Intel Xeon Gold 6448Y",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 1024,
+    "dimms": 32,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.130.4.15/24",
+     "vlan": 130,
+     "gateway": "10.130.4.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.4.15",
+    "mac": "00:1b:21:00:00:8c",
+    "switch": "oob-a04",
+    "port": "Gi1/0/5"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:8d",
+     "switch": "tor-a04-a",
+     "port": "Ethernet1/5",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:8e",
+     "switch": "tor-a04-b",
+     "port": "Ethernet1/5",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 8,
+     "raid": "RAID 10"
+    },
+    {
+     "type": "M.2 SATA (BOSS-N1)",
+     "size": "480 GB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ],
+   "attachedDisks": [
+    {
+     "type": "SAN",
+     "array": "pure-x70-lon1",
+     "protocol": "FC",
+     "size": "40 TB",
+     "lun": 5,
+     "name": "db-a04-05-data"
+    },
+    {
+     "type": "SAN",
+     "array": "pure-x70-lon1",
+     "protocol": "FC",
+     "size": "4 TB",
+     "lun": 105,
+     "name": "db-a04-05-logs"
+    }
+   ]
+  },
+  {
+   "host": "db-a04-06",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A04",
+   "u": 11,
+   "height": 2,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R760",
+   "serial": "1NZ52VM",
+   "installed": "2025-07",
+   "role": "Database",
+   "os": "Red Hat Enterprise Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "Intel Xeon Gold 6448Y",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 1024,
+    "dimms": 32,
+    "type": "DDR5-4800 RDIMM"
+   },
+   "ip": [
+    {
+     "address": "10.130.4.16/24",
+     "vlan": 130,
+     "gateway": "10.130.4.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.250.4.16",
+    "mac": "00:1b:21:00:00:90",
+    "switch": "oob-a04",
+    "port": "Gi1/0/6"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:91",
+     "switch": "tor-a04-a",
+     "port": "Ethernet1/6",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:92",
+     "switch": "tor-a04-b",
+     "port": "Ethernet1/6",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 8,
+     "raid": "RAID 10"
+    },
+    {
+     "type": "M.2 SATA (BOSS-N1)",
+     "size": "480 GB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ],
+   "attachedDisks": [
+    {
+     "type": "SAN",
+     "array": "pure-x70-lon1",
+     "protocol": "FC",
+     "size": "40 TB",
+     "lun": 6,
+     "name": "db-a04-06-data"
+    },
+    {
+     "type": "SAN",
+     "array": "pure-x70-lon1",
+     "protocol": "FC",
+     "size": "4 TB",
+     "lun": 106,
+     "name": "db-a04-06-logs"
+    }
+   ]
+  },
+  {
+   "host": "api-b01-01",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B01",
+   "u": 1,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL385 Gen11",
+   "serial": "HY1D4T2BM8",
+   "installed": "2024-03",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "AMD EPYC 9354",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 3.25
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.1.11/24",
+     "vlan": 120,
+     "gateway": "10.120.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.1.11",
+    "mac": "00:1b:21:00:00:94",
+    "switch": "oob-b01",
+    "port": "Gi1/0/1"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:95",
+     "switch": "tor-b01-a",
+     "port": "Ethernet1/1",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:96",
+     "switch": "tor-b01-b",
+     "port": "Ethernet1/1",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b01-02",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B01",
+   "u": 3,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL380 Gen11",
+   "serial": "VY5EVJAZGK",
+   "installed": "2025-07",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.1.12/24",
+     "vlan": 120,
+     "gateway": "10.120.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.1.12",
+    "mac": "00:1b:21:00:00:98",
+    "switch": "oob-b01",
+    "port": "Gi1/0/2"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:99",
+     "switch": "tor-b01-a",
+     "port": "Ethernet1/2",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:9a",
+     "switch": "tor-b01-b",
+     "port": "Ethernet1/2",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b01-03",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B01",
+   "u": 5,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL385 Gen11",
+   "serial": "DK9HYCS7Z0",
+   "installed": "2025-07",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "AMD EPYC 9354",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 3.25
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.1.13/24",
+     "vlan": 120,
+     "gateway": "10.120.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.1.13",
+    "mac": "00:1b:21:00:00:9c",
+    "switch": "oob-b01",
+    "port": "Gi1/0/3"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:9d",
+     "switch": "tor-b01-a",
+     "port": "Ethernet1/3",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:9e",
+     "switch": "tor-b01-b",
+     "port": "Ethernet1/3",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b01-04",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B01",
+   "u": 7,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL380 Gen11",
+   "serial": "12R7Y5A4WS",
+   "installed": "2024-05",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.1.14/24",
+     "vlan": 120,
+     "gateway": "10.120.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.1.14",
+    "mac": "00:1b:21:00:00:a0",
+    "switch": "oob-b01",
+    "port": "Gi1/0/4"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:a1",
+     "switch": "tor-b01-a",
+     "port": "Ethernet1/4",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:a2",
+     "switch": "tor-b01-b",
+     "port": "Ethernet1/4",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b01-05",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B01",
+   "u": 9,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL385 Gen11",
+   "serial": "FXY8MTXL6C",
+   "installed": "2024-10",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "AMD EPYC 9354",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 3.25
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.1.15/24",
+     "vlan": 120,
+     "gateway": "10.120.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.1.15",
+    "mac": "00:1b:21:00:00:a4",
+    "switch": "oob-b01",
+    "port": "Gi1/0/5"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:a5",
+     "switch": "tor-b01-a",
+     "port": "Ethernet1/5",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:a6",
+     "switch": "tor-b01-b",
+     "port": "Ethernet1/5",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b01-06",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B01",
+   "u": 11,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL380 Gen11",
+   "serial": "1G812C9E0J",
+   "installed": "2024-12",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.1.16/24",
+     "vlan": 120,
+     "gateway": "10.120.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.1.16",
+    "mac": "00:1b:21:00:00:a8",
+    "switch": "oob-b01",
+    "port": "Gi1/0/6"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:a9",
+     "switch": "tor-b01-a",
+     "port": "Ethernet1/6",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:aa",
+     "switch": "tor-b01-b",
+     "port": "Ethernet1/6",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b01-07",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B01",
+   "u": 13,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL385 Gen11",
+   "serial": "NFY6Y7ZGCT",
+   "installed": "2023-07",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "AMD EPYC 9354",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 3.25
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.1.17/24",
+     "vlan": 120,
+     "gateway": "10.120.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.1.17",
+    "mac": "00:1b:21:00:00:ac",
+    "switch": "oob-b01",
+    "port": "Gi1/0/7"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:ad",
+     "switch": "tor-b01-a",
+     "port": "Ethernet1/7",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:ae",
+     "switch": "tor-b01-b",
+     "port": "Ethernet1/7",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b01-08",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B01",
+   "u": 15,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL380 Gen11",
+   "serial": "SADDD8ENBL",
+   "installed": "2025-06",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.1.18/24",
+     "vlan": 120,
+     "gateway": "10.120.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.1.18",
+    "mac": "00:1b:21:00:00:b0",
+    "switch": "oob-b01",
+    "port": "Gi1/0/8"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:b1",
+     "switch": "tor-b01-a",
+     "port": "Ethernet1/8",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:b2",
+     "switch": "tor-b01-b",
+     "port": "Ethernet1/8",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b02-01",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B02",
+   "u": 1,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL385 Gen11",
+   "serial": "CDC68F85GQ",
+   "installed": "2023-07",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "AMD EPYC 9354",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 3.25
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.2.11/24",
+     "vlan": 120,
+     "gateway": "10.120.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.2.11",
+    "mac": "00:1b:21:00:00:b4",
+    "switch": "oob-b02",
+    "port": "Gi1/0/1"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:b5",
+     "switch": "tor-b02-a",
+     "port": "Ethernet1/1",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:b6",
+     "switch": "tor-b02-b",
+     "port": "Ethernet1/1",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b02-02",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B02",
+   "u": 3,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL380 Gen11",
+   "serial": "S8CR16CNP7",
+   "installed": "2025-09",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.2.12/24",
+     "vlan": 120,
+     "gateway": "10.120.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.2.12",
+    "mac": "00:1b:21:00:00:b8",
+    "switch": "oob-b02",
+    "port": "Gi1/0/2"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:b9",
+     "switch": "tor-b02-a",
+     "port": "Ethernet1/2",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:ba",
+     "switch": "tor-b02-b",
+     "port": "Ethernet1/2",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b02-03",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B02",
+   "u": 5,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL385 Gen11",
+   "serial": "MZC4X612ZX",
+   "installed": "2023-04",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "AMD EPYC 9354",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 3.25
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.2.13/24",
+     "vlan": 120,
+     "gateway": "10.120.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.2.13",
+    "mac": "00:1b:21:00:00:bc",
+    "switch": "oob-b02",
+    "port": "Gi1/0/3"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:bd",
+     "switch": "tor-b02-a",
+     "port": "Ethernet1/3",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:be",
+     "switch": "tor-b02-b",
+     "port": "Ethernet1/3",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b02-04",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B02",
+   "u": 7,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL380 Gen11",
+   "serial": "B7DBAJ638W",
+   "installed": "2023-02",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.2.14/24",
+     "vlan": 120,
+     "gateway": "10.120.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.2.14",
+    "mac": "00:1b:21:00:00:c0",
+    "switch": "oob-b02",
+    "port": "Gi1/0/4"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:c1",
+     "switch": "tor-b02-a",
+     "port": "Ethernet1/4",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:c2",
+     "switch": "tor-b02-b",
+     "port": "Ethernet1/4",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b02-05",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B02",
+   "u": 9,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL385 Gen11",
+   "serial": "LRWTZNTDP0",
+   "installed": "2025-12",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "AMD EPYC 9354",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 3.25
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.2.15/24",
+     "vlan": 120,
+     "gateway": "10.120.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.2.15",
+    "mac": "00:1b:21:00:00:c4",
+    "switch": "oob-b02",
+    "port": "Gi1/0/5"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:c5",
+     "switch": "tor-b02-a",
+     "port": "Ethernet1/5",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:c6",
+     "switch": "tor-b02-b",
+     "port": "Ethernet1/5",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b02-06",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B02",
+   "u": 11,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL380 Gen11",
+   "serial": "2CBSWPPRCA",
+   "installed": "2023-09",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.2.16/24",
+     "vlan": 120,
+     "gateway": "10.120.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.2.16",
+    "mac": "00:1b:21:00:00:c8",
+    "switch": "oob-b02",
+    "port": "Gi1/0/6"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:c9",
+     "switch": "tor-b02-a",
+     "port": "Ethernet1/6",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:ca",
+     "switch": "tor-b02-b",
+     "port": "Ethernet1/6",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b02-07",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B02",
+   "u": 13,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL385 Gen11",
+   "serial": "0L5RCZMGH7",
+   "installed": "2025-12",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "AMD EPYC 9354",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 3.25
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.2.17/24",
+     "vlan": 120,
+     "gateway": "10.120.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.2.17",
+    "mac": "00:1b:21:00:00:cc",
+    "switch": "oob-b02",
+    "port": "Gi1/0/7"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:cd",
+     "switch": "tor-b02-a",
+     "port": "Ethernet1/7",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:ce",
+     "switch": "tor-b02-b",
+     "port": "Ethernet1/7",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b02-08",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B02",
+   "u": 15,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL380 Gen11",
+   "serial": "AR8MPTBRDB",
+   "installed": "2023-06",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.2.18/24",
+     "vlan": 120,
+     "gateway": "10.120.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.2.18",
+    "mac": "00:1b:21:00:00:d0",
+    "switch": "oob-b02",
+    "port": "Gi1/0/8"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:d1",
+     "switch": "tor-b02-a",
+     "port": "Ethernet1/8",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:d2",
+     "switch": "tor-b02-b",
+     "port": "Ethernet1/8",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b03-01",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B03",
+   "u": 1,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL385 Gen11",
+   "serial": "KX60N3EHKM",
+   "installed": "2023-11",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "AMD EPYC 9354",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 3.25
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.3.11/24",
+     "vlan": 120,
+     "gateway": "10.120.3.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.3.11",
+    "mac": "00:1b:21:00:00:d4",
+    "switch": "oob-b03",
+    "port": "Gi1/0/1"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:d5",
+     "switch": "tor-b03-a",
+     "port": "Ethernet1/1",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:d6",
+     "switch": "tor-b03-b",
+     "port": "Ethernet1/1",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b03-02",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B03",
+   "u": 3,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL380 Gen11",
+   "serial": "RB4QZYD7R1",
+   "installed": "2023-10",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.3.12/24",
+     "vlan": 120,
+     "gateway": "10.120.3.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.3.12",
+    "mac": "00:1b:21:00:00:d8",
+    "switch": "oob-b03",
+    "port": "Gi1/0/2"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:d9",
+     "switch": "tor-b03-a",
+     "port": "Ethernet1/2",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:da",
+     "switch": "tor-b03-b",
+     "port": "Ethernet1/2",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b03-03",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B03",
+   "u": 5,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL385 Gen11",
+   "serial": "6FGVRZ3CQ0",
+   "installed": "2023-05",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "AMD EPYC 9354",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 3.25
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.3.13/24",
+     "vlan": 120,
+     "gateway": "10.120.3.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.3.13",
+    "mac": "00:1b:21:00:00:dc",
+    "switch": "oob-b03",
+    "port": "Gi1/0/3"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:dd",
+     "switch": "tor-b03-a",
+     "port": "Ethernet1/3",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:de",
+     "switch": "tor-b03-b",
+     "port": "Ethernet1/3",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b03-04",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B03",
+   "u": 7,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL380 Gen11",
+   "serial": "GHMZS6V42Q",
+   "installed": "2023-07",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.3.14/24",
+     "vlan": 120,
+     "gateway": "10.120.3.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.3.14",
+    "mac": "00:1b:21:00:00:e0",
+    "switch": "oob-b03",
+    "port": "Gi1/0/4"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:e1",
+     "switch": "tor-b03-a",
+     "port": "Ethernet1/4",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:e2",
+     "switch": "tor-b03-b",
+     "port": "Ethernet1/4",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b03-05",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B03",
+   "u": 9,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL385 Gen11",
+   "serial": "XAY3TYSJRK",
+   "installed": "2024-09",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "AMD EPYC 9354",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 3.25
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.3.15/24",
+     "vlan": 120,
+     "gateway": "10.120.3.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.3.15",
+    "mac": "00:1b:21:00:00:e4",
+    "switch": "oob-b03",
+    "port": "Gi1/0/5"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:e5",
+     "switch": "tor-b03-a",
+     "port": "Ethernet1/5",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:e6",
+     "switch": "tor-b03-b",
+     "port": "Ethernet1/5",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b03-06",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B03",
+   "u": 11,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL380 Gen11",
+   "serial": "JXHJJ10F2A",
+   "installed": "2024-11",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.3.16/24",
+     "vlan": 120,
+     "gateway": "10.120.3.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.3.16",
+    "mac": "00:1b:21:00:00:e8",
+    "switch": "oob-b03",
+    "port": "Gi1/0/6"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:e9",
+     "switch": "tor-b03-a",
+     "port": "Ethernet1/6",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:ea",
+     "switch": "tor-b03-b",
+     "port": "Ethernet1/6",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b03-07",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B03",
+   "u": 13,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL385 Gen11",
+   "serial": "Q3LR3L4ETX",
+   "installed": "2024-04",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "AMD EPYC 9354",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 3.25
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.3.17/24",
+     "vlan": 120,
+     "gateway": "10.120.3.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.3.17",
+    "mac": "00:1b:21:00:00:ec",
+    "switch": "oob-b03",
+    "port": "Gi1/0/7"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:ed",
+     "switch": "tor-b03-a",
+     "port": "Ethernet1/7",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:ee",
+     "switch": "tor-b03-b",
+     "port": "Ethernet1/7",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "api-b03-08",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B03",
+   "u": 15,
+   "height": 2,
+   "manufacturer": "HPE",
+   "model": "ProLiant DL380 Gen11",
+   "serial": "26W9F73SW7",
+   "installed": "2023-01",
+   "role": "API services",
+   "os": "Rocky Linux 9.4",
+   "kernel": "5.14",
+   "cpu": {
+    "model": "Intel Xeon Gold 6430",
+    "sockets": 2,
+    "cores": 32,
+    "ghz": 2.1
+   },
+   "memory": {
+    "gb": 768
+   },
+   "ip": [
+    {
+     "address": "10.120.3.18/24",
+     "vlan": 120,
+     "gateway": "10.120.3.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.3.18",
+    "mac": "00:1b:21:00:00:f0",
+    "switch": "oob-b03",
+    "port": "Gi1/0/8"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:f1",
+     "switch": "tor-b03-a",
+     "port": "Ethernet1/8",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:00:f2",
+     "switch": "tor-b03-b",
+     "port": "Ethernet1/8",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "3.84 TB",
+     "count": 4,
+     "raid": "RAID 5"
+    }
+   ]
+  },
+  {
+   "host": "stor-b04-01",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B04",
+   "u": 1,
+   "height": 4,
+   "manufacturer": "Supermicro",
+   "model": "SuperStorage SSG-640SP-E1CR90",
+   "serial": "N97PV8SWGS",
+   "installed": "2024-12",
+   "role": "Storage",
+   "os": "Ubuntu 22.04.4 LTS",
+   "kernel": "5.15",
+   "cpu": {
+    "model": "Intel Xeon Silver 4416+",
+    "sockets": 2,
+    "cores": 20,
+    "ghz": 2.0
+   },
+   "memory": {
+    "gb": 512
+   },
+   "ip": [
+    {
+     "address": "10.140.4.11/24",
+     "vlan": 140,
+     "gateway": "10.140.4.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.4.11",
+    "mac": "00:1b:21:00:00:f4",
+    "switch": "oob-b04",
+    "port": "Gi1/0/1"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "100G",
+     "mac": "00:1b:21:00:00:f5",
+     "switch": "tor-b04-a",
+     "port": "Ethernet1/1",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "100G",
+     "mac": "00:1b:21:00:00:f6",
+     "switch": "tor-b04-b",
+     "port": "Ethernet1/1",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "HDD",
+     "size": "22 TB",
+     "count": 24,
+     "raid": "Ceph OSD"
+    },
+    {
+     "type": "NVMe",
+     "size": "7.68 TB",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "host": "stor-b04-02",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B04",
+   "u": 5,
+   "height": 4,
+   "manufacturer": "Supermicro",
+   "model": "SuperStorage SSG-640SP-E1CR90",
+   "serial": "8J8FX7ZKZN",
+   "installed": "2024-05",
+   "role": "Storage",
+   "os": "Ubuntu 22.04.4 LTS",
+   "kernel": "5.15",
+   "cpu": {
+    "model": "Intel Xeon Silver 4416+",
+    "sockets": 2,
+    "cores": 20,
+    "ghz": 2.0
+   },
+   "memory": {
+    "gb": 512
+   },
+   "ip": [
+    {
+     "address": "10.140.4.12/24",
+     "vlan": 140,
+     "gateway": "10.140.4.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.4.12",
+    "mac": "00:1b:21:00:00:f8",
+    "switch": "oob-b04",
+    "port": "Gi1/0/2"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "100G",
+     "mac": "00:1b:21:00:00:f9",
+     "switch": "tor-b04-a",
+     "port": "Ethernet1/2",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "100G",
+     "mac": "00:1b:21:00:00:fa",
+     "switch": "tor-b04-b",
+     "port": "Ethernet1/2",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "HDD",
+     "size": "22 TB",
+     "count": 24,
+     "raid": "Ceph OSD"
+    },
+    {
+     "type": "NVMe",
+     "size": "7.68 TB",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "host": "stor-b04-03",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B04",
+   "u": 9,
+   "height": 4,
+   "manufacturer": "Supermicro",
+   "model": "SuperStorage SSG-640SP-E1CR90",
+   "serial": "CHFCFZC230",
+   "installed": "2024-05",
+   "role": "Storage",
+   "os": "Ubuntu 22.04.4 LTS",
+   "kernel": "5.15",
+   "cpu": {
+    "model": "Intel Xeon Silver 4416+",
+    "sockets": 2,
+    "cores": 20,
+    "ghz": 2.0
+   },
+   "memory": {
+    "gb": 512
+   },
+   "ip": [
+    {
+     "address": "10.140.4.13/24",
+     "vlan": 140,
+     "gateway": "10.140.4.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.4.13",
+    "mac": "00:1b:21:00:00:fc",
+    "switch": "oob-b04",
+    "port": "Gi1/0/3"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "100G",
+     "mac": "00:1b:21:00:00:fd",
+     "switch": "tor-b04-a",
+     "port": "Ethernet1/3",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "100G",
+     "mac": "00:1b:21:00:00:fe",
+     "switch": "tor-b04-b",
+     "port": "Ethernet1/3",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "HDD",
+     "size": "22 TB",
+     "count": 24,
+     "raid": "Ceph OSD"
+    },
+    {
+     "type": "NVMe",
+     "size": "7.68 TB",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "host": "stor-b04-04",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "B04",
+   "u": 13,
+   "height": 4,
+   "manufacturer": "Supermicro",
+   "model": "SuperStorage SSG-640SP-E1CR90",
+   "serial": "T126EH45AF",
+   "installed": "2025-06",
+   "role": "Storage",
+   "os": "Ubuntu 22.04.4 LTS",
+   "kernel": "5.15",
+   "cpu": {
+    "model": "Intel Xeon Silver 4416+",
+    "sockets": 2,
+    "cores": 20,
+    "ghz": 2.0
+   },
+   "memory": {
+    "gb": 512
+   },
+   "ip": [
+    {
+     "address": "10.140.4.14/24",
+     "vlan": 140,
+     "gateway": "10.140.4.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.251.4.14",
+    "mac": "00:1b:21:00:01:00",
+    "switch": "oob-b04",
+    "port": "Gi1/0/4"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "100G",
+     "mac": "00:1b:21:00:01:01",
+     "switch": "tor-b04-a",
+     "port": "Ethernet1/4",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "100G",
+     "mac": "00:1b:21:00:01:02",
+     "switch": "tor-b04-b",
+     "port": "Ethernet1/4",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "HDD",
+     "size": "22 TB",
+     "count": 24,
+     "raid": "Ceph OSD"
+    },
+    {
+     "type": "NVMe",
+     "size": "7.68 TB",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "host": "edge-c01-01",
+   "building": "MAN2",
+   "room": "Data Hall 1",
+   "rack": "C01",
+   "u": 1,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R470",
+   "serial": "XXNDMMY",
+   "installed": "2025-03",
+   "role": "Web front-end",
+   "os": "Debian 12.7",
+   "kernel": "6.1",
+   "cpu": {
+    "model": "Intel Xeon 6737P",
+    "sockets": 1,
+    "cores": 32
+   },
+   "memory": {
+    "gb": 256
+   },
+   "ip": [
+    {
+     "address": "10.10.1.11/24",
+     "vlan": 10,
+     "gateway": "10.10.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.20.1.11",
+    "mac": "00:1b:21:00:01:04",
+    "switch": "oob-c01",
+    "port": "Gi1/0/1"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:05",
+     "switch": "tor-c01-a",
+     "port": "Ethernet1/1",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:06",
+     "switch": "tor-c01-b",
+     "port": "Ethernet1/1",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "960 GB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "edge-c01-02",
+   "building": "MAN2",
+   "room": "Data Hall 1",
+   "rack": "C01",
+   "u": 2,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R470",
+   "serial": "47VDVTG",
+   "installed": "2024-03",
+   "role": "Web front-end",
+   "os": "Debian 12.7",
+   "kernel": "6.1",
+   "cpu": {
+    "model": "Intel Xeon 6737P",
+    "sockets": 1,
+    "cores": 32
+   },
+   "memory": {
+    "gb": 256
+   },
+   "ip": [
+    {
+     "address": "10.10.1.12/24",
+     "vlan": 10,
+     "gateway": "10.10.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.20.1.12",
+    "mac": "00:1b:21:00:01:08",
+    "switch": "oob-c01",
+    "port": "Gi1/0/2"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:09",
+     "switch": "tor-c01-a",
+     "port": "Ethernet1/2",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:0a",
+     "switch": "tor-c01-b",
+     "port": "Ethernet1/2",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "960 GB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "edge-c01-03",
+   "building": "MAN2",
+   "room": "Data Hall 1",
+   "rack": "C01",
+   "u": 3,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R470",
+   "serial": "P9LJBTP",
+   "installed": "2025-02",
+   "role": "Web front-end",
+   "os": "Debian 12.7",
+   "kernel": "6.1",
+   "cpu": {
+    "model": "Intel Xeon 6737P",
+    "sockets": 1,
+    "cores": 32
+   },
+   "memory": {
+    "gb": 256
+   },
+   "ip": [
+    {
+     "address": "10.10.1.13/24",
+     "vlan": 10,
+     "gateway": "10.10.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.20.1.13",
+    "mac": "00:1b:21:00:01:0c",
+    "switch": "oob-c01",
+    "port": "Gi1/0/3"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:0d",
+     "switch": "tor-c01-a",
+     "port": "Ethernet1/3",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:0e",
+     "switch": "tor-c01-b",
+     "port": "Ethernet1/3",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "960 GB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "edge-c01-04",
+   "building": "MAN2",
+   "room": "Data Hall 1",
+   "rack": "C01",
+   "u": 4,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R470",
+   "serial": "WL55TYW",
+   "installed": "2024-01",
+   "role": "Web front-end",
+   "os": "Debian 12.7",
+   "kernel": "6.1",
+   "cpu": {
+    "model": "Intel Xeon 6737P",
+    "sockets": 1,
+    "cores": 32
+   },
+   "memory": {
+    "gb": 256
+   },
+   "ip": [
+    {
+     "address": "10.10.1.14/24",
+     "vlan": 10,
+     "gateway": "10.10.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.20.1.14",
+    "mac": "00:1b:21:00:01:10",
+    "switch": "oob-c01",
+    "port": "Gi1/0/4"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:11",
+     "switch": "tor-c01-a",
+     "port": "Ethernet1/4",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:12",
+     "switch": "tor-c01-b",
+     "port": "Ethernet1/4",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "960 GB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "edge-c01-05",
+   "building": "MAN2",
+   "room": "Data Hall 1",
+   "rack": "C01",
+   "u": 5,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R470",
+   "serial": "4KD5KYL",
+   "installed": "2024-03",
+   "role": "Web front-end",
+   "os": "Debian 12.7",
+   "kernel": "6.1",
+   "cpu": {
+    "model": "Intel Xeon 6737P",
+    "sockets": 1,
+    "cores": 32
+   },
+   "memory": {
+    "gb": 256
+   },
+   "ip": [
+    {
+     "address": "10.10.1.15/24",
+     "vlan": 10,
+     "gateway": "10.10.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.20.1.15",
+    "mac": "00:1b:21:00:01:14",
+    "switch": "oob-c01",
+    "port": "Gi1/0/5"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:15",
+     "switch": "tor-c01-a",
+     "port": "Ethernet1/5",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:16",
+     "switch": "tor-c01-b",
+     "port": "Ethernet1/5",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "960 GB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "edge-c01-06",
+   "building": "MAN2",
+   "room": "Data Hall 1",
+   "rack": "C01",
+   "u": 6,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R470",
+   "serial": "ENLP7LV",
+   "installed": "2025-10",
+   "role": "Web front-end",
+   "os": "Debian 12.7",
+   "kernel": "6.1",
+   "cpu": {
+    "model": "Intel Xeon 6737P",
+    "sockets": 1,
+    "cores": 32
+   },
+   "memory": {
+    "gb": 256
+   },
+   "ip": [
+    {
+     "address": "10.10.1.16/24",
+     "vlan": 10,
+     "gateway": "10.10.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.20.1.16",
+    "mac": "00:1b:21:00:01:18",
+    "switch": "oob-c01",
+    "port": "Gi1/0/6"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:19",
+     "switch": "tor-c01-a",
+     "port": "Ethernet1/6",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:1a",
+     "switch": "tor-c01-b",
+     "port": "Ethernet1/6",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "960 GB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "edge-c01-07",
+   "building": "MAN2",
+   "room": "Data Hall 1",
+   "rack": "C01",
+   "u": 7,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R470",
+   "serial": "HVKWLER",
+   "installed": "2025-09",
+   "role": "Web front-end",
+   "os": "Debian 12.7",
+   "kernel": "6.1",
+   "cpu": {
+    "model": "Intel Xeon 6737P",
+    "sockets": 1,
+    "cores": 32
+   },
+   "memory": {
+    "gb": 256
+   },
+   "ip": [
+    {
+     "address": "10.10.1.17/24",
+     "vlan": 10,
+     "gateway": "10.10.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.20.1.17",
+    "mac": "00:1b:21:00:01:1c",
+    "switch": "oob-c01",
+    "port": "Gi1/0/7"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:1d",
+     "switch": "tor-c01-a",
+     "port": "Ethernet1/7",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:1e",
+     "switch": "tor-c01-b",
+     "port": "Ethernet1/7",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "960 GB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "edge-c01-08",
+   "building": "MAN2",
+   "room": "Data Hall 1",
+   "rack": "C01",
+   "u": 8,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R470",
+   "serial": "F5PP1PR",
+   "installed": "2025-07",
+   "role": "Web front-end",
+   "os": "Debian 12.7",
+   "kernel": "6.1",
+   "cpu": {
+    "model": "Intel Xeon 6737P",
+    "sockets": 1,
+    "cores": 32
+   },
+   "memory": {
+    "gb": 256
+   },
+   "ip": [
+    {
+     "address": "10.10.1.18/24",
+     "vlan": 10,
+     "gateway": "10.10.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.20.1.18",
+    "mac": "00:1b:21:00:01:20",
+    "switch": "oob-c01",
+    "port": "Gi1/0/8"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:21",
+     "switch": "tor-c01-a",
+     "port": "Ethernet1/8",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:22",
+     "switch": "tor-c01-b",
+     "port": "Ethernet1/8",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "960 GB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "edge-c01-09",
+   "building": "MAN2",
+   "room": "Data Hall 1",
+   "rack": "C01",
+   "u": 9,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R470",
+   "serial": "CPQ9BB5",
+   "installed": "2024-05",
+   "role": "Web front-end",
+   "os": "Debian 12.7",
+   "kernel": "6.1",
+   "cpu": {
+    "model": "Intel Xeon 6737P",
+    "sockets": 1,
+    "cores": 32
+   },
+   "memory": {
+    "gb": 256
+   },
+   "ip": [
+    {
+     "address": "10.10.1.19/24",
+     "vlan": 10,
+     "gateway": "10.10.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.20.1.19",
+    "mac": "00:1b:21:00:01:24",
+    "switch": "oob-c01",
+    "port": "Gi1/0/9"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:25",
+     "switch": "tor-c01-a",
+     "port": "Ethernet1/9",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:26",
+     "switch": "tor-c01-b",
+     "port": "Ethernet1/9",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "960 GB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "edge-c01-10",
+   "building": "MAN2",
+   "room": "Data Hall 1",
+   "rack": "C01",
+   "u": 10,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R470",
+   "serial": "1E3AJ1T",
+   "installed": "2023-10",
+   "role": "Web front-end",
+   "os": "Debian 12.7",
+   "kernel": "6.1",
+   "cpu": {
+    "model": "Intel Xeon 6737P",
+    "sockets": 1,
+    "cores": 32
+   },
+   "memory": {
+    "gb": 256
+   },
+   "ip": [
+    {
+     "address": "10.10.1.20/24",
+     "vlan": 10,
+     "gateway": "10.10.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.20.1.20",
+    "mac": "00:1b:21:00:01:28",
+    "switch": "oob-c01",
+    "port": "Gi1/0/10"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:29",
+     "switch": "tor-c01-a",
+     "port": "Ethernet1/10",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:2a",
+     "switch": "tor-c01-b",
+     "port": "Ethernet1/10",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "960 GB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "edge-c01-11",
+   "building": "MAN2",
+   "room": "Data Hall 1",
+   "rack": "C01",
+   "u": 11,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R470",
+   "serial": "K5M5H6L",
+   "installed": "2023-01",
+   "role": "Web front-end",
+   "os": "Debian 12.7",
+   "kernel": "6.1",
+   "cpu": {
+    "model": "Intel Xeon 6737P",
+    "sockets": 1,
+    "cores": 32
+   },
+   "memory": {
+    "gb": 256
+   },
+   "ip": [
+    {
+     "address": "10.10.1.21/24",
+     "vlan": 10,
+     "gateway": "10.10.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.20.1.21",
+    "mac": "00:1b:21:00:01:2c",
+    "switch": "oob-c01",
+    "port": "Gi1/0/11"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:2d",
+     "switch": "tor-c01-a",
+     "port": "Ethernet1/11",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:2e",
+     "switch": "tor-c01-b",
+     "port": "Ethernet1/11",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "960 GB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "edge-c01-12",
+   "building": "MAN2",
+   "room": "Data Hall 1",
+   "rack": "C01",
+   "u": 12,
+   "height": 1,
+   "manufacturer": "Dell",
+   "model": "PowerEdge R470",
+   "serial": "96TFEYM",
+   "installed": "2024-07",
+   "role": "Web front-end",
+   "os": "Debian 12.7",
+   "kernel": "6.1",
+   "cpu": {
+    "model": "Intel Xeon 6737P",
+    "sockets": 1,
+    "cores": 32
+   },
+   "memory": {
+    "gb": 256
+   },
+   "ip": [
+    {
+     "address": "10.10.1.22/24",
+     "vlan": 10,
+     "gateway": "10.10.1.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.20.1.22",
+    "mac": "00:1b:21:00:01:30",
+    "switch": "oob-c01",
+    "port": "Gi1/0/12"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:31",
+     "switch": "tor-c01-a",
+     "port": "Ethernet1/12",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:32",
+     "switch": "tor-c01-b",
+     "port": "Ethernet1/12",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "960 GB",
+     "count": 2,
+     "raid": "RAID 1"
+    }
+   ]
+  },
+  {
+   "host": "batch-c02-01",
+   "building": "MAN2",
+   "room": "Data Hall 1",
+   "rack": "C02",
+   "u": 1,
+   "height": 2,
+   "manufacturer": "Lenovo",
+   "model": "ThinkSystem SR655 V3",
+   "serial": "NMM8YY42SN",
+   "installed": "2023-07",
+   "role": "Batch and analytics",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "AMD EPYC 9554P",
+    "sockets": 1,
+    "cores": 64,
+    "ghz": 3.1
+   },
+   "memory": {
+    "gb": 768,
+    "dimms": 12
+   },
+   "ip": [
+    {
+     "address": "10.10.2.11/24",
+     "vlan": 10,
+     "gateway": "10.10.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.20.2.11",
+    "mac": "00:1b:21:00:01:34",
+    "switch": "oob-c02",
+    "port": "Gi1/0/1"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:35",
+     "switch": "tor-c02-a",
+     "port": "Ethernet1/1",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:36",
+     "switch": "tor-c02-b",
+     "port": "Ethernet1/1",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "7.68 TB",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "host": "batch-c02-02",
+   "building": "MAN2",
+   "room": "Data Hall 1",
+   "rack": "C02",
+   "u": 3,
+   "height": 2,
+   "manufacturer": "Lenovo",
+   "model": "ThinkSystem SR655 V3",
+   "serial": "5W1P07SS9F",
+   "installed": "2025-03",
+   "role": "Batch and analytics",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "AMD EPYC 9554P",
+    "sockets": 1,
+    "cores": 64,
+    "ghz": 3.1
+   },
+   "memory": {
+    "gb": 768,
+    "dimms": 12
+   },
+   "ip": [
+    {
+     "address": "10.10.2.12/24",
+     "vlan": 10,
+     "gateway": "10.10.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.20.2.12",
+    "mac": "00:1b:21:00:01:38",
+    "switch": "oob-c02",
+    "port": "Gi1/0/2"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:39",
+     "switch": "tor-c02-a",
+     "port": "Ethernet1/2",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:3a",
+     "switch": "tor-c02-b",
+     "port": "Ethernet1/2",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "7.68 TB",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "host": "batch-c02-03",
+   "building": "MAN2",
+   "room": "Data Hall 1",
+   "rack": "C02",
+   "u": 5,
+   "height": 2,
+   "manufacturer": "Lenovo",
+   "model": "ThinkSystem SR655 V3",
+   "serial": "QALDQTJH3X",
+   "installed": "2024-12",
+   "role": "Batch and analytics",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "AMD EPYC 9554P",
+    "sockets": 1,
+    "cores": 64,
+    "ghz": 3.1
+   },
+   "memory": {
+    "gb": 768,
+    "dimms": 12
+   },
+   "ip": [
+    {
+     "address": "10.10.2.13/24",
+     "vlan": 10,
+     "gateway": "10.10.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.20.2.13",
+    "mac": "00:1b:21:00:01:3c",
+    "switch": "oob-c02",
+    "port": "Gi1/0/3"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:3d",
+     "switch": "tor-c02-a",
+     "port": "Ethernet1/3",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:3e",
+     "switch": "tor-c02-b",
+     "port": "Ethernet1/3",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "7.68 TB",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "host": "batch-c02-04",
+   "building": "MAN2",
+   "room": "Data Hall 1",
+   "rack": "C02",
+   "u": 7,
+   "height": 2,
+   "manufacturer": "Lenovo",
+   "model": "ThinkSystem SR655 V3",
+   "serial": "7K9B3W1X2L",
+   "installed": "2023-04",
+   "role": "Batch and analytics",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "AMD EPYC 9554P",
+    "sockets": 1,
+    "cores": 64,
+    "ghz": 3.1
+   },
+   "memory": {
+    "gb": 768,
+    "dimms": 12
+   },
+   "ip": [
+    {
+     "address": "10.10.2.14/24",
+     "vlan": 10,
+     "gateway": "10.10.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.20.2.14",
+    "mac": "00:1b:21:00:01:40",
+    "switch": "oob-c02",
+    "port": "Gi1/0/4"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:41",
+     "switch": "tor-c02-a",
+     "port": "Ethernet1/4",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:42",
+     "switch": "tor-c02-b",
+     "port": "Ethernet1/4",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "7.68 TB",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "host": "batch-c02-05",
+   "building": "MAN2",
+   "room": "Data Hall 1",
+   "rack": "C02",
+   "u": 9,
+   "height": 2,
+   "manufacturer": "Lenovo",
+   "model": "ThinkSystem SR655 V3",
+   "serial": "BNDFXZEVBH",
+   "installed": "2024-03",
+   "role": "Batch and analytics",
+   "os": "Ubuntu 24.04.1 LTS",
+   "kernel": "6.8",
+   "cpu": {
+    "model": "AMD EPYC 9554P",
+    "sockets": 1,
+    "cores": 64,
+    "ghz": 3.1
+   },
+   "memory": {
+    "gb": 768,
+    "dimms": 12
+   },
+   "ip": [
+    {
+     "address": "10.10.2.15/24",
+     "vlan": 10,
+     "gateway": "10.10.2.1",
+     "interface": "bond0"
+    }
+   ],
+   "oob": {
+    "ip": "10.20.2.15",
+    "mac": "00:1b:21:00:01:44",
+    "switch": "oob-c02",
+    "port": "Gi1/0/5"
+   },
+   "nics": [
+    {
+     "name": "ens2f0",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:45",
+     "switch": "tor-c02-a",
+     "port": "Ethernet1/5",
+     "bond": "bond0"
+    },
+    {
+     "name": "ens2f1",
+     "speed": "25G",
+     "mac": "00:1b:21:00:01:46",
+     "switch": "tor-c02-b",
+     "port": "Ethernet1/5",
+     "bond": "bond0"
+    }
+   ],
+   "localDisks": [
+    {
+     "type": "NVMe",
+     "size": "7.68 TB",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "host": "web-a01-10",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "A01",
+   "u": 5,
+   "height": 1,
+   "model": "PowerEdge R660",
+   "manufacturer": "Dell"
+  },
+  {
+   "host": "legacy-z99-01",
+   "building": "LON1",
+   "room": "Hall A",
+   "rack": "Z99",
+   "u": 1
+  }
+ ]
 }

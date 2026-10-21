@@ -9,14 +9,24 @@
 </head>
 <body>
 
-<canvas id="stage" aria-label="3D view of a server hall with eight rows of racks"></canvas>
+<canvas id="stage" aria-label="3D view of a server hall"></canvas>
 
 <div class="hud">
   <header class="top">
     <div class="brand">
-      <div class="eyebrow">Hall 2 · Rows A–H · 96 racks · 2 cooling units</div>
+      <div class="eyebrow" id="hallLine">—</div>
       <h1>Server Hall Live</h1>
       <div class="meta"><span class="chip" id="liveChip">Simulated telemetry</span><span class="hint">Drag to orbit · right-drag or WASD to move · scroll to zoom · click a rack to open its door, then a server</span></div>
+      <div class="tools site">
+        <label class="hallpick"><span class="vh">Hall</span><select id="hallPick" aria-label="Building and hall to show"></select></label>
+        <button id="loadFile" type="button" title="Load a site file (JSON) into this browser; you can also drop one on the page">Load file</button>
+        <input id="fileIn" type="file" accept=".json,application/json" hidden>
+        <span class="src" id="srcLine"></span>
+        <button id="srcReset" type="button" class="linkish" hidden>Use server file</button>
+        <button id="probBtn" type="button" class="chip warn" aria-expanded="false" aria-controls="probList" hidden></button>
+        <a class="linkish" href="layout.html">Layout editor</a>
+      </div>
+      <ul class="probs" id="probList" hidden></ul>
       <div class="tools">
         <button id="hallView" type="button" title="Back to the whole-hall overview (Esc)">Reset view</button>
         <form id="findForm" class="find" role="search">
@@ -91,19 +101,9 @@
         <span class="pill ok" id="sStatus">OK</span>
         <button id="sBack" aria-label="Back to the hall view">Back</button>
       </div>
-      <dl class="specs" aria-label="Server specification">
-        <div><dt>Server</dt><dd id="spHost">—</dd></div>
-        <div><dt>Processor</dt><dd id="spCpu">—</dd></div>
-        <div><dt>OS</dt><dd id="spOs">—</dd></div>
-        <div><dt>Memory</dt><dd id="spRam">—</dd></div>
-        <div><dt>Storage</dt><dd id="spDisk">—</dd></div>
-        <div><dt>Network</dt><dd id="spNet">—</dd></div>
-        <div><dt>NIC 1</dt><dd id="spNic1">—</dd></div>
-        <div><dt>NIC 2</dt><dd id="spNic2">—</dd></div>
-        <div><dt>OOB (iDRAC)</dt><dd id="spIlo">—</dd></div>
-      </dl>
+      <dl class="specs" id="sSpecs" aria-label="Server specification"></dl>
       <ul class="faults" id="sFaults" hidden></ul>
-      <a class="btnlink" id="sIlo" href="#" target="_blank" rel="noopener">Open iDRAC console ↗</a>
+      <a class="btnlink" id="sIlo" href="#" target="_blank" rel="noopener">Open console ↗</a>
       <div class="cores">
         <div class="tl"><span id="sCoresL">Per-core load</span><span id="sCoresR">CPU0 · CPU1</span></div>
         <canvas id="sCores"></canvas>
@@ -147,6 +147,7 @@
   </div>
 </div>
 <div id="tip" hidden></div>
+<div id="dropZone" hidden><div>Drop a site file (JSON) to load it into this browser</div></div>
 
 <script type="importmap">
 { "imports": {

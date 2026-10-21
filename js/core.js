@@ -2,6 +2,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { LAYOUT } from './data.js';
+import { RACK_D } from './site.js';
 
 // Colours are authored in sRGB and converted explicitly with lc(), so three's automatic conversion stays off
 THREE.ColorManagement.enabled = false;
@@ -68,9 +70,11 @@ export const scene = new THREE.Scene();
 const BG = lc(tok('--bg'));
 scene.background = BG;
 // A faint cool haze: fixtures, LEDs and far racks fall off with distance
-scene.fog = new THREE.FogExp2(lc('#15202a'), 0.024);
+// The overview, the haze and how far you can zoom out scale with the size of the hall (the demo hall is 12 × 23 m)
+const HALL_K = Math.max(0.5, LAYOUT.ROOM.x / 6, LAYOUT.ROOM.z / 11.7);
+scene.fog = new THREE.FogExp2(lc('#15202a'), 0.024 / HALL_K);
 export const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 100);
-export const HALL_VIEW = { pos: new THREE.Vector3(12.5, 10.5, 15.5), target: new THREE.Vector3(0, 0.4, 0) };
+export const HALL_VIEW = { pos: new THREE.Vector3(12.5, 10.5, 15.5).multiplyScalar(HALL_K), target: new THREE.Vector3(0, 0.4, 0) };
 camera.position.copy(HALL_VIEW.pos);
 export const controls = new OrbitControls(camera, canvas);
 controls.target.copy(HALL_VIEW.target);
@@ -78,7 +82,7 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.08;
 controls.maxPolarAngle = Math.PI * 0.48;
 controls.minDistance = 0.35;
-controls.maxDistance = 34;
+controls.maxDistance = 34 * HALL_K;
 // Right-drag (or shift-drag, or two fingers) slides the view across the floor rather than in the screen plane
 controls.screenSpacePanning = false;
 controls.autoRotateSpeed = 0.35;
@@ -105,37 +109,16 @@ export function broadPunctualSpec(shader, rough) {
 }
 
 // ---------- Hall geometry (metres) ----------
-// 8 rows of 12 racks. Rows face each other in pairs across 1.8 m cold aisles; back to back they share
-// a 1.2 m contained hot aisle. The outer rows exhaust towards the end walls.
-export const RACK_W = 0.6, RACK_H = 2.08, RACK_D = 1.0, COLS = 12, PITCH = 0.64, SERVERS = 12;
-export const ROW_HALF = (COLS - 1) / 2 * PITCH + RACK_W / 2;   // half the length of a row
-export const TRAY_Y = 2.75, TRAY_X = ROW_HALF + 0.55;          // overhead trays; the spine runs along x = TRAY_X
-export const ROOM = { x: 6.0, z: 10.6, h: 3.7 };
-// 42U cabinets at true scale (1U = 44.5 mm): servers U1–24, blanking U25–38, OOB switch U39, patch panel U40, ToR switches U41–42
+// All of it comes from the hall's floor grid (site.js, via data.js): racks in rows, cold aisles over the vented tiles,
+// contained hot aisles, the room around them. x runs east along the grid's columns and z south down its rows, with
+// the origin in the middle of the room.
+export { RACK_W, RACK_H, RACK_D, TILE, KINDS } from './site.js';
+export const { ROOM, rows: ROWS, cold: COLD, hot: HACS, trayX: TRAY_X } = LAYOUT;
+export const TRAY_Y = 2.75;   // overhead trays; the spine runs along x = TRAY_X
+// 42U cabinets at true scale (1U = 44.5 mm): servers in U1–38, OOB switch U39, patch panel U40, ToR switches U41–42
 export const U = 0.0445, U0 = 0.075, U_TOP = U0 + 42 * U, FRONT = RACK_D / 2;
 export const uY = (u, h) => U0 + (u - 1 + h / 2) * U;   // centre height of a device at U u, h units tall
-export const plateH = h => h * U - (h === 2 ? 0.0016 : 0.0012);   // a device face, h units tall, less the gap to its neighbours
-// Workloads, one per pair of rows; arrays elsewhere (hostnames, hardware, VLANs) are indexed by kind
-export const KINDS = [
-  { role: 'Web front-end', aff: 1.0, base: 0.55, net: 36 },
-  { role: 'API services', aff: 0.8, base: 0.5, net: 30 },
-  { role: 'Database', aff: 0.45, base: 0.45, net: 22 },
-  { role: 'Batch and analytics', aff: 0.1, base: 0.5, net: 14 }
-];
-const COLD_W = 1.8, HOT_W = 1.2;
-export const ROWS = [], COLD = [], HACS = [];
-{
-  const zs = []; let z = 0;
-  for (let i = 0; i < 8; i++) { zs.push(z); z += RACK_D + (i % 2 === 0 ? COLD_W : HOT_W); }
-  const off = (zs[0] + zs[7]) / 2;
-  zs.forEach((zz, i) => ROWS.push({ ...KINDS[i >> 1], id: 'ABCDEFGH'[i], z: zz - off, face: i % 2 ? -1 : 1, kind: i >> 1 }));
-  for (let i = 0; i < 8; i += 2) COLD.push((ROWS[i].z + ROWS[i + 1].z) / 2);
-  // Hot-aisle containment between back-to-back rows; hot air leaves through chimneys to the ceiling plenum
-  for (let i = 1; i < 7; i += 2) {
-    const zc = (ROWS[i].z + ROWS[i + 1].z) / 2;
-    HACS.push({ zc, z0: zc - HOT_W / 2, z1: zc + HOT_W / 2, x0: -ROW_HALF - 0.03, x1: ROW_HALF + 0.03, top: RACK_H, chimneys: [-2.56, 0, 2.56] });
-  }
-}
+export const plateH = h => h * U - (h === 1 ? 0.0012 : 0.0016);   // a device face, h units tall, less the gap to its neighbours
 // Cooling units (outside the hall): CU-1 feeds the northern cold aisles (z < 0), CU-2 the southern ones
 const coolsSouth = z => z > 0;
 export const coolingUnit = z => coolsSouth(z) ? 1 : 0;
