@@ -1,5 +1,5 @@
 // Cabinets and everything mounted in them. Fronts face the cold aisle, rears the hot aisle.
-import { THREE, scene, lc, COL, rnd, vrnd, labelTex, RACK_W, RACK_H, RACK_D, COLS, PITCH, SERVERS, ROWS, U, U0, U_TOP, FRONT, uY, ease, reduceMotion } from './core.js';
+import { THREE, scene, lc, COL, rnd, vrnd, labelTex, RACK_W, RACK_H, RACK_D, COLS, PITCH, SERVERS, ROWS, U, U0, U_TOP, FRONT, uY, plateH, ease, reduceMotion } from './core.js';
 import { HALL, fill } from './data.js';
 import { sideTexes, roughTex, topTex, topTexB, railTex, bezelTex, plinthTex, contactTex, doorTexes, doorAlphas, plateMat, drawFront, drawRear, drawRear1U, drawSwFans, drawSwPorts, drawPatch, drawBlank, FRONT_LED, FRONT_RELIEF } from './textures.js';
 import { leadGeo, trunkGeo, cableMat } from './cabling.js';
@@ -63,7 +63,7 @@ export const byId = Object.fromEntries(racks.map(r => [r.id, r]));
 
 // ---------- Servers: front plates, rear plates, status LEDs (instanced) ----------
 const PLATE_D = 0.012, LED_Z = FRONT + 0.016;
-const dev1U = new THREE.BoxGeometry(0.52, U - 0.0012, PLATE_D);
+const dev1U = new THREE.BoxGeometry(0.52, plateH(1), PLATE_D);
 const nPlates = racks.length * SERVERS;
 // Server faces for each chassis height; the pulled-out model uses the same front. Fronts are moulded plastic, and
 // only the power buttons' rings glow.
@@ -74,7 +74,7 @@ export const FACE = {
 // The front's geometry: the plate, with the ears and drive carriers standing proud of it. UVs are projected straight
 // on, so the raised parts carry the same texture and their sides take the colour of their edges.
 export function faceGeo(h) {
-  const ph = h === 2 ? 86 : 44, H = h * U - (h === 2 ? 0.0016 : 0.0012), pos = [], nor = [], uv = [], idx = [];
+  const ph = h === 2 ? 86 : 44, H = plateH(h), pos = [], nor = [], uv = [], idx = [];
   [[0, 0, 512, ph, -PLATE_D / 2, PLATE_D / 2], ...FRONT_RELIEF(ph).map(([x, y, w, hh], i) => [x, y, w, hh, 0.004, i < 2 ? 0.0095 : 0.0085])].forEach(([x, y, w, hh, z0, z1]) => {
     const b = new THREE.BoxGeometry(w / 512 * 0.52, hh / ph * H, z1 - z0);
     b.translate(((x + w / 2) / 512 - 0.5) * 0.52, (0.5 - (y + hh / 2) / ph) * H, (z0 + z1) / 2);
@@ -93,7 +93,7 @@ export const plateMeshes = [], rearMeshes = [];
 const faceMesh = {};
 [2, 1].forEach(h => {
   const n = racks.filter(r => r.model.u === h).length * SERVERS; if (!n) return;
-  const geo = new THREE.BoxGeometry(0.52, h * U - (h === 2 ? 0.0016 : 0.0012), PLATE_D), front = faceGeo(h);
+  const geo = new THREE.BoxGeometry(0.52, plateH(h), PLATE_D), front = faceGeo(h);
   const svIdx = new THREE.InstancedBufferAttribute(new Float32Array(n), 1);
   geo.setAttribute('svIdx', svIdx); front.setAttribute('svIdx', svIdx);
   [1, -1].forEach(side => {
@@ -122,9 +122,13 @@ const cables = (geo, n) => {
   trunks[h] = cables(d => trunkGeo(h, d), n);
   for (let s = 0; s < SERVERS; s++) leadMeshes[h + '|' + s] = cables(d => leadGeo(h, s, d), n);
 });
-// Fine cabling once the view closes in on something (a rack, a server, an aisle), coarse for the hall overview
-export function updateCabling(dist) {
-  const fine = dist < 9;
+// Fine cabling while the camera is within 7 m of any cabinet (rack view, a pulled-out server, down an aisle), coarse
+// for the hall overview
+const rackC = new THREE.Vector3();
+export function updateCabling(cam) {
+  let d = Infinity;
+  for (const r of racks) d = Math.min(d, rackC.set(r.x, RACK_H / 2, r.z).distanceToSquared(cam));
+  const fine = d < 49;
   if (fine !== cableMeshes[0][0].visible) for (const [f, c] of cableMeshes) { f.visible = fine; c.visible = !fine; }
 }
 export const HOST = ['web', 'api', 'db', 'batch'];

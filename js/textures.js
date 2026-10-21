@@ -1,5 +1,5 @@
 // Procedural textures for cabinets and rack-mounted hardware, all drawn on canvas.
-import { THREE, canvasTex, speckle } from './core.js';
+import { THREE, canvasTex, speckle, plateH, SERVERS } from './core.js';
 
 // ---------- Wear ----------
 // Rubs where the powder coat is worn towards bare steel, and darker marks from trolleys, boots and cable reels
@@ -144,7 +144,7 @@ export const FRONT_RELIEF = h => [[0, 0, 22, h], [490, 0, 22, h], ...Array.from(
 // Left control panel: windows for the two LEDs, the status icons (drive, temperature, electrical, memory, PCIe), a slam latch.
 // Right control panel: power button with its green ring, USB and the iDRAC Direct port.
 function frontEars(g, w, h, P) {
-  const two = h > 50, ly = FRONT_LED.y[two ? 2 : 1].map(y => h / 2 - y / (two ? 0.0874 : 0.0433) * h);
+  const two = h > 50, ly = FRONT_LED.y[two ? 2 : 1].map(y => h / 2 - y / plateH(two ? 2 : 1) * h);
   [0, w - 22].forEach(x => {
     g.fillStyle = P.bezel; g.fillRect(x, 0, 22, h);
     g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(x + 1, 0, 1, h);
@@ -204,10 +204,13 @@ export function drawFront(g, w, h, P) {
 }
 
 // ---------- Server rears ----------
-// Where the patch leads plug in, in grid pixels: the iDRAC port, then the OCP NIC's first two ports (NIC 1, NIC 2)
-export const REAR_PORTS = { 2: [[258, 21], [284, 43.5], [304, 43.5]], 1: [[150, 18], [208, 13.5], [228, 13.5]] };
-// SFP28 cage and its link light; only the two cabled ports are lit
-function sfp(g, x, y, P, lit) {
+// Rear I/O, centres in grid pixels: the iDRAC port, and the OCP NIC's four SFP28 cages along one line
+const REAR_IO = { 2: { idrac: [258, 21], ocp: [284, 304, 330, 350], ocpY: 43.5 }, 1: { idrac: [150, 18], ocp: [208, 228, 254, 274], ocpY: 13.5 } };
+// Where the patch leads plug in: the iDRAC port, then the first two cages (NIC 1, NIC 2)
+export const REAR_PORTS = Object.fromEntries([1, 2].map(h => { const io = REAR_IO[h]; return [h, [io.idrac, [io.ocp[0], io.ocpY], [io.ocp[1], io.ocpY]]]; }));
+// SFP28 cage centred on (cx, cy) and its link light; only the two cabled ports are lit
+function sfp(g, cx, cy, P, lit) {
+  const x = cx - 8, y = cy - 5.5;
   g.fillStyle = P.cage; g.fillRect(x, y, 16, 11);
   g.fillStyle = P.port; g.fillRect(x + 1.5, y + 1.5, 13, 8);
   g.fillStyle = lit ? P.led : P.panel; g.fillRect(x + 6, y - 5, 4, 3);
@@ -223,10 +226,11 @@ export function drawRear(g, w, h, P) {
     g.fillStyle = P.handle; g.fillRect(x + 70, 10, 6, h - 20);
     g.fillStyle = P.led; g.fillRect(x + 48, 8, 6, 4);
   });
-  g.fillStyle = P.port; g.fillRect(202, 18, 12, 6); g.fillRect(202, 30, 12, 6); g.fillRect(250, 14, 16, 14);
+  const { idrac: [ix, iy], ocp, ocpY } = REAR_IO[2];
+  g.fillStyle = P.port; g.fillRect(202, 18, 12, 6); g.fillRect(202, 30, 12, 6); g.fillRect(ix - 8, iy - 7, 16, 14);
   g.fillStyle = P.vga; g.fillRect(220, 16, 24, 11);
-  g.fillStyle = P.led; g.fillRect(251, 15, 3, 2); g.fillRect(262, 15, 3, 2);
-  [276, 296, 322, 342].forEach((x, k) => sfp(g, x, 38, P, k < 2));
+  g.fillStyle = P.led; g.fillRect(ix - 7, iy - 6, 3, 2); g.fillRect(ix + 4, iy - 6, 3, 2);
+  ocp.forEach((x, k) => sfp(g, x, ocpY, P, k < 2));
   for (let i = 0; i < 4; i++) {
     const x = 368 + i * 29;
     g.fillStyle = P.slot; g.fillRect(x, 4, 25, h - 8);
@@ -244,9 +248,10 @@ export function drawRear1U(g, w, h, P) {
     g.fillStyle = P.handle; g.fillRect(x + 74, 7, 5, h - 14);
     g.fillStyle = P.led; g.fillRect(x + 60, 6, 6, 4);
   });
-  g.fillStyle = P.port; g.fillRect(124, 10, 12, 6); g.fillRect(124, 22, 12, 6); g.fillRect(142, 12, 16, 12);
+  const { idrac: [ix, iy], ocp, ocpY } = REAR_IO[1];
+  g.fillStyle = P.port; g.fillRect(124, 10, 12, 6); g.fillRect(124, 22, 12, 6); g.fillRect(ix - 8, iy - 6, 16, 12);
   g.fillStyle = P.vga; g.fillRect(164, 12, 22, 10);
-  [200, 220, 246, 266].forEach((x, k) => sfp(g, x, 8, P, k < 2));
+  ocp.forEach((x, k) => sfp(g, x, ocpY, P, k < 2));
   g.fillStyle = P.slot; g.fillRect(296, 4, 100, h - 8);
   g.fillStyle = P.hole; for (let x = 304; x < 390; x += 8) g.fillRect(x, 10, 4, h - 20);
 }
@@ -258,13 +263,13 @@ export function drawSwFans(g, w, h, P) {
 }
 // Port n (from 1) of a switch's 48 access ports, odd ones on top as switches number them: its centre in grid pixels
 export const SW_PORT = n => [34 + ((n - 1) >> 1) * 14.5, (n - 1) & 1 ? 31.5 : 12.5];
-// Ports 1–12 take the servers' patch leads (lit); the rest stand empty. The 100G uplinks carry fibre to the riser.
+// One port per server takes its patch lead (lit); the rest stand empty. The 100G uplinks carry fibre to the riser.
 export function drawSwPorts(g, w, h, P) {
   g.fillStyle = P.base; g.fillRect(0, 0, w, h); ears(g, w, h, P);
-  for (let i = 0; i < 24; i++) for (let k = 0; k < 2; k++) {
-    const x = 28 + i * 14.5, y = k ? h - 19 : 6;
+  for (let n = 1; n <= 48; n++) {
+    const [cx, cy] = SW_PORT(n), x = cx - 6, y = cy - 6.5;
     g.fillStyle = P.cage; g.fillRect(x, y, 12, 13); g.fillStyle = P.port; g.fillRect(x + 1, y + 1, 10, 11);
-    g.fillStyle = i < 6 ? P.led : P.panel; g.fillRect(x + 2, k ? y + 14 : y - 4, 3, 2);
+    g.fillStyle = n <= SERVERS ? P.led : P.panel; g.fillRect(x + 2, (n - 1) & 1 ? y + 14 : y - 4, 3, 2);
   }
   for (let i = 0; i < 4; i++) for (let k = 0; k < 2; k++) {
     const x = 384 + i * 25, y = k ? h - 19 : 6;

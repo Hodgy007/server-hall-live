@@ -264,7 +264,7 @@ function frame(now) {
   updateVisuals(dt);
   updateThermal(dt);
   updateDoors(dt);
-  updateCabling(camera.position.distanceTo(controls.target));
+  updateCabling(camera.position);
   updateServerModel(dt);
   updateCam(dt);
   moveView(dt);

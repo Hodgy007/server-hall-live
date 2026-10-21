@@ -4,7 +4,7 @@
 // Power cords keep to the left. Geometry is in a cabinet's rear frame: x to the right seen from behind, y up, z out
 // from the rear face. A server's own leads (port to bundle) are a separate piece, so they leave with it when it is pulled out.
 // Each piece comes in two levels of detail: fine for close up, and a coarse one (three-sided, no plugs) for the hall view.
-import { THREE, lc, U, uY, LOW_POWER, SERVERS } from './core.js';
+import { THREE, lc, uY, plateH, LOW_POWER, SERVERS } from './core.js';
 import { REAR_PORTS, SW_PORT } from './textures.js';
 
 const V3 = THREE.Vector3, R = 0.0028;
@@ -12,7 +12,6 @@ const V3 = THREE.Vector3, R = 0.0028;
 const DETAIL = { fine: { rad: LOW_POWER ? 4 : 5, tight: 3, wide: LOW_POWER ? 3 : 5, plugs: true }, coarse: { rad: 3, tight: 1, wide: 2, plugs: false } };
 const FACE_Z = 0.013, BOOT_Z = 0.039;   // a mounted device's face; where a plug's boot ends and the cable begins
 const PX = px => (px / 512 - 0.5) * 0.52;
-const plateH = h => h * U - (h === 2 ? 0.0016 : 0.0012);
 // The bundle: six columns (iDRAC leads, NIC 2, NIC 1, two of each) by six layers (a pair of servers each), so every
 // group peels off at its switch without crossing the ones still going up
 const BX = 0.236, BZ = 0.024, BP = 0.0062;
@@ -22,7 +21,7 @@ const RUN_Z = [0.058, 0.052, 0.046], JX = 0.19, DROP = 0.006, RISE = 0.028;
 // Port y in a device's face, from grid pixels
 const portY = (py, h) => (0.5 - py / (h === 2 ? 86 : 44)) * plateH(h);
 
-const UP = new V3(0, 1, 0), RIGHT = new V3(1, 0, 0), LEFT = new V3(-1, 0, 0), OUT = new V3(0, 0, 1), IN = new V3(0, 0, -1);
+const UP = new V3(0, 1, 0), LEFT = new V3(-1, 0, 0), IN = new V3(0, 0, -1);
 // Smooth bend from a heading in one direction to b heading in another
 function bend(a, ta, b, tb, n) {
   const L = a.distanceTo(b) * 0.5;
@@ -89,7 +88,8 @@ class Buf {
 export const cableMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.05 });
 
 // Server s's three leads in a cabinet of h-U servers, y from the server's centre: plug, a drop out of the port, the run
-// right and the turn up into the bundle. Built from the bundle end, so its rings meet the trunk's exactly.
+// right and the turn up into the bundle. Built from the bundle end, starting from the same reference direction as the
+// trunk, so the two join without a twist (the join is inside the bundle).
 export function leadGeo(h, s, detail) {
   const d = DETAIL[detail], B = new Buf(d);
   REAR_PORTS[h].forEach(([px, py], k) => {
