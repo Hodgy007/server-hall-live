@@ -172,7 +172,7 @@ summary { cursor: pointer; font-size: 10px; letter-spacing: 0.12em; text-transfo
   .bottom { flex-direction: column; align-items: stretch; gap: 8px; }
   .rackp, .ops, .srvp { width: 100%; box-sizing: border-box; padding: 10px; }
   .rmin { display: block; }
-  .rackp.min > :not(.ph) { display: none; }
+  .rackp.min > :not(.ph), .srvp.min > :not(.ph) { display: none; }
   .cores canvas { height: 48px; }
   .trend { display: none; }
   .invwrap { max-height: 180px; }

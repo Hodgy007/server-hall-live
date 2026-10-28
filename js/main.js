@@ -23,11 +23,14 @@ function select(r, openDoor = true) {
   if (openDoor) setDoor(r, true);
   updateHud(); updateSparks();
 }
-function openServer(sv) {
+// On a phone the details panel starts folded so the server can be seen sliding out; Next server keeps it as it is
+const phone = matchMedia('(max-width: 720px)');
+function openServer(sv, fold = true) {
   if (SV.sel === sv && SV.open) return;
   select(sv.r);                 // opens the door; the server waits for it before sliding
   mountServer(sv);
   setOrbit(false);              // inspecting a server stops the orbit until Start rotation is pressed
+  if (fold && phone.matches) setSrvMin(true);
   $('rackPanel').hidden = true; $('srvPanel').hidden = false;
   flyServer(sv);
   setLink('host', sv.host);
@@ -127,7 +130,7 @@ canvas.addEventListener('pointerup', e => {
 
 // ---------- Panel buttons and controls ----------
 $('sBack').addEventListener('click', closeServer);
-$('sNext').addEventListener('click', () => { const sv = SV.sel; if (sv) openServer(sv.r.servers[(sv.s + 1) % sv.r.servers.length]); });
+$('sNext').addEventListener('click', () => { const sv = SV.sel; if (sv) openServer(sv.r.servers[(sv.s + 1) % sv.r.servers.length], false); });
 $('sStress').addEventListener('click', () => {
   const sv = SV.sel; if (!sv) return;
   sv.stressLeft = sv.stressLeft > 0 ? 0 : 20;
@@ -137,16 +140,19 @@ $('sStress').addEventListener('click', () => {
 const stepRack = d => { const r = racks[(racks.indexOf(UI.selected) + d + racks.length) % racks.length]; if (UI.cutRack) focusRack(r); else select(r); };
 $('prevRack').addEventListener('click', () => stepRack(-1));
 $('nextRack').addEventListener('click', () => stepRack(1));
-// Phones: the rack panel can be folded down to its header
-function setRackMin(min) {
-  const b = $('rackMin');
-  $('rackPanel').classList.toggle('min', min);
+// Phones: the rack and server panels can be folded down to their headers
+function setMin(panel, btn, what, min) {
+  $(panel).classList.toggle('min', min);
+  const b = $(btn);
   b.setAttribute('aria-expanded', String(!min));
-  b.setAttribute('aria-label', min ? 'Show rack details' : 'Hide rack details');
+  b.setAttribute('aria-label', `${min ? 'Show' : 'Hide'} ${what} details`);
   b.textContent = min ? '▴' : '▾';
   if (!min) updateSparks();
 }
+const setRackMin = min => setMin('rackPanel', 'rackMin', 'rack', min);
+const setSrvMin = min => setMin('srvPanel', 'srvMin', 'server', min);
 $('rackMin').addEventListener('click', () => setRackMin(!$('rackPanel').classList.contains('min')));
+$('srvMin').addEventListener('click', () => setSrvMin(!$('srvPanel').classList.contains('min')));
 document.querySelectorAll('input[name="mode"]').forEach(el => el.addEventListener('change', e => { W.mode = e.target.value; renderLegend(); }));
 $('orbit').addEventListener('click', () => setOrbit(!UI.orbitOn));
 setOrbit(controls.autoRotate);
