@@ -6,7 +6,7 @@ export const W = { traffic: 0.6, spikeAge: Infinity, fault: false, faultLevel: 0
 // Hall-wide totals for the KPI strip
 export const G = { cpu: 0, net: 0, it: 0, maxIn: 0, maxInRack: null, cpuHist: [] };
 // Selection, hover, camera orbit
-export const UI = { selected: null, hovered: null, orbitOn: true, airOn: true, cutRack: null, thermal: false };
+export const UI = { selected: null, hovered: null, orbitOn: false, airOn: false, cutRack: null, thermal: false };
 // The pulled-out server
 export const SV = {
   sel: null, open: false, slide: 0, fOn: false, cores: new Float32Array(240), coreBias: new Float32Array(240),   // up to 2 × 120 cores
