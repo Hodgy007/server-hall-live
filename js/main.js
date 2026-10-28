@@ -1,5 +1,5 @@
 // Entry point: wires the scene, simulation, HUD and interaction together and runs the frame loop.
-import { THREE, $, canvas, renderer, scene, camera, controls, clamp, ROOM, cutPlane, esc } from './core.js';
+import { THREE, $, canvas, renderer, scene, camera, controls, clamp, ROOM, cutPlane, esc, GFX } from './core.js';
 import { W, UI, SV } from './state.js';
 import { racks, byId, byHost, allServers, cabinets, plateMeshes, rearMeshes, selBox, setDoor, doorOpen, updateDoors, updateCabling } from './racks.js';
 import './hall.js';
@@ -15,6 +15,8 @@ import { live, fresh } from './live.js';
 import { render, resizePost } from './post.js';
 import { SITE, HALL, SITE_HOSTS } from './data.js';
 import { goHall } from './sitebar.js';
+import { initAttention } from './attention.js';
+import { initCapacity } from './capacity.js';
 
 // ---------- Selection, doors, pulling servers out ----------
 function select(r, openDoor = true) {
@@ -56,6 +58,8 @@ function hallView() {
   setLink();
 }
 hooks.open = openServer;
+const updateAttention = initAttention({ openServer, focusRack });
+const clearFit = initCapacity({ focusRack, onChange: () => renderLegend() });
 
 // ---------- Deep links: #rack=B03 opens rack view, #host=db-e04-07 pulls that server out ----------
 // The address follows what you are looking at (without adding history entries), so it can be copied and shared
@@ -153,7 +157,8 @@ const setRackMin = min => setMin('rackPanel', 'rackMin', 'rack', min);
 const setSrvMin = min => setMin('srvPanel', 'srvMin', 'server', min);
 $('rackMin').addEventListener('click', () => setRackMin(!$('rackPanel').classList.contains('min')));
 $('srvMin').addEventListener('click', () => setSrvMin(!$('srvPanel').classList.contains('min')));
-document.querySelectorAll('input[name="mode"]').forEach(el => el.addEventListener('change', e => { W.mode = e.target.value; renderLegend(); }));
+// Picking a colour mode puts the racks back to it from the capacity finder's colours
+document.querySelectorAll('input[name="mode"]').forEach(el => el.addEventListener('change', e => { W.mode = e.target.value; if (UI.fit) clearFit(); else renderLegend(); }));
 $('orbit').addEventListener('click', () => setOrbit(!UI.orbitOn));
 setOrbit(controls.autoRotate);
 // Airflow: hot-aisle exhaust, cold-aisle supply, and the air and heat inside a pulled-out server. Off until Show airflow.
@@ -172,6 +177,16 @@ $('thermal').addEventListener('click', () => {
   renderLegend();
 });
 $('hallView').addEventListener('click', hallView);
+// Graphics: the renderer is set up at start-up, so a change is remembered in this browser and the page reloads
+{
+  const radio = document.querySelector(`input[name="gfx"][value="${GFX}"]`); if (radio) radio.checked = true;
+  document.querySelectorAll('input[name="gfx"]').forEach(el => el.addEventListener('change', e => {
+    try { localStorage.setItem('gfx', e.target.value); } catch {}
+    const q = new URLSearchParams(location.search); q.delete('quality');
+    history.replaceState(null, '', `${location.pathname}${q.size ? '?' + q : ''}${location.hash}`);
+    location.reload();   // setting href would not reload when only the hash is left
+  }));
+}
 
 // ---------- Header chip: live feed or simulation ----------
 function syncChip() {
@@ -261,7 +276,7 @@ renderLegend();
 UI.selected = byId.A03 || racks[0] || null;
 resize();
 if (UI.selected) select(UI.selected, false); else $('rackPanel').hidden = true;   // a hall with no racks yet
-syncChip();
+syncChip(); updateAttention();
 followLink();
 
 let last = performance.now(), hudAcc = 0;
@@ -284,7 +299,7 @@ function frame(now) {
   if (SV.open) drawCores();
   hudAcc += dt;
   if (hudAcc > 0.2) { hudAcc = 0; updateHud(); }
-  if (W.sampled) { W.sampled = false; updateSparks(); syncChip(); }
+  if (W.sampled) { W.sampled = false; updateSparks(); syncChip(); updateAttention(); }
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

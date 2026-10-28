@@ -1,14 +1,14 @@
 // Post-processing: ambient occlusion in corners and gaps, then a soft bloom on anything brighter than 1.0 in HDR
 // (LEDs, light fixtures, glowing ports).
-import { THREE, renderer, scene, camera, cutPlane, LOW_POWER } from './core.js';
+import { THREE, renderer, scene, camera, cutPlane, LOW_POWER, LOW_GFX } from './core.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-// Multisampled HDR target keeps the edges antialiased now that the scene renders off-screen
-const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
+// Multisampled HDR target keeps the edges antialiased now that the scene renders off-screen (fewer samples on low graphics)
+const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: LOW_GFX ? 2 : 4 });
 const composer = new EffectComposer(renderer, target);
 composer.addPass(new RenderPass(scene, camera));
 
@@ -30,8 +30,8 @@ if (!LOW_POWER) {
   ao.blendIntensity = 1;
   composer.addPass(ao);
 }
-const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.6, 0.4, 1.0);
-composer.addPass(bloom);
+// Low graphics leaves the glow out
+if (!LOW_GFX) composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), 0.6, 0.4, 1.0));
 composer.addPass(new OutputPass());
 
 export function resizePost(w, h) { composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(w, h); }

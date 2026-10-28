@@ -19,9 +19,16 @@ export const COL = { ok: tok('--ok'), warn: tok('--warn'), crit: tok('--crit'), 
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const lc = h => new THREE.Color(h).convertSRGBToLinear();
 export const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-// Phones skip ambient occlusion and use smaller shadow maps; ?quality=low or high overrides
-const QUALITY = new URLSearchParams(location.search).get('quality');
-export const LOW_POWER = QUALITY ? QUALITY === 'low' : matchMedia('(max-width: 720px), (pointer: coarse)').matches;
+// Graphics: high has everything; medium (phones and tablets) skips ambient occlusion and uses smaller shadow maps;
+// low also drops shadows and glow and renders at one pixel per CSS pixel, for slow machines.
+// The Graphics switch remembers a choice in this browser; ?quality=low|medium|high overrides it for one visit.
+export const GFX_LEVELS = ['low', 'medium', 'high'];
+const gfxPick = v => GFX_LEVELS.includes(v) ? v : null;
+let saved = null; try { saved = localStorage.getItem('gfx'); } catch {}
+export const GFX = gfxPick(new URLSearchParams(location.search).get('quality')) || gfxPick(saved)
+  || (matchMedia('(max-width: 720px), (pointer: coarse)').matches ? 'medium' : 'high');
+export const LOW_POWER = GFX !== 'high';
+export const LOW_GFX = GFX === 'low';
 
 // ---------- Colour scales (shared by 3D scene and legend) ----------
 export const STOPS = {
@@ -55,13 +62,13 @@ export const cssGrad = (k, v) => '#' + gradIn(CST[k], v, cssC).getHexString();
 // ---------- Renderer, scene, camera ----------
 export const canvas = $('stage');
 export const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+renderer.setPixelRatio(LOW_GFX ? 1 : Math.min(2, window.devicePixelRatio || 1));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
 renderer.localClippingEnabled = true;
 // Only the viewed aisle's ceiling lights cast shadows; the maps are re-rendered when those lights move (see lights.js)
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = !LOW_GFX;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.shadowMap.autoUpdate = false;
 // Rack view cut-away: geometry between the camera and the viewed rack is clipped. Far away = off.

@@ -5,15 +5,19 @@ import { racks, leds, LED, swLeds } from './racks.js';
 import { perfMats, uplinkStripMat, tapLeds } from './hall.js';
 import { updateParticles } from './particles.js';
 
-const tmp = new THREE.Color(), coldC = lc(COL.cold), TAP_ON = lc('#46ff9a').multiplyScalar(2), TAP_WARN = LED.warn;
+const tmp = new THREE.Color(), coldC = lc(COL.cold), okC = lc(COL.ok), offC = lc('#1c2630'), TAP_ON = lc('#46ff9a').multiplyScalar(2), TAP_WARN = LED.warn;
 export function updateVisuals(dt) {
-  const blink = (W.t * 2.5) % 1 < 0.5;
+  const blink = (W.t * 2.5) % 1 < 0.5, fit = UI.fit;
   racks.forEach((r, i) => {
-    grad(W.mode, modeValue(W.mode, r), tmp);
-    const ei = r === UI.hovered ? 0.2 : (r === UI.selected ? 0.12 : 0.045);
+    // The capacity finder takes over the colours: racks that fit in blue (the best in green), their columns as tall as
+    // the power left over; the rest dark
+    const hit = fit && fit.racks.get(r);
+    if (fit) tmp.copy(!hit ? offC : r === fit.best ? okC : coldC);
+    else grad(W.mode, modeValue(W.mode, r), tmp);
+    const ei = r === UI.hovered ? 0.2 : (r === UI.selected ? 0.12 : fit && hit ? 0.1 : 0.045);
     for (const m of r.mats) { m.emissive.copy(tmp); m.emissiveIntensity = ei; }
     r.colMesh.material.color.copy(tmp);
-    const h = modeHeight(W.mode, r);
+    const h = fit ? (hit ? Math.min(1, 0.15 + hit.head / 6) : 0) : modeHeight(W.mode, r);
     r.colMesh.scale.y = Math.max(0.02, h * 0.9);
     for (const L of r.leds) {
       if (L.k === 0) {

@@ -3,9 +3,7 @@ import { $, COL, STOPS, cssGrad, esc, RACK_KW } from './core.js';
 import { W, G, UI, SV } from './state.js';
 import { racks, iloUrl, DOMAIN, freeCount, highlight, unhighlight } from './racks.js';
 import { fmtGB, fmtMem } from './site.js';
-import { describe, rackFaults } from './faults.js';
-
-const SHORT = { psu: k => `PSU ${k + 1} failed`, disk: k => `drive ${k + 1} failed`, fan: k => `fan ${k + 1} failed` };
+import { describe, rackFaults, SHORT } from './faults.js';
 
 // Set by main.js: open a server (pull it out)
 export const hooks = { open: null };
@@ -181,6 +179,11 @@ export function drawCores() {
 }
 
 export function renderLegend() {
+  if (UI.fit && !UI.thermal) {
+    $('lgBar').style.background = `linear-gradient(90deg, #1c2630 0 33%, ${COL.cold} 33% 67%, ${COL.ok} 67%)`;
+    $('lgTicks').innerHTML = [['No room', 0], ['Fits', 50], ['Best', 83.5]].map(([t, x]) => `<span style="left:${x}%">${t}</span>`).join('');
+    return;
+  }
   if (UI.thermal) {
     const s = STOPS.ir, lo = s[0][0], hi = s[s.length - 1][0], pct = v => ((v - lo) / (hi - lo) * 100).toFixed(1) + '%';
     $('lgBar').style.background = `linear-gradient(90deg, ${s.map(([v, c]) => `${c} ${pct(v)}`).join(', ')})`;

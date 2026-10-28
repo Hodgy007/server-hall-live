@@ -5,8 +5,8 @@ export const HIST = 120;   // seconds of trend history
 export const W = { traffic: 0.6, spikeAge: Infinity, fault: false, faultLevel: 0, mode: 'load', t: 0, sampleAcc: 0, sampled: false };
 // Hall-wide totals for the KPI strip
 export const G = { cpu: 0, net: 0, it: 0, maxIn: 0, maxInRack: null, cpuHist: [] };
-// Selection, hover, camera orbit
-export const UI = { selected: null, hovered: null, orbitOn: false, airOn: false, cutRack: null, thermal: false };
+// Selection, hover, camera orbit; fit is the capacity finder's result while it is shown
+export const UI = { selected: null, hovered: null, orbitOn: false, airOn: false, cutRack: null, thermal: false, fit: null };
 // The pulled-out server
 export const SV = {
   sel: null, open: false, slide: 0, fOn: false, cores: new Float32Array(240), coreBias: new Float32Array(240),   // up to 2 × 120 cores
