@@ -150,4 +150,28 @@ export function speckle(g, w, h, n, a) {
     g.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random(), 1 + Math.random());
   }
 }
+// Photographic surface detail (textures/, generated with Higgsfield). A missing file loads as null and the
+// procedural look stands on its own.
+export const loadImg = src => new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
+// A photo as neutral grey grain: its own tone taken out and its contrast set to sd, so overlaying it adds
+// texture without shifting the colours it lands on
+export function grainOf(img, sd = 34) {
+  if (!img) return null;
+  const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+  const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+  const id = g.getImageData(0, 0, c.width, c.height), d = id.data, n = d.length / 4;
+  let s = 0, s2 = 0;
+  for (let i = 0; i < d.length; i += 4) { const l = (d[i] + d[i + 1] + d[i + 2]) / 3; s += l; s2 += l * l; }
+  const mean = s / n, k = sd / Math.max(1, Math.sqrt(s2 / n - mean * mean));
+  for (let i = 0; i < d.length; i += 4) d[i] = d[i + 1] = d[i + 2] = 128 + ((d[i] + d[i + 1] + d[i + 2]) / 3 - mean) * k;
+  g.putImageData(id, 0, 0);
+  return c;
+}
+// Overlays grain on a canvas texture (all of it by default), tiled at its own size times scale
+export function grain(g, gr, a, scale = 1, x = 0, y = 0, w = g.canvas.width, h = g.canvas.height) {
+  if (!gr) return;
+  const p = g.createPattern(gr, 'repeat'); p.setTransform(new DOMMatrix().scale(scale));
+  g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = a; g.globalCompositeOperation = 'overlay';
+  g.fillStyle = p; g.fillRect(x, y, w, h); g.restore();
+}
 export const ease = u => u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;

@@ -1,16 +1,28 @@
 // The room around the racks: raised floor, walls and ceiling, hot-aisle containment, cable trays,
 // overhead busway and the uplink panel to the meet-me room.
-import { THREE, scene, lc, COL, vrnd, broadPunctualSpec, canvasTex, labelTex, speckle, ROWS, COLD, HACS, RACK_H, TILE, TRAY_Y, TRAY_X, ROOM } from './core.js';
+import { THREE, scene, lc, COL, vrnd, broadPunctualSpec, canvasTex, labelTex, speckle, loadImg, ROWS, COLD, HACS, RACK_H, TILE, TRAY_Y, TRAY_X, ROOM } from './core.js';
 import { HALL } from './data.js';
 import { racks } from './racks.js';
 
 const m4 = new THREE.Matrix4();
 
+// Photographic surfaces, drawn into the canvas textures below and multiplied down to the tuned colours so the
+// lighting balance is unchanged
+const [floorImg, wallImg, ceilImg] = await Promise.all(['floor', 'wall', 'ceil'].map(n => loadImg(`textures/${n}.jpg`)));
+// Draws img over (x, y, w, h), as data (grey, at alpha a) or as colour multiplied by tint
+function photo(g, img, x, y, w, h, tint, a) {
+  if (!img) return;
+  g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip();
+  if (tint) { g.drawImage(img, x, y, w, h); g.globalCompositeOperation = 'multiply'; g.fillStyle = tint; g.fillRect(x, y, w, h); }
+  else { g.filter = 'grayscale(1)'; g.globalAlpha = a; g.globalCompositeOperation = 'overlay'; g.drawImage(img, x, y, w, h); }
+  g.restore();
+}
+
 // ---------- Raised floor ----------
 // Matt anti-static tiles, 0.6 m square. One texture covers 4 × 4 tiles so neighbours differ a little in
-// tint and wear; the seams are sunk.
+// tint and wear; the seams are sunk. Each tile shows the laminate photo turned a different way.
 const TILE_PX = 256, TILES = 4;
-const tileVar = Array.from({ length: TILES * TILES }, () => ({ l: vrnd(), r: vrnd(), s: vrnd() }));
+const tileVar = Array.from({ length: TILES * TILES }, () => ({ l: vrnd(), r: vrnd(), s: vrnd(), q: (Math.random() * 4) | 0 }));
 function floorTiles(g, w, h, kind) {
   tileVar.forEach((t, i) => {
     const x = (i % TILES) * TILE_PX, y = ((i / TILES) | 0) * TILE_PX;
@@ -18,6 +30,12 @@ function floorTiles(g, w, h, kind) {
     else if (kind === 'rough') { const v = 190 + t.r * 25; g.fillStyle = `rgb(${v},${v},${v})`; }
     else g.fillStyle = '#c0c0c0';
     g.fillRect(x, y, TILE_PX, TILE_PX);
+    if (floorImg) {
+      g.save(); g.translate(x + TILE_PX / 2, y + TILE_PX / 2); g.rotate(t.q * Math.PI / 2); g.translate(-TILE_PX / 2, -TILE_PX / 2);
+      const v = 19 + t.l * 4;
+      photo(g, floorImg, 0, 0, TILE_PX, TILE_PX, kind === 'map' && `rgb(${(v - 3) * 3.4},${(v + 3) * 3.4},${(v + 9) * 3.4})`, kind === 'rough' ? 0.5 : 0.7);
+      g.restore();
+    }
     // scuffs: chair and trolley marks, rougher and slightly lighter than the finish around them
     g.save(); g.beginPath(); g.rect(x, y, TILE_PX, TILE_PX); g.clip();
     const n = Math.floor(t.s * 9);
@@ -70,7 +88,8 @@ COLD.forEach(a => {
 // ---------- Walls and suspended ceiling ----------
 // Single-sided, facing inwards: from outside the room the near walls and the ceiling drop away (dollhouse cut-away)
 const wallTex = canvasTex(512, 256, (g, w, h) => {
-  g.fillStyle = '#1a2129'; g.fillRect(0, 0, w, h); speckle(g, w, h, 8000, 0.03);
+  g.fillStyle = '#1a2129'; g.fillRect(0, 0, w, h);
+  if (wallImg) { photo(g, wallImg, 0, 0, h, h, '#4b5f76'); photo(g, wallImg, h, 0, h, h, '#4b5f76'); } else speckle(g, w, h, 8000, 0.03);
   g.fillStyle = '#0e1318'; for (let x = 0; x < w; x += 128) g.fillRect(x, 0, 3, h);
   g.fillStyle = '#10161b'; g.fillRect(0, h - 22, w, 22);
   g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(0, h - 22, w, 1);
@@ -88,7 +107,8 @@ wall(2 * ROOM.z, -ROOM.x, 0, Math.PI / 2); wall(2 * ROOM.z, ROOM.x, 0, -Math.PI 
   s.position.set(-ROOM.x + 0.01, 3.0, 0); s.rotation.y = Math.PI / 2; scene.add(s); }
 
 const ceilTex = canvasTex(128, 128, (g) => {
-  g.fillStyle = '#20282f'; g.fillRect(0, 0, 128, 128); speckle(g, 128, 128, 1500, 0.04);
+  g.fillStyle = '#20282f'; g.fillRect(0, 0, 128, 128);
+  if (ceilImg) photo(g, ceilImg, 0, 0, 128, 128, '#252f37'); else speckle(g, 128, 128, 1500, 0.04);
   g.fillStyle = '#3a454f'; g.fillRect(0, 0, 128, 4); g.fillRect(0, 0, 4, 128);
 });
 ceilTex.wrapS = ceilTex.wrapT = THREE.RepeatWrapping; ceilTex.repeat.set(2 * ROOM.x / 0.6, 2 * ROOM.z / 0.6);
