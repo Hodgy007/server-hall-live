@@ -1,5 +1,8 @@
 // Procedural textures for cabinets and rack-mounted hardware, all drawn on canvas.
-import { THREE, canvasTex, speckle, plateH } from './core.js';
+import { THREE, canvasTex, speckle, plateH, loadImg, grainOf, grain } from './core.js';
+
+// Photographed grain (textures/): black powder coat for the cabinets, anodised aluminium for the faceplates
+const [COAT, ALU] = (await Promise.all(['coat', 'alu'].map(n => loadImg(`textures/${n}.jpg`)))).map(i => grainOf(i));
 
 // ---------- Wear ----------
 // Rubs where the powder coat is worn towards bare steel, and darker marks from trolleys, boots and cable reels
@@ -29,14 +32,14 @@ function drawSide(g, w, h, vendor) {
   g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(0, 4, w, 1); g.fillRect(5, 0, 1, h);
 }
 export const sideTexes = [0, 1, 2, 3].map(k => canvasTex(256, 512, (g, w, h) => {
-  drawSide(g, w, h, k === 3);
+  drawSide(g, w, h, k === 3); grain(g, COAT, 0.7, 0.5);
   // front and rear edges get knocked, the bottom gets kicked; the vendor cabinet is the newest and least worn
   const n = k % 3;
   scuffs(g, 0, 0, 22, h, 10 + n * 14); scuffs(g, w - 22, 0, 22, h, 6 + n * 10); scuffs(g, 0, h - 70, w, 66, 8 + n * 12);
 }));
-export const roughTex = canvasTex(128, 256, (g, w, h) => { g.fillStyle = '#a0a0a0'; g.fillRect(0, 0, w, h); speckle(g, w, h, 6000, 0.12); }, true);
+export const roughTex = canvasTex(128, 256, (g, w, h) => { g.fillStyle = '#a0a0a0'; g.fillRect(0, 0, w, h); speckle(g, w, h, 6000, 0.12); grain(g, COAT, 0.8, 0.5); }, true);
 const drawTop = vendor => (g, w, h) => {
-  g.fillStyle = vendor ? '#20252a' : '#1a222b'; g.fillRect(0, 0, w, h); speckle(g, w, h, 7000, 0.035);
+  g.fillStyle = vendor ? '#20252a' : '#1a222b'; g.fillRect(0, 0, w, h); speckle(g, w, h, 7000, 0.035); grain(g, COAT, 0.7, 0.5);
   g.fillStyle = '#080b0e';
   if (vendor) for (let y = 110; y < 310; y += 14) g.fillRect(44, y, w - 88, 6);
   else for (let y = 120, k = 0; y < 300; y += 9, k++) for (let x = 40 + (k % 2) * 4.5; x < w - 40; x += 9) { g.beginPath(); g.arc(x, y, 2.4, 0, Math.PI * 2); g.fill(); }
@@ -54,12 +57,12 @@ export const railTex = canvasTex(32, 1024, (g, w, h) => {
   g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(0, 0, 2, h);
 });
 export const bezelTex = canvasTex(512, 128, (g, w, h) => {
-  g.fillStyle = '#151c23'; g.fillRect(0, 0, w, h); speckle(g, w, h, 5000, 0.04);
+  g.fillStyle = '#151c23'; g.fillRect(0, 0, w, h); speckle(g, w, h, 5000, 0.04); grain(g, COAT, 0.6, 0.5);
   g.fillStyle = '#07090c'; for (let x = 24; x < w - 24; x += 10) g.fillRect(x, 12, 5, 18);
   g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(0, h - 3, w, 2);
 });
 export const plinthTex = canvasTex(512, 64, (g, w, h) => {
-  g.fillStyle = '#10161c'; g.fillRect(0, 0, w, h); speckle(g, w, h, 3000, 0.04);
+  g.fillStyle = '#10161c'; g.fillRect(0, 0, w, h); speckle(g, w, h, 3000, 0.04); grain(g, COAT, 0.6, 0.5);
   g.fillStyle = '#040506'; for (let x = 30; x < w - 30; x += 14) g.fillRect(x, 16, 8, h - 32);
 });
 export const contactTex = canvasTex(128, 192, (g, w, h) => {
@@ -84,7 +87,7 @@ function doorHoles(g, w, h, solid, hole, vendor) {
 export const doorTexes = [0, 1, 2, 3].map(k => canvasTex(DOOR_W, DOOR_H, (g, w, h) => {
   const vendor = k === 3;
   doorHoles(g, w, h, vendor ? '#252a30' : '#202932', '#0b0f13', vendor);
-  speckle(g, w, h, 4000, 0.03);
+  speckle(g, w, h, 4000, 0.03); grain(g, COAT, 0.6, 0.5);
   g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(0, 0, w, 2); g.fillRect(0, 0, 2, h);
   if (vendor) { g.fillStyle = '#4a535c'; g.fillRect(70, 22, 100, 18); g.fillStyle = '#1a1f24'; g.fillRect(76, 28, 88, 6); }
   // the lock strip is handled every day; the bottom rail gets kicked
@@ -105,7 +108,8 @@ const GLOW = Object.fromEntries(Object.keys(PAL).map(k => [k, '#000000']));
 GLOW.led = '#46ff9a'; GLOW.pwr = '#1c7a3e';
 export function plateMat(w, h, draw, opts) {
   const { glow, ...rest } = opts || {};
-  const at = (P, data) => canvasTex(w * 2, h * 2, (g) => { g.scale(2, 2); draw(g, w, h, P); }, data);
+  // the faceplate grain goes into colour and, fainter, into the bump; never into the LED glow
+  const at = (P, data) => canvasTex(w * 2, h * 2, (g) => { g.scale(2, 2); draw(g, w, h, P); if (P !== GLOW) grain(g, ALU, P === PAL ? 0.55 : 0.35, 0.5); }, data);
   const m = new THREE.MeshStandardMaterial(Object.assign({ map: at(PAL), bumpMap: at(BUMP, true), bumpScale: 0.6, roughnessMap: roughTex, metalness: 0.55, roughness: 0.7 }, rest));
   if (glow) { m.emissiveMap = at(GLOW); m.emissive = new THREE.Color(0xffffff); m.emissiveIntensity = 2.2; }
   return m;
