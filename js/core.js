@@ -86,7 +86,7 @@ controls.maxDistance = 34 * HALL_K;
 // Right-drag (or shift-drag, or two fingers) slides the view across the floor rather than in the screen plane
 controls.screenSpacePanning = false;
 controls.autoRotateSpeed = 0.35;
-controls.autoRotate = !reduceMotion;
+controls.autoRotate = false;   // the hall holds still until Start rotation is pressed
 
 // Image-based lighting gives the steel, rails and handles something to reflect.
 // Lights are physically based since three r155, so the old intensities are scaled by π.

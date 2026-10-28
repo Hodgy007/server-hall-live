@@ -150,12 +150,14 @@ $('rackMin').addEventListener('click', () => setRackMin(!$('rackPanel').classLis
 document.querySelectorAll('input[name="mode"]').forEach(el => el.addEventListener('change', e => { W.mode = e.target.value; renderLegend(); }));
 $('orbit').addEventListener('click', () => setOrbit(!UI.orbitOn));
 setOrbit(controls.autoRotate);
-// Airflow: hot-aisle exhaust, cold-aisle supply, and the air and heat inside a pulled-out server
-$('airflow').addEventListener('click', () => {
-  UI.airOn = !UI.airOn;
-  [heat, cold, air, shim].forEach(p => { p.pts.visible = UI.airOn; });
-  $('airflow').textContent = UI.airOn ? 'Hide airflow' : 'Show airflow'; $('airflow').classList.toggle('off', !UI.airOn);
-});
+// Airflow: hot-aisle exhaust, cold-aisle supply, and the air and heat inside a pulled-out server. Off until Show airflow.
+function setAir(on) {
+  UI.airOn = on;
+  [heat, cold, air, shim].forEach(p => { p.pts.visible = on; });
+  $('airflow').textContent = on ? 'Hide airflow' : 'Show airflow'; $('airflow').classList.toggle('off', !on);
+}
+$('airflow').addEventListener('click', () => setAir(!UI.airOn));
+setAir(UI.airOn);
 // Thermal camera: swaps the hall to a false-colour infrared view; the colour mode does not apply while it is on
 $('thermal').addEventListener('click', () => {
   UI.thermal = !UI.thermal; setThermal(UI.thermal);
