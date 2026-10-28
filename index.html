@@ -16,7 +16,7 @@
     <div class="brand">
       <div class="eyebrow" id="hallLine">—</div>
       <h1>Server Hall Live</h1>
-      <div class="meta"><span class="chip" id="liveChip">Simulated telemetry</span><span class="hint">Drag to orbit · right-drag or WASD to move · scroll to zoom · click a rack to open its door, then a server</span></div>
+      <div class="meta"><span class="chip" id="liveChip">Simulated telemetry</span><button id="attnBtn" type="button" class="chip ok" aria-expanded="false" aria-controls="attnList" disabled>All OK</button><span class="hint">Drag to orbit · right-drag or WASD to move · scroll to zoom · click a rack to open its door, then a server</span></div>
       <div class="tools site">
         <label class="hallpick"><span class="vh">Hall</span><select id="hallPick" aria-label="Building and hall to show"></select></label>
         <button id="loadFile" type="button" title="Load a site file (JSON) into this browser; you can also drop one on the page">Load file</button>
@@ -35,6 +35,7 @@
         </form>
         <span id="findMsg" class="findmsg" role="status"></span>
       </div>
+      <div class="attn" id="attnList" aria-label="Racks and servers that need attention" hidden></div>
     </div>
     <div class="kpis">
       <div class="kpi"><span class="k">Avg CPU</span><span class="v" id="kCpu">—</span><canvas id="sCpu"></canvas></div>
@@ -139,11 +140,26 @@
             <input type="radio" name="mode" id="modePower" value="power"><label for="modePower">Power</label>
           </fieldset>
           <div class="legend"><div class="lgbar" id="lgBar"></div><div class="lgticks" id="lgTicks"></div></div>
+          <div class="fit">
+            <form id="fitForm" class="fitf" aria-label="Find space for a server">
+              <span class="fl">Find space for</span>
+              <select id="fitU" aria-label="Server height"><option value="1">1U</option><option value="2" selected>2U</option><option value="3">3U</option><option value="4">4U</option></select>
+              <label><input id="fitW" type="number" min="50" max="5000" step="50" value="900" aria-label="Peak power in watts"> W peak</label>
+              <button type="submit">Find</button>
+            </form>
+            <div id="fitOut" role="status"></div>
+          </div>
           <button id="thermal" class="tog off" aria-pressed="false" title="False-colour infrared view: every surface coloured by the air temperature where it stands">Thermal camera</button>
           <div class="btns">
             <button id="orbit" class="tog off">Start rotation</button>
             <button id="airflow" class="tog off">Show airflow</button>
           </div>
+          <fieldset class="seg" id="gfxSet" title="Lower settings run faster on slow machines; the page reloads to apply them">
+            <legend>Graphics</legend>
+            <input type="radio" name="gfx" id="gfxLow" value="low"><label for="gfxLow">Low</label>
+            <input type="radio" name="gfx" id="gfxMed" value="medium"><label for="gfxMed">Medium</label>
+            <input type="radio" name="gfx" id="gfxHigh" value="high"><label for="gfxHigh">High</label>
+          </fieldset>
         </div>
       </details>
     </section>

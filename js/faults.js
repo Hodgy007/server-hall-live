@@ -17,5 +17,8 @@ export function describe(f) {
   }
 }
 
+// The same, in a few words, for lists
+export const SHORT = { psu: k => `PSU ${k + 1} failed`, disk: k => `drive ${k + 1} failed`, fan: k => `fan ${k + 1} failed` };
+
 export const rackFaults = r => FAULTS.filter(f => f.r === r);
 export const hasFault = (sv, kind, k) => sv.faults.some(f => f.kind === kind && (k === undefined || f.k === k));

@@ -72,9 +72,11 @@ Below that it shows per-core load for every core (one block per socket), CPU tem
 ## Panels and controls
 
 - KPI strip: average CPU, network, IT load and the hottest inlet temperature.
+- **Needs attention** (a chip under the title, red when anything is critical, amber for warnings, green **All OK** when nothing is): click it for every rack and server in this hall in warning or critical state, worst first and grouped by rack, each with why: CPU load, CPU temperature, inlet temperature, a failed part or a top-of-rack switch down. Click a rack to fly to it, or a server to pull it out. The list keeps itself up to date every second.
+- **Find space for** a server (in Controls): pick its height (1U to 4U) and peak power in watts, then **Find**. A rack has room when it has that many free U in one run (U1–38) and its 12 kW budget still covers every server in it running flat out, both switches at full traffic and the new server. Racks with room light up blue, the one with the most power to spare in green, and the rest go dark; light columns show how much power is left. The list gives each rack's lowest free slot and spare kW; click one to fly there with the slot outlined. **Clear**, or picking a colour mode, puts the colours back.
 - Rack detail, **Live** tab: CPU, memory, power and network are rolled up from the rack's 12 servers (power also includes the two switches), with a count of servers in warning or critical state, inlet/exhaust temperature and 2-minute trends. A rack also turns amber when any of its servers is critical. Click a rack or use the arrow buttons.
 - Rack detail, **Inventory** tab: everything in the rack from U42 down (ToR switches, patch panel, OOB switch, free space, each server with model, drives, serial and in-service date, both PDUs), with live load and power per device and a rack total. **Hover a row** to outline that device in the rack; click a server row to pull it out.
-- Controls: colour mode, **Thermal camera**, **Start/Stop rotation** for the camera orbit and **Show/Hide airflow** for the air particles; both start off. The simulation runs at a steady 60% traffic demand with both cooling units healthy.
+- Controls: colour mode, the capacity finder, **Thermal camera**, **Start/Stop rotation** for the camera orbit and **Show/Hide airflow** for the air particles (both start off), and **Graphics** (see [Run it](#run-it)). The simulation runs at a steady 60% traffic demand with both cooling units healthy.
 - **Colour racks by** CPU load, inlet temperature or **power** (draw against each rack's 12 kW budget, which shows where there is capacity to add servers).
 - **Thermal camera** switches the hall to a false-colour infrared view (the ironbow palette, 16–46 °C): every surface takes the colour of the air where it stands, so cold aisles, rack fronts at their inlet temperature, rears and hot aisles at their exhaust and the warm ceiling plenum all read at a glance, and each server's face shows its own inlet and exhaust. Glass, the perforated doors, labels and the light columns drop out so the racks behind them show.
 
@@ -187,7 +189,13 @@ python3 -m http.server 8000
 
 Everything the page needs is in the repository, so it also works on a network without internet access: three.js 0.169.0 and the add-ons it uses (OrbitControls, RoomEnvironment, EffectComposer, GTAOPass, UnrealBloomPass, OutputPass and their dependencies) are in `vendor/three` (MIT licence) and load through an import map, and the Barlow Condensed and IBM Plex Mono fonts are in `vendor/fonts` (SIL Open Font License).
 
-Ambient occlusion runs at half resolution. Phones and tablets (narrow screens or touch-only pointers) skip it and use smaller shadow maps. Add `?quality=low` to the address to get that on any machine, for example a slow laptop, or `?quality=high` to force everything on.
+**Graphics** in Controls picks how much the page draws; the page reloads to apply it, and this browser remembers the choice:
+
+- **High** (the default on computers): everything, with ambient occlusion at half resolution.
+- **Medium** (the default on phones and tablets, meaning narrow screens or touch-only pointers): no ambient occlusion, and smaller shadow maps.
+- **Low**, for slow machines: Medium without shadows or the glow round LEDs and lights, drawn at one pixel per screen pixel on high-density displays.
+
+`?quality=low`, `medium` or `high` in the address overrides the choice for that visit.
 
 ## Code layout
 
@@ -200,7 +208,9 @@ Ambient occlusion runs at half resolution. Phones and tablets (narrow screens or
 | `js/data.js` | Loads the site file (the browser's copy or `data/hall.json`) and picks the hall to show |
 | `js/store.js` | The browser's copy of a loaded site file (IndexedDB) |
 | `js/sitebar.js` | Hall picker, data source, Load file and drag-and-drop, problems list |
-| `js/core.js` | Renderer, scene, camera, controls, fill lighting, quality setting, colour scales, hall geometry from the layout, canvas helpers |
+| `js/attention.js` | The needs-attention chip and its list of racks and servers in warning or critical state |
+| `js/capacity.js` | Capacity finder: racks with room and power for another server |
+| `js/core.js` | Renderer, scene, camera, controls, fill lighting, graphics level, colour scales, hall geometry from the layout, canvas helpers |
 | `js/state.js` | Shared mutable state: world inputs, hall totals, selection, the pulled-out server |
 | `js/textures.js` | Canvas-drawn textures for cabinets (worn and second-vendor variants), doors and rack-mounted hardware; server faces by maker and height |
 | `js/cabling.js` | Structured cabling at the rack rears, built per cabinet from its servers |

@@ -48,6 +48,17 @@ h1 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 3
 .linkish { font: inherit; font-size: 10.5px; color: var(--cold); background: none; border: 0; padding: 2px; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .probs { pointer-events: auto; margin: 2px 0 0; padding: 8px 10px 8px 26px; max-width: min(560px, 92vw); max-height: 30vh; overflow: auto; font-size: 10.5px; line-height: 1.45; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .probs li::marker { color: var(--warn); }
+/* Needs attention: chip coloured by the worst state, list grouped by rack */
+.chip.crit { color: var(--crit); background: rgba(255, 90, 79, 0.1); cursor: pointer; }
+.chip.ok { color: var(--ok); background: rgba(63, 207, 142, 0.08); }
+.chip:disabled { cursor: default; }
+.attn { pointer-events: auto; margin: 2px 0 0; padding: 4px; max-width: min(440px, 92vw); max-height: 40vh; overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.attn ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.attn ul ul { padding-left: 14px; }
+.attn button { display: flex; align-items: baseline; gap: 6px; width: 100%; text-align: left; border: 0; border-radius: 3px; background: none; padding: 3px 6px; font-size: 10.5px; color: var(--fg); }
+.attn button:hover { background: rgba(79, 195, 232, 0.08); color: var(--fg); }
+.attn b { font-weight: 500; white-space: nowrap; }
+.attn .why { color: var(--muted); min-width: 0; }
 #dropZone { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(8, 12, 16, 0.72); border: 2px dashed var(--cold); font-size: 15px; color: var(--fg); pointer-events: none; }
 
 .kpis { display: grid; grid-template-columns: repeat(4, minmax(112px, 1fr)); gap: 8px; }
@@ -105,6 +116,21 @@ summary { cursor: pointer; font-size: 10px; letter-spacing: 0.12em; text-transfo
 .lgticks { position: relative; height: 14px; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .lgticks span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
 .lgticks span:first-child { transform: none; }
+/* Capacity finder */
+.fit { display: grid; gap: 6px; }
+.fitf { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--muted); }
+.fitf select, .fitf input { font: inherit; color: var(--fg); background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 4px; padding: 5px 6px; }
+.fitf input { width: 64px; }
+.fitf select:focus-visible, .fitf input:focus-visible { outline: 2px solid var(--cold); outline-offset: 1px; }
+.fitf button { padding: 5px 10px; }
+.fitsum { font-size: 10.5px; color: var(--muted); }
+.fitsum b { font-weight: 500; color: var(--fg); }
+.fitl { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; max-height: 180px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.fitl button { display: grid; grid-template-columns: 44px 1fr auto; gap: 8px; width: 100%; text-align: left; border: 0; border-radius: 3px; background: none; padding: 3px 6px; font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.fitl button:hover { background: rgba(79, 195, 232, 0.08); color: var(--muted); }
+.fitl b { font-weight: 500; color: var(--fg); }
+.fitl li:first-child b { color: var(--ok); }
+.fitl .more { font-size: 10px; color: var(--muted); padding: 2px 6px; }
 .chk { display: flex; gap: 8px; align-items: center; color: var(--muted); cursor: pointer; }
 .chk input { accent-color: var(--cold); margin: 0; }
 
@@ -139,8 +165,8 @@ summary { cursor: pointer; font-size: 10px; letter-spacing: 0.12em; text-transfo
 .inv tr.sv:focus-visible { outline: 2px solid var(--cold); outline-offset: -2px; }
 .inv tr.empty td { color: var(--muted); font-style: italic; }
 .inv tr.tot td { border-top: 1px solid var(--line); padding-top: 6px; }
-.inv .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; background: var(--ok); }
-.inv .dot.warn { background: var(--warn); } .inv .dot.crit { background: var(--crit); }
+.inv .dot, .attn .dot { display: inline-block; flex: none; width: 6px; height: 6px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; background: var(--ok); }
+.inv .dot.warn, .attn .dot.warn { background: var(--warn); } .inv .dot.crit, .attn .dot.crit { background: var(--crit); }
 .srvp { width: 340px; max-width: 100%; padding: 12px; display: grid; gap: 10px; }
 .srvp { max-height: calc(100vh - 230px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 .specs { margin: 0; display: grid; gap: 3px; font-size: 10.5px; line-height: 1.4; }
@@ -171,6 +197,8 @@ summary { cursor: pointer; font-size: 10px; letter-spacing: 0.12em; text-transfo
   .kpi .sub, .kpi canvas { display: none; }
   .bottom { flex-direction: column; align-items: stretch; gap: 8px; }
   .rackp, .ops, .srvp { width: 100%; box-sizing: border-box; padding: 10px; }
+  .ops { max-height: 58vh; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+  .fitl { max-height: 92px; }
   .rmin { display: block; }
   .rackp.min > :not(.ph), .srvp.min > :not(.ph) { display: none; }
   .cores canvas { height: 48px; }
