@@ -4,6 +4,7 @@ import { W, G, SV, HIST } from './state.js';
 import { racks } from './racks.js';
 import { stepServer, level } from './server.js';
 import { applyServer, applyRack } from './live.js';
+import { INV } from './mode.js';
 
 const wave = (t, p) => 0.5 * Math.sin(t * 0.21 + p) + 0.3 * Math.sin(t * 0.53 + p * 1.7) + 0.2 * Math.sin(t * 1.31 + p * 2.9);
 
@@ -76,5 +77,5 @@ export function step(dt) {
     if (G.cpuHist.length > HIST) G.cpuHist.shift();
     W.sampled = true;
   }
-  if (SV.sel) stepServer(dt);
+  if (SV.sel && !INV) stepServer(dt);
 }

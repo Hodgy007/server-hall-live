@@ -1,4 +1,5 @@
 // Entry point: wires the scene, simulation, HUD and interaction together and runs the frame loop.
+import './mode.js';
 import { THREE, $, canvas, renderer, scene, camera, controls, clamp, ROOM, cutPlane, esc, GFX } from './core.js';
 import { W, UI, SV } from './state.js';
 import { racks, byId, byHost, allServers, cabinets, plateMeshes, rearMeshes, selBox, setDoor, doorOpen, updateDoors, updateCabling } from './racks.js';
@@ -17,6 +18,14 @@ import { SITE, HALL, SITE_HOSTS } from './data.js';
 import { goHall } from './sitebar.js';
 import { initAttention } from './attention.js';
 import { initCapacity } from './capacity.js';
+import { INV } from './mode.js';
+import { initFinder } from './finder.js';
+import { initTable } from './table.js';
+import { initPlan } from './plan.js';
+import { printElevation } from './print.js';
+import { updateLabels } from './labels.js';
+import { CB, setBy, setQuery } from './rackcolor.js';
+import { pk } from './particles.js';
 
 // ---------- Selection, doors, pulling servers out ----------
 function select(r, openDoor = true) {
@@ -52,21 +61,26 @@ function focusRack(r) {
   setLink('rack', r.id);
 }
 function hallView() {
+  if (plan.isOn()) plan.show(false);
   closeServer();
   if (UI.selected) setDoor(UI.selected, false);
   flyHall();
   setLink();
 }
 hooks.open = openServer;
-const updateAttention = initAttention({ openServer, focusRack });
-const clearFit = initCapacity({ focusRack, onChange: () => renderLegend() });
+const updateAttention = INV ? () => {} : initAttention({ openServer, focusRack });
+const plan = initPlan({ openRack: r => { plan.show(false); focusRack(r); }, onChange: on => { if (!on) setLink(); } });
+const table = initTable({ openServer: host => openServer(byHost.get(host.toLowerCase())), onChange: on => { if (on) setLink('inventory'); else setLink(); } });
+const clearFit = initCapacity({ focusRack, onChange: () => { if (UI.fit) filterHook.clear(); renderLegend(); plan.refresh(); } });
+const filterHook = { clear() {} };
 
 // ---------- Deep links: #rack=B03 opens rack view, #host=db-e04-07 pulls that server out ----------
 // The address follows what you are looking at (without adding history entries), so it can be copied and shared
 function setLink(kind, id) {
-  history.replaceState(null, '', kind ? `#${kind}=${encodeURIComponent(id)}` : location.pathname + location.search);
+  history.replaceState(null, '', kind === 'inventory' ? '#inventory' : kind ? `#${kind}=${encodeURIComponent(id)}` : location.pathname + location.search);
 }
 function followLink() {
+  if (location.hash === '#inventory') { table.open(); return; }
   const m = /^#(rack|host)=(.+)$/.exec(location.hash); if (!m) return;
   const id = decodeURIComponent(m[2]);
   // a host or rack in another hall switches to that hall
@@ -113,6 +127,8 @@ canvas.addEventListener('pointermove', e => {
     tip.hidden = false;
     const sv = hit.sv, r = UI.hovered;
     tip.innerHTML = hit.close ? `<b>${esc(SV.sel.host)}</b>click to push back in`
+      : INV ? (sv && !hit.focus ? `<b>${esc(sv.host)}</b>U${sv.u} · ${esc(sv.model)} · click to pull out`
+        : `<b>${esc(r.id)}</b>${r.servers.length} servers · ${r.servers.reduce((t, x) => t + x.h, 0)}U of 38 used` + (UI.cutRack === r ? '' : ' · click to view the front'))
       : sv && !hit.focus ? `<b>${esc(sv.host)}</b>U${sv.u} · CPU ${Math.round(sv.load * 100)}% · click to pull out`
       : `<b>${r.id}</b>CPU ${Math.round(r.load * 100)}% · inlet ${r.inlet.toFixed(1)} °C · ${r.power.toFixed(1)} of 12 kW` + (UI.cutRack === r ? '' : ' · click to view the front');
     const x = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 8);
@@ -158,7 +174,26 @@ const setSrvMin = min => setMin('srvPanel', 'srvMin', 'server', min);
 $('rackMin').addEventListener('click', () => setRackMin(!$('rackPanel').classList.contains('min')));
 $('srvMin').addEventListener('click', () => setSrvMin(!$('srvPanel').classList.contains('min')));
 // Picking a colour mode puts the racks back to it from the capacity finder's colours
-document.querySelectorAll('input[name="mode"]').forEach(el => el.addEventListener('change', e => { W.mode = e.target.value; if (UI.fit) clearFit(); else renderLegend(); }));
+document.querySelectorAll('input[name="mode"]').forEach(el => el.addEventListener('change', e => { W.mode = e.target.value; if (UI.fit) clearFit(); else renderLegend(); plan.refresh(); }));
+// Inventory mode: colour by fill, role, make, model or age (rackcolor.js)
+document.querySelectorAll('input[name="colorby"]').forEach(el => el.addEventListener('change', e => { setBy(e.target.value); if (UI.fit) clearFit(); else renderLegend(); plan.refresh(); }));
+setBy('fill');
+// The rack filter: racks holding a match light up, the rest go dark
+{
+  const inp = $('filt'), out = $('filtOut'), clr = $('filtClear');
+  const apply = () => {
+    setQuery(inp.value);
+    if (CB.hits && UI.fit) clearFit();
+    clr.hidden = !CB.q;
+    out.textContent = !CB.q ? '' : CB.nServers ? `${CB.nServers} server${CB.nServers === 1 ? '' : 's'} in ${CB.hits.size} rack${CB.hits.size === 1 ? '' : 's'}` : 'No server matches';
+    renderLegend(); plan.refresh();
+  };
+  inp.addEventListener('input', apply);
+  clr.addEventListener('click', () => { inp.value = ''; apply(); inp.focus(); });
+  $('filtForm').addEventListener('submit', e => e.preventDefault());
+  inp.addEventListener('keydown', e => { if (e.key === 'Escape' && inp.value) { e.stopPropagation(); inp.value = ''; apply(); } });
+  filterHook.clear = () => { if (inp.value) { inp.value = ''; apply(); } };
+}
 $('orbit').addEventListener('click', () => setOrbit(!UI.orbitOn));
 setOrbit(controls.autoRotate);
 // Airflow: hot-aisle exhaust, cold-aisle supply, and the air and heat inside a pulled-out server. Off until Show airflow.
@@ -190,37 +225,26 @@ $('hallView').addEventListener('click', hallView);
 
 // ---------- Header chip: live feed or simulation ----------
 function syncChip() {
-  $('liveChip').textContent = live.enabled && fresh(live) ? `Live data · ${live.servers} of ${allServers.length} servers` : 'Simulated telemetry';
+  $('liveChip').textContent = live.enabled && live.at && fresh(live) ? `Live data · ${live.servers} of ${allServers.length} servers` : 'Simulated telemetry';
 }
 
-// ---------- Find a host or rack ----------
+// ---------- Find: hostname, rack, serial, IP, MAC, model, make, role, OS (finder.js) ----------
+initFinder({ openServer, focusRack });
+$('printElev').addEventListener('click', () => { if (UI.selected) printElevation(UI.selected); });
+// Mode: shown in the header, with a link to switch it for this visit (?mode=)
 {
-  // every rack and host in the site; ones in another hall switch to it
-  const dl = $('hosts'), add = v => { const o = document.createElement('option'); o.value = v; dl.append(o); };
-  for (const h of SITE.halls) for (const r of h.grid.racks) add(r.id);
-  for (const sv of SITE.servers) add(sv.host);
+  const b = $('modeBtn'), other = INV ? 'monitoring' : 'inventory';
+  b.textContent = INV ? 'Show simulated monitoring' : 'Back to inventory mode';
+  b.title = INV ? 'Show the simulated CPU, temperature and power figures, status lights and the attention list' : 'Hide everything driven by simulated figures';
+  b.addEventListener('click', () => { const q = new URLSearchParams(location.search); q.set('mode', other); location.href = `${location.pathname}?${q}${location.hash}`; });
 }
-function find(q, exactOnly) {
-  q = q.trim().toLowerCase(); if (!q) return false;
-  const msg = $('findMsg');
-  const sv = byHost.get(q), r = byId[q.toUpperCase()];
-  if (sv) { openServer(sv); msg.textContent = ''; return true; }
-  if (r) { focusRack(r); msg.textContent = ''; return true; }
-  const elsewhere = SITE_HOSTS.get(q), otherRack = SITE.halls.find(h => h !== HALL && h.grid.racks.some(x => x.id === q.toUpperCase()));
-  if (elsewhere && elsewhere !== HALL.id) { goHall(elsewhere, 'host=' + encodeURIComponent(q)); return true; }
-  if (otherRack) { goHall(otherRack.id, 'rack=' + encodeURIComponent(q.toUpperCase())); return true; }
-  if (exactOnly) return false;
-  const part = [...byHost.values()].find(s => s.host.includes(q));
-  if (part) { openServer(part); $('find').value = part.host; msg.textContent = ''; return true; }
-  msg.textContent = `No host or rack matches “${q}”`;
-  return false;
-}
-$('findForm').addEventListener('submit', e => { e.preventDefault(); if (find($('find').value)) $('find').blur(); });
-$('find').addEventListener('input', e => { $('findMsg').textContent = ''; if (e.inputType === 'insertReplacementText' || !e.inputType) find(e.target.value, true); });
+
 document.addEventListener('keydown', e => {
-  const typing = /INPUT|TEXTAREA/.test(document.activeElement.tagName);
+  const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+  if (table.isOpen() && e.key !== 'Escape') return;   // the inventory table is a dialog: its keys are its own
   // Esc: leave the search box, push a server back in, or (with nothing open) reset the view
-  if (e.key === 'Escape') { if (typing) document.activeElement.blur(); else if (SV.open) closeServer(); else hallView(); }
+  if (e.key === 'Escape') { if (typing) document.activeElement.blur(); else if (table.isOpen()) table.close(); else if (plan.isOn()) plan.show(false); else if (SV.open) closeServer(); else hallView(); }
+  else if ((e.key === 'i' || e.key === 'I') && !typing && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); table.toggle(); }
   else if (e.key === '/' && !typing) { e.preventDefault(); $('find').focus(); }
   // Rack view: walk along the row; screen-right is +x for front-facing rows and −x for the others
   else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !typing && UI.cutRack && !/BUTTON/.test(document.activeElement.tagName)) {
@@ -271,19 +295,20 @@ if (window.innerWidth <= 720) { $('opsBox').open = false; setRackMin(true); }
 prepare(scene);
 
 // ---------- Boot: pre-run two minutes of telemetry so trends are populated ----------
-for (let i = 0; i < 480; i++) step(0.25);
+if (!INV) for (let i = 0; i < 480; i++) step(0.25);
+if (INV) { W.mode = 'fill'; pk.pts.visible = false; }
 renderLegend();
 UI.selected = byId.A03 || racks[0] || null;
 resize();
 if (UI.selected) select(UI.selected, false); else $('rackPanel').hidden = true;   // a hall with no racks yet
-syncChip(); updateAttention();
+if (!INV) { syncChip(); updateAttention(); }
 followLink();
 
 let last = performance.now(), hudAcc = 0;
 function frame(now) {
   // a frame's timestamp can precede the previous performance.now() (slow first frames), so never step backwards
   const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now;
-  step(dt);
+  if (!INV) step(dt);
   updateVisuals(dt);
   updateThermal(dt);
   updateDoors(dt);
@@ -295,11 +320,12 @@ function frame(now) {
   keepInHall();
   updateLights(dt);
   if (releaseCut() && !SV.open && UI.selected) { setDoor(UI.selected, false); setLink(); }
-  render();
-  if (SV.open) drawCores();
+  updateLabels();
+  if (!plan.isOn()) render();
+  if (SV.open && !INV) drawCores();
   hudAcc += dt;
   if (hudAcc > 0.2) { hudAcc = 0; updateHud(); }
-  if (W.sampled) { W.sampled = false; updateSparks(); syncChip(); updateAttention(); }
+  if (W.sampled) { W.sampled = false; if (!INV) { updateSparks(); syncChip(); updateAttention(); } }
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

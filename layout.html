@@ -6,6 +6,7 @@
 <title>Layout Editor · Server Hall Live</title>
 <link rel="stylesheet" href="vendor/fonts/fonts.css">
 <link rel="stylesheet" href="css/editor.css">
+<link rel="stylesheet" href="css/dialog.css">
 </head>
 <body>
 <header class="bar">
@@ -15,7 +16,7 @@
   </div>
   <div class="acts">
     <button id="openFile" type="button">Open file</button>
-    <input id="fileIn" type="file" accept=".json,application/json" hidden>
+    <input id="fileIn" type="file" accept=".json,.csv,application/json,text/csv" hidden>
     <button id="download" type="button">Download JSON</button>
     <button id="toViewer" type="button" class="primary">Show in viewer</button>
     <a href="index.html" class="linkish">Back to the viewer</a>
@@ -76,6 +77,7 @@
     </section>
   </aside>
 </main>
+<dialog id="choice" class="choice" aria-labelledby="choiceTitle"><form method="dialog"><h2 id="choiceTitle"></h2><p id="choiceBody"></p><ul id="choiceList" class="choicelist"></ul><div class="choicebtns" id="choiceBtns"></div></form></dialog>
 <script type="module" src="js/editor.js"></script>
 </body>
 </html>

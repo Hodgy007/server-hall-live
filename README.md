@@ -1,6 +1,6 @@
 # Server Hall Live
 
-A three.js animation of a server room that shows how the servers are performing. The halls, racks and servers come from a site file you supply (JSON: each building and hall's floor layout, and every server with its rack, U position, make, model, CPU, memory, addresses, out-of-band controller, NICs and disks); with no file it shows a generated demo hall. Performance figures come from a simulation that runs in the page unless you point it at a live telemetry feed.
+A three.js animation of a server room that shows how the servers are performing. The halls, racks and servers come from a site file you supply (JSON: each building and hall's floor layout, and every server with its rack, U position, make, model, CPU, memory, addresses, out-of-band controller, NICs and disks); with no file it shows a generated demo hall. Performance figures come from a simulation that runs in the page unless you point it at a live telemetry feed. The page has two modes: **inventory mode** (a map and inventory of which server is in which cabinet, with nothing made up) and **monitoring mode** (the simulated or live figures too); see [Inventory and monitoring modes](#inventory-and-monitoring-modes).
 
 ## What you see
 
@@ -21,19 +21,29 @@ A three.js animation of a server room that shows how the servers are performing.
 - **Cold-aisle particles**: supply air rising from the perforated floor tiles.
 - **Packets**: network traffic climbing each rack's riser and running along the trays to the uplink panel, denser with more traffic.
 
+## Inventory and monitoring modes
+
+- **Inventory mode** is for a site with no telemetry. It hides everything driven by simulated numbers: the KPI strip, the "Simulated telemetry" chip, the needs-attention chip and list, the Live tab and its trends, the CPU, inlet and power colour modes, the thermal camera, the airflow and packet particles, the stress test and per-core figures in the server panel, and the simulated status lights (server and switch LEDs, busway tap-offs and the uplink panel are steady, and the pulled-out server's fans, heatsinks and lights stand still). The rack panel opens on its Inventory tab, without load or power columns. The server panel keeps every record field (server, location, processor, OS, memory, disks, network, NICs, OOB and the console link). The capacity finder looks for free U only.
+- **Monitoring mode** is the page as it was: everything above is back, and the simulation (or the live feed) drives it.
+- **Which mode you get**: the address wins (`?mode=inventory` or `?mode=monitoring`), then `"mode": "inventory"` or `"monitoring"` in the site file, then the file itself: a file that configures a `telemetry` feed is monitoring, any other (including the generated demo hall) is inventory. The header says which mode is on and has a link to switch it for that visit. In inventory mode the telemetry feed is not polled.
+- `data/hall.example.json` has no `telemetry` entry, so it opens in inventory mode; add one (see [Live telemetry](#the-file-format)) or use `?mode=monitoring` to see the monitoring page with it.
+
 ## Getting around
 
 - **Drag** to orbit, **scroll** to zoom.
 - **Move** across the hall: <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> (or the arrow keys, outside rack view), **right-drag** or **shift-drag** with the mouse, or two fingers on a touch screen. The view slides along the floor and stays inside the hall; moving stops the camera rotation.
 - **Reset view** (or <kbd>Esc</kbd> when no server is pulled out) flies back to the whole-hall overview with everything visible.
-- **Find** (or press <kbd>/</kbd>): type a hostname such as `db-e04-07` to fly there and pull that server out, or a rack ID such as `B03` for rack view. Partial names work too, and the field suggests every host and rack.
+- **Find** (or press <kbd>/</kbd>): type anything you know about a server or rack. It looks in the hostname, rack ID, serial or service tag, IP addresses, MAC addresses (NIC and OOB; case and separators do not matter, so `00-0A-F7-01-02-03` finds `00:0a:f7:01:02:03`; give at least three bytes), OOB address, model, manufacturer, role, OS and in-service date, in every hall in the file. Several words must all match (`dell r760`). An exact hostname or rack ID, or a single match, goes straight there: a host pulls that server out, a rack opens rack view. When more than one thing matches, a list opens under the field with each match's host, rack, U, hall and the field that matched. Use <kbd>↓</kbd> <kbd>↑</kbd> and <kbd>Enter</kbd>, or click; <kbd>Esc</kbd> closes the list. A match in another hall switches to that hall.
+- **Plan view** (header button, or **Back to 3D**): a flat top-down map of the hall with north up, the same as the layout grid, drawn from the rack tops. Rack IDs and row letters are printed on it, racks take the current colours (and dim for the rack filter), vented and hot-aisle tiles are tinted. Click a rack, or focus it and press <kbd>Enter</kbd>, to open it in 3D rack view. The wheel and the **+** / **−** buttons zoom, dragging pans, **Fit** shows the whole hall.
+- **Rack IDs from afar**: every rack carries its ID above it, kept the same size on screen so it reads from the default overview; the IDs fade out as you come close or open a rack. Each row's letter is painted on the floor at both ends.
+- **Inventory table**: the header button, <kbd>I</kbd> or `#inventory` in the address; see [Inventory table](#inventory-table).
 - **Click a rack** (front or back) for **rack view**: the camera flies to a spot 2.9 m in front of it so the whole 42U front fits on screen, the door swings open, and everything between you and the rack (the opposite row, containment glass) is cut away so you can see how the rack is filled. Click a server in it to pull it out. In rack view <kbd>←</kbd> / <kbd>→</kbd> walk along the row (in the direction you are facing) and the panel's ‹ › arrows step through every rack. You can slide along the row and keep the cut-away; zoom or orbit more than about 4.5 m away, or move off across the aisle, and it switches off by itself, so the rest of the hall comes back; **Reset view** leaves rack view altogether.
 - Searching for a rack ID also opens rack view.
 - **Links**: the address follows what you are looking at, so it can be copied and shared. `#rack=B03` opens rack view for B03 and `#host=db-e04-07` pulls that server out; Reset view clears it.
 
 ## Inspect a single server
 
-Click a server in an open rack (or a cell in the rack panel's server strip, a row in the inventory, or search for it) and it slides out on its rails while the camera flies in. It is shown at true scale with the lid off, built for its record (its maker's face, 1U to 4U, one to four sockets, AMD or Intel, its DIMM count). From front to back: eight NVMe drives in their carriers and the backplane, with cables running down the left wall to the board; the fan wall (six 60 mm fans in 2U, eight 40 mm fans in 1U); the CPU sockets, each in its carrier frame (orange on AMD, dark on Intel) under a copper-based heatsink with heat pipes and a label naming the processor; the DIMMs either side of each socket; VRM chokes; PCIe risers with blue handles (Dell's touch points); the OCP NIC, BOSS-N1 boot module, CMOS battery and the two power supplies. A label behind the front grille, in the maker's colour, names the model, serial (Dell's service tag) and host. The hardware animates from that server's own telemetry:
+Click a server in an open rack (or a cell in the rack panel's server strip, a row in the inventory, or search for it) and it slides out on its rails while the camera flies in. It is shown at true scale with the lid off, built for its record (its maker's face, 1U to 4U, one to four sockets, AMD or Intel, its DIMM count). From front to back: eight NVMe drives in their carriers and the backplane, with cables running down the left wall to the board; the fan wall (six 60 mm fans in 2U, eight 40 mm fans in 1U); the CPU sockets, each in its carrier frame (orange on AMD, dark on Intel) under a copper-based heatsink with heat pipes and a label naming the processor; the DIMMs either side of each socket; VRM chokes; PCIe risers with blue handles (Dell's touch points); the OCP NIC, BOSS-N1 boot module, CMOS battery and the two power supplies. A label behind the front grille, in the maker's colour, names the model, serial (Dell's service tag) and host. In monitoring mode the hardware animates from that server's own telemetry (in inventory mode it stands still):
 
 - **Fans** spin faster as the CPUs heat up (3,800 to 13,000 rpm).
 - **Heatsinks** glow from blue to red with CPU temperature, with heat rising off them.
@@ -67,18 +77,27 @@ The demo hall's racks each hold twelve servers of one model, picked at random fr
 
 Power draw follows the model, from idle to flat out (for a model the catalogue does not know, it is estimated from the sockets, cores and memory). The rack panel names the rack's model, or how many models it holds.
 
-Below that it shows per-core load for every core (one block per socket), CPU temperatures, fan speed, memory, IOPS, network and power, plus a 2-minute CPU trend. **Run 20 s stress test** pins the cores at 100% so you can watch the temperatures and fans respond. Click the pulled-out server again, press **Back** or <kbd>Esc</kbd> to slide it back in like a drawer; the camera stays where it is. Flying to a rack or opening a server stops the camera rotation until you press **Start rotation**.
+In monitoring mode, below that it shows per-core load for every core (one block per socket), CPU temperatures, fan speed, memory, IOPS, network and power, plus a 2-minute CPU trend. **Run 20 s stress test** pins the cores at 100% so you can watch the temperatures and fans respond. Click the pulled-out server again, press **Back** or <kbd>Esc</kbd> to slide it back in like a drawer; the camera stays where it is. Flying to a rack or opening a server stops the camera rotation until you press **Start rotation**.
 
 ## Panels and controls
 
-- KPI strip: average CPU, network, IT load and the hottest inlet temperature.
-- **Needs attention** (a chip under the title, red when anything is critical, amber for warnings, green **All OK** when nothing is): click it for every rack and server in this hall in warning or critical state, worst first and grouped by rack, each with why: CPU load, CPU temperature, inlet temperature, a failed part or a top-of-rack switch down. Click a rack to fly to it, or a server to pull it out. The list keeps itself up to date every second.
-- **Find space for** a server (in Controls): pick its height (1U to 4U) and peak power in watts, then **Find**. A rack has room when it has that many free U in one run (U1–38) and its 12 kW budget still covers every server in it running flat out, both switches at full traffic and the new server. Racks with room light up blue, the one with the most power to spare in green, and the rest go dark; light columns show how much power is left. The list gives each rack's lowest free slot and spare kW; click one to fly there with the slot outlined. **Clear**, or picking a colour mode, puts the colours back.
-- Rack detail, **Live** tab: CPU, memory, power and network are rolled up from the rack's 12 servers (power also includes the two switches), with a count of servers in warning or critical state, inlet/exhaust temperature and 2-minute trends. A rack also turns amber when any of its servers is critical. Click a rack or use the arrow buttons.
+Items marked (monitoring) are hidden in inventory mode.
+
+- (monitoring) KPI strip: average CPU, network, IT load and the hottest inlet temperature.
+- (monitoring) **Needs attention** (a chip under the title, red when anything is critical, amber for warnings, green **All OK** when nothing is): click it for every rack and server in this hall in warning or critical state, worst first and grouped by rack, each with why: CPU load, CPU temperature, inlet temperature, a failed part or a top-of-rack switch down. Click a rack to fly to it, or a server to pull it out. The list keeps itself up to date every second.
+- **Find space for** a server (in Controls): in inventory mode pick its height (1U to 4U) and **Find**: racks with that many free U in one run (U1–38) light up blue, the one with the most free U in green, the rest go dark; the list gives each rack's lowest free slot and free U. In monitoring mode also give its peak power in watts. Pick its height (1U to 4U) and peak power in watts, then **Find**. A rack has room when it has that many free U in one run (U1–38) and its 12 kW budget still covers every server in it running flat out, both switches at full traffic and the new server. Racks with room light up blue, the one with the most power to spare in green, and the rest go dark; light columns show how much power is left. The list gives each rack's lowest free slot and spare kW; click one to fly there with the slot outlined. **Clear**, or picking a colour mode, puts the colours back.
+- (monitoring) Rack detail, **Live** tab: CPU, memory, power and network are rolled up from the rack's 12 servers (power also includes the two switches), with a count of servers in warning or critical state, inlet/exhaust temperature and 2-minute trends. A rack also turns amber when any of its servers is critical. Click a rack or use the arrow buttons.
 - Rack detail, **Inventory** tab: everything in the rack from U42 down (ToR switches, patch panel, OOB switch, free space, each server with model, drives, serial and in-service date, both PDUs), with live load and power per device and a rack total. **Hover a row** to outline that device in the rack; click a server row to pull it out.
+- **Print elevation** (in the rack panel's Inventory tab): prints a clean page for the rack, U42 down to U1, with each device's host, model and serial in its U positions (a multi-U server spans its units), the three switches and patch panel in U39–42, and the rack ID, building and hall, and date. It uses the browser's print dialog (save as PDF there); everything else on the page is left out of the print.
 - Controls: colour mode, the capacity finder, **Thermal camera**, **Start/Stop rotation** for the camera orbit and **Show/Hide airflow** for the air particles (both start off), and **Graphics** (see [Run it](#run-it)). The simulation runs at a steady 60% traffic demand with both cooling units healthy.
-- **Colour racks by** CPU load, inlet temperature or **power** (draw against each rack's 12 kW budget, which shows where there is capacity to add servers).
+- **Colour racks by** (inventory mode): **Fill** (used U out of the 38 usable, as a scale), **Role**, **Make** or **Model** (the one taking the most U in the rack; a swatch list in the legend with the number of racks each, the eight most common given a colour each and the rest grouped as "Other"; "Not recorded" in grey) and **Age** (years since the oldest server in the rack went into service, as a scale, grey for no date). The light column's height is the fill level.
+- **Highlight racks holding** (Controls, both modes): type anything Find understands (`R760`, `database`, `2021`, a serial). Racks with a match keep their colour and their column shows how much of the rack matches; the rest go dark. The count of servers and racks is shown, and in rack view the matching servers are bright (and their LEDs lit) while the others dim, and the rack panel's rows mark them. Starting the capacity finder clears the filter and the other way round. **Clear** (or <kbd>Esc</kbd> in the field) removes it.
+- (monitoring) **Colour racks by** CPU load, inlet temperature or **power** (draw against each rack's 12 kW budget, which shows where there is capacity to add servers).
 - **Thermal camera** switches the hall to a false-colour infrared view (the ironbow palette, 16–46 °C): every surface takes the colour of the air where it stands, so cold aisles, rack fronts at their inlet temperature, rears and hot aisles at their exhaust and the warm ceiling plenum all read at a glance, and each server's face shows its own inlet and exhaust. Glass, the perforated doors, labels and the light columns drop out so the racks behind them show.
+
+## Inventory table
+
+The header's **Inventory table** button (or <kbd>I</kbd>, or `#inventory` in the address) opens a table of every server across all halls: host, building, hall, rack, U, height, make, model, serial, IP, OOB address, role, OS and in-service date. Click a column heading to sort (again for descending, a third time for the physical order of building, hall, rack and U from the top down; blanks always last). The filter box narrows the rows as you type with the same matching as Find, and the count shows how many rows are shown. Click a row, or focus it and press <kbd>Enter</kbd>, to go to that server (switching hall if needed). Only the rows in view are drawn, so thousands of servers stay quick. **Export CSV** writes the rows currently shown, in the table's order, as `server-inventory.csv` (UTF-8 with a byte order mark so Excel reads it); the file loads back through [CSV import](#csv-import). Values a spreadsheet would run as formulas (starting with `=`, `+`, `-` or `@`) are written with a leading `'`, which the import takes off again.
 
 ## Your own data centre
 
@@ -86,10 +105,40 @@ The page reads `data/hall.json` at start-up, or a file you load into the browser
 
 ### Loading a file
 
-- **Load file** in the header (or drop a `.json` file anywhere on the page) checks the file and keeps a copy in this browser, which is used instead of `data/hall.json` from then on, on every visit, until you press **Use server file**. The header says which file is on show. The copy lives only in this browser.
+- **Load file** in the header (or drop a `.json` or `.csv` file anywhere on the page) checks the file and keeps a copy in this browser, which is used instead of `data/hall.json` from then on, on every visit, until you press **Use server file**. The header says which file is on show. The copy lives only in this browser.
 - To give everyone the same view, put the file on the server as `data/hall.json`.
 - **The hall picker** lists every building and hall in the file with its rack and server counts; the page shows one hall at a time (`?hall=` in the address). **Find** knows every host and rack in the file and switches to the hall it is in.
 - **Problems in the data** (a chip in the header when there are any) lists what could not be placed, and why: a server whose rack is not in any hall's grid, two servers in the same rack units, a hostname used twice, a U position outside U1–38 (U39–42 hold the switches), a grid token it does not understand, a rack with no room behind it. Everything else is still shown.
+
+### CSV import
+
+A `.csv` (or `.tsv`) file is a list of servers, one row per server, loaded the same way as a site file (**Load file**, drag and drop, and **Open file** in the layout editor). `data/servers.example.csv` is a worked example for `data/hall.example.json` (two deliberate mistakes at the end).
+
+- **Columns**: the first row names them, matched without regard to case, spaces or punctuation. Only a hostname column is required; rack and U are needed to put a server in a rack. Unknown columns are ignored and listed.
+
+| Field | Accepted column names |
+| --- | --- |
+| host | host, hostname, name, server |
+| rack | rack, cab, cabinet |
+| U | u, position, u position, rack position |
+| height | height, size, ru, u height (`2` or `2U`) |
+| building | building, site |
+| room (hall) | room, hall |
+| make | manufacturer, make, vendor |
+| model | model |
+| serial | serial, service tag, asset tag, sn |
+| IP | ip, ip address (several separated by `;`, `,` or spaces) |
+| OOB | oob, idrac, ilo, bmc, ipmi (the management address) |
+| OOB MAC / NIC MACs | oob mac, idrac mac…; mac (several separated as for IPs) |
+| role, OS | role, function, workload; os, operating system |
+| in service | installed, in service, install date |
+| CPU, memory | cpu, processor; memory, ram |
+
+  A U cell may be `12`, `U12` or a range `12-13` (which also gives the height). Dates may be `2021-03-15`, `2021-03`, `2021` or `15/03/2021`.
+- **Format**: the delimiter (comma, semicolon or tab) is taken from the header line. Quoted values may hold the delimiter, line breaks and doubled quotes; a byte order mark and CRLF or LF line ends are fine.
+- **Into a site that already has halls**: the page asks whether to **Replace all servers** (the file's servers become exactly the list) or **Merge by hostname** (a listed hostname takes the list's values for the columns it has and keeps its other fields, such as disks, cabling and VLANs; new hostnames are added; servers not in the list stay). Halls, layout and settings are kept either way, and the choice shows how many rows fit in a rack. The result is kept in this browser like a loaded file.
+- **Into a site with no halls**: the servers are saved and the layout editor opens with an empty hall for each building and room they name, to place their racks.
+- **Problems**: rows are turned into server records and checked like any others, so the **Problems in the data** list reports what could not be used, with the CSV row (the header is row 1): a missing hostname, a hostname repeated on an earlier row, a U or height that is not a number, a rack that is in no hall, servers in the same units, a U outside U1–38. Ignored columns are listed there too. The import's own notes are kept in the file as `importNotes` until another import replaces them.
 
 ### The layout editor
 
@@ -98,6 +147,7 @@ The page reads `data/hall.json` at start-up, or a file you load into the browser
 - **Rack ↓ / Rack ↑** place racks whose fronts face south or north; drag along a row to place a run of them. New racks are named from the prefix and the next free number, except that racks the file's servers name but no grid has yet are placed first, under those names. Each rack shows how many servers the file puts in it.
 - **Vented tile** paints the cold aisle in front of racks, **Hot aisle** the contained aisle between rack rears, **Floor / erase** clears tiles and removes racks.
 - **Select** a rack to rename it (its servers move with it), turn it round or delete it. Halls can be added, renamed (their servers move with them), resized and deleted; **Undo** (or Ctrl+Z) steps back.
+- **Open file** also takes a `.csv` server list (see [CSV import](#csv-import)): its servers replace or merge into the file's, and the halls stay.
 - A file with servers but no halls gets an empty hall for each building and room its servers name, so you can lay out their racks.
 - **Show in viewer** keeps the edited file in this browser and opens the hall in the viewer; **Download JSON** saves it, for `data/hall.json` or anywhere else.
 
@@ -170,9 +220,9 @@ Rows run across the grid (east to west); racks face north or south. A rack's wor
 | `attachedDisks` | SAN or other attached storage: `[{ type, array, protocol, size, lun, name }]` |
 | `power` | `[idle, flat-out]` watts, if you know them |
 
-**Settings.** `domain` builds the FQDNs; `oobUrl` is the console link (`{ip}` is the out-of-band address, `{host}` the hostname; the older `idracUrl` and `iloUrl` work too).
+**Settings.** `mode` (`"inventory"` or `"monitoring"`) sets the [mode](#inventory-and-monitoring-modes); `domain` builds the FQDNs; `oobUrl` is the console link (`{ip}` is the out-of-band address, `{host}` the hostname; the older `idracUrl` and `iloUrl` work too).
 
-**Live telemetry.** `telemetry` points at a live feed (`url`, `intervalSeconds`). It is polled, and every server and rack it reports shows its real figures instead of simulated ones: `cpu` in %, `memGB`, `tempC` (hottest CPU), `powerW`, `netGbps`, and a rack's `inletC`. Values can be numbers or numeric strings; anything else is ignored and that figure stays simulated. `data/telemetry.example.json` shows the shape. Anything the feed stops reporting for three intervals falls back to the simulation; the header chip shows how many servers are live.
+**Live telemetry.** `telemetry` (at the top of the file) points at a live feed (`url`, `intervalSeconds`) and makes the page open in monitoring mode. It is polled, and every server and rack it reports shows its real figures instead of simulated ones: `cpu` in %, `memGB`, `tempC` (hottest CPU), `powerW`, `netGbps`, and a rack's `inletC`. Values can be numbers or numeric strings; anything else is ignored and that figure stays simulated. `data/telemetry.example.json` shows the shape. Anything the feed stops reporting for three intervals falls back to the simulation; the header chip shows how many servers are live.
 
 **Older files.** Files that only list `racks.<rack>.servers.U<n>` with flat fields (`host`, `serial`, `ip`, `idrac`, `mac`, …) still work: with no halls they fill in the demo hall's servers at those slots.
 
@@ -197,6 +247,16 @@ Everything the page needs is in the repository, so it also works on a network wi
 
 `?quality=low`, `medium` or `high` in the address overrides the choice for that visit.
 
+## Tests
+
+The pure logic (CSV parsing and writing, header names, search matching, the inventory table's model, colour categories and mode choice) has no three.js or DOM in it and is tested with Node's built-in runner, no dependencies:
+
+```sh
+node --test
+```
+
+`package.json` only marks the folder as ES modules and names that script; the page does not use it.
+
 ## Code layout
 
 | File | What it does |
@@ -204,6 +264,21 @@ Everything the page needs is in the repository, so it also works on a network wi
 | `index.html` | Markup for the HUD and the import map |
 | `layout.html`, `js/editor.js`, `css/editor.css` | The layout editor |
 | `css/style.css` | Viewer styles |
+| `js/csv.js` | CSV parser and writer, header aliases, turning rows into server records and laying them into a site file (no DOM) |
+| `js/search.js` | One matcher for Find, the table filter and the rack filter (no DOM) |
+| `js/sheet.js` | The inventory table's columns, rows, filter, sort and export rows (no DOM) |
+| `js/colorby.js` | Inventory colour modes: fill, age, category buckets and palettes (no DOM) |
+| `js/mode.js` | Inventory or monitoring mode, put on `<html>` as `data-mode` |
+| `js/rackcolor.js` | Rack colours by mode and the rack filter state |
+| `js/finder.js` | Find box and its results list |
+| `js/table.js` | Inventory table overlay (windowed rows, sort, filter, Export CSV) |
+| `js/plan.js` | Plan view (SVG) |
+| `js/print.js` | Print elevation |
+| `js/labels.js` | Rack ID labels and floor row letters for the overview |
+| `js/choose.js`, `css/dialog.css` | The in-page replace / merge choice dialog |
+| `css/print.css` | Print stylesheet for the elevation |
+| `test/*.test.js`, `package.json` | `node --test` tests |
+| `data/servers.example.csv` | Worked example of a server list |
 | `js/site.js` | The site file format: grid parsing, server normalisation and the model catalogue, validation, the hall's layout in metres, the demo hall |
 | `js/data.js` | Loads the site file (the browser's copy or `data/hall.json`) and picks the hall to show |
 | `js/store.js` | The browser's copy of a loaded site file (IndexedDB) |

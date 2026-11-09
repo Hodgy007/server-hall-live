@@ -31,6 +31,16 @@ export const fmtMem = gb => gb >= 1024 ? `${+(gb / 1024).toFixed(2)} TB` : `${Ma
 const list = v => Array.isArray(v) ? v : v === undefined || v === null || v === '' ? [] : [v];
 const key = s => str(s).toLowerCase();
 
+// ---------- Mode ----------
+// "inventory" shows the map and the records only; "monitoring" adds the simulated or live figures, the colour modes
+// for them and the attention list. ?mode= in the address wins over "mode" in the site file; with neither, a site file
+// that configures a telemetry feed is monitoring and any other is inventory.
+export const MODES = ['inventory', 'monitoring'];
+export function resolveMode(fromUrl, fromFile, telemetry) {
+  const pick = v => MODES.includes(key(v)) ? key(v) : null;
+  return pick(fromUrl) || pick(fromFile) || (telemetry && str(telemetry.url) ? 'monitoring' : 'inventory');
+}
+
 // ---------- Known models: what a record leaves out comes from here ----------
 // Power is idle and flat-out watts. Memory is 32 GB RDIMMs in every slot unless the record says otherwise.
 export const MODELS = {
@@ -170,9 +180,12 @@ function legacyRecord(id, uKey, o) {
   return rec;
 }
 
+// Records that came from a CSV file carry the row they were on, so problems can name it
+const csvAt = o => (o && Number.isFinite(+o.csvRow) && o.csvRow !== '' && o.csvRow !== null ? ` (CSV row ${+o.csvRow})` : '');
+
 // One server record → the shape the app reads. Missing specs come from the model catalogue, then sensible defaults.
 function normServer(o, i, problems) {
-  const where = `server ${str(o.host) || '#' + (i + 1)}`;
+  const where = `server ${str(o.host || o.hostname || o.name) || '#' + (i + 1)}${csvAt(o)}`;
   const known = MODELS[findModel(o.model)] || null;
   const maker = str(o.manufacturer || o.vendor || o.make) || (known ? known.maker : /poweredge/i.test(o.model) ? 'Dell' : /proliant/i.test(o.model) ? 'HPE' : '');
   const family = familyOf(maker);
@@ -211,7 +224,7 @@ function normServer(o, i, problems) {
     rack: str(o.rack).toUpperCase(), u, h, maker: maker || 'Generic', family, model: display, serial: str(o.serial || o.serviceTag || o.assetTag), installed: str(o.installed),
     role: str(o.role || o.function || o.workload), os: str(o.os), kernel: str(o.kernel),
     cpu: { model: cpuModel, sockets, cores, ghz, vendor }, memory: { gb, dimms, channels, type: str(mem.type) || 'DDR5 RDIMM' },
-    ips, oob, nics, localDisks, attachedDisks, power, extra: o.notes ? str(o.notes) : ''
+    ips, oob, nics, localDisks, attachedDisks, power, extra: o.notes ? str(o.notes) : '', csvRow: Number.isFinite(+o.csvRow) && o.csvRow !== '' && o.csvRow !== null ? +o.csvRow : null
   };
 }
 
@@ -220,7 +233,7 @@ export function loadSite(raw) {
   const problems = [];
   let src = raw && typeof raw === 'object' ? raw : {};
   const demo = !list(src.halls).length;
-  if (demo) src = Object.assign({}, demoSite(src), { domain: src.domain || 'hall2.local', oobUrl: src.oobUrl, idracUrl: src.idracUrl, iloUrl: src.iloUrl, telemetry: src.telemetry, racks: src.racks });
+  if (demo) src = Object.assign({}, demoSite(src), { domain: src.domain || 'hall2.local', oobUrl: src.oobUrl, idracUrl: src.idracUrl, iloUrl: src.iloUrl, telemetry: src.telemetry, racks: src.racks, mode: src.mode });
   const halls = list(src.halls).map((h, i) => {
     const building = str(h.building) || 'Site', room = str(h.room || h.name) || `Hall ${i + 1}`, id = str(h.id) || `${building} / ${room}`;
     return { id, building, room, grid: parseGrid(h.grid, problems, id) };
@@ -245,11 +258,11 @@ export function loadSite(raw) {
   const hosts = new Set();
   for (const sv of servers) {
     const h = hallOf(sv);
-    if (!h) { problems.push(`${sv.host}: rack ${sv.rack || '?'}${sv.building || sv.room ? ` in ${[sv.building, sv.room].filter(Boolean).join(' / ')}` : ''} is not in any hall's grid`); continue; }
+    if (!h) { problems.push(`${sv.host}${csvAt(sv)}: rack ${sv.rack || '?'}${sv.building || sv.room ? ` in ${[sv.building, sv.room].filter(Boolean).join(' / ')}` : ''} is not in any hall's grid`); continue; }
     sv.hall = h.id;
-    if (hosts.has(key(sv.host))) problems.push(`${sv.host}: hostname used more than once`);
+    if (hosts.has(key(sv.host))) problems.push(`${sv.host}${csvAt(sv)}: hostname used more than once`);
     hosts.add(key(sv.host));
-    if (Number.isFinite(sv.u) && (sv.u < 1 || sv.u + sv.h - 1 > MAX_U)) { problems.push(`${sv.host}: U${sv.u}${sv.h > 1 ? `–${sv.u + sv.h - 1}` : ''} is outside U1–${MAX_U} (U39–42 hold the switches)`); sv.hall = null; }
+    if (Number.isFinite(sv.u) && (sv.u < 1 || sv.u + sv.h - 1 > MAX_U)) { problems.push(`${sv.host}${csvAt(sv)}: U${sv.u}${sv.h > 1 ? `–${sv.u + sv.h - 1}` : ''} is outside U1–${MAX_U} (U39–42 hold the switches)`); sv.hall = null; }
   }
   // Two servers in the same rack units: the later one is left out
   const taken = new Map();
@@ -257,13 +270,16 @@ export function loadSite(raw) {
     if (!sv.hall || !Number.isFinite(sv.u)) { sv.hall = null; continue; }
     for (let u = sv.u; u < sv.u + sv.h; u++) {
       const k = `${sv.hall}|${sv.rack}|${u}`;
-      if (taken.has(k)) { problems.push(`${sv.host}: U${u} of rack ${sv.rack} is already taken by ${taken.get(k)}`); sv.hall = null; break; }
+      if (taken.has(k)) { problems.push(`${sv.host}${csvAt(sv)}: U${u} of rack ${sv.rack} is already taken by ${taken.get(k)}`); sv.hall = null; break; }
     }
     if (sv.hall) for (let u = sv.u; u < sv.u + sv.h; u++) taken.set(`${sv.hall}|${sv.rack}|${u}`, sv.host);
   }
+  // What a CSV import could not use, written into the file when it was imported (csv.js)
+  problems.push(...list(raw && raw.importNotes).map(str).filter(Boolean));
   return {
     demo, problems, halls, servers: servers.filter(sv => sv.hall),
-    domain: str(src.domain) || 'dc.local', oobUrl: str(src.oobUrl || src.idracUrl || src.iloUrl), telemetry: src.telemetry || null
+    domain: str(src.domain) || 'dc.local', oobUrl: str(src.oobUrl || src.idracUrl || src.iloUrl), telemetry: src.telemetry || null,
+    mode: MODES.includes(key(src.mode)) ? key(src.mode) : null
   };
 }
 
