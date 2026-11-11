@@ -4,6 +4,7 @@
 // the fan wall, the CPU sockets with their heatsinks and DIMMs, then PCIe risers, OCP NIC, BOSS boot module, PSUs.
 import { THREE, scene, lc, COL, clamp, grad, gradIn, LST, U, ease, reduceMotion, canvasTex, speckle } from './core.js';
 import { W, SV } from './state.js';
+import { INV } from './mode.js';
 import { faceMats, faceGeo, LED, setInstance, doorOpen } from './racks.js';
 import { faceSpec } from './textures.js';
 import { prepare } from './lights.js';
@@ -261,6 +262,15 @@ export function updateServerModel(dt) {
   slotPos(sv, ease(SV.slide), SRV.position);
   if (!SV.open && SV.slide <= 0) { setInstance(sv, true); SV.sel = null; SRV.visible = false; return; }
   const r = sv.r, V = cur, blink = (W.t * 2.5) % 1 < 0.5;
+  if (INV) {   // inventory mode: no simulated figures, so fans, heatsinks and lights stand still
+    V.psuLeds.forEach(m => m.material.color.copy(PSU_OK));
+    V.sinkMats.forEach(m => { m.emissive.setScalar(0); m.emissiveIntensity = 0; });
+    V.dimmMats.forEach(m => { m.emissiveIntensity = 0; });
+    V.driveLeds.forEach(d => d.m.material.color.copy(LED.off));
+    V.nicLeds.forEach(d => d.m.material.color.copy(LED.off));
+    V.frontLed[0].material.color.copy(LED.off); V.frontLed[1].material.color.copy(LED.idle);
+    return;
+  }
   V.rotors.forEach((f, i) => { if (!sv.faults.some(x => x.kind === 'fan' && x.k === i)) f.rotation.z += dt * SV.rpm / 1000 * 2.2 * (1 + i * 0.02); });
   V.psuLeds.forEach((m, k) => m.material.color.copy(sv.faults.some(x => x.kind === 'psu' && x.k === k) ? (blink ? LED.crit : LED.dark) : PSU_OK));
   SV.temp.forEach((t, k) => { grad('cpu', t, tmp); V.sinkMats[k].emissive.copy(tmp); V.sinkMats[k].emissiveIntensity = 0.06 + clamp((t - 40) / 50, 0, 1) * 0.3; });

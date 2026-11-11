@@ -15,6 +15,7 @@ if (!raw) {
     .catch(e => { loadError = loadError || `data/hall.json could not be read: ${e.message}`; return {}; });
 }
 
+export const RAW = raw;   // the site file as it was read, for CSV imports to lay servers into
 export const SITE = loadSite(raw);
 SITE.source = source;
 if (loadError) SITE.problems.unshift(loadError);

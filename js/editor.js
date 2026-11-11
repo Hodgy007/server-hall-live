@@ -3,6 +3,8 @@
 // as tiles (". P H +" and "R" for a rack's front tile) plus a rack list, and written back as grid strings (site.js).
 import { loadSite, parseGrid, gridText, demoSite } from './site.js';
 import { getLocal, putLocal } from './store.js';
+import { parseServers, applyServers } from './csv.js';
+import { choose } from './choose.js';
 
 const $ = id => document.getElementById(id);
 const ENT = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -251,8 +253,27 @@ $('toViewer').addEventListener('click', async () => {
 $('openFile').addEventListener('click', () => $('fileIn').click());
 $('fileIn').addEventListener('change', async e => {
   const f = e.target.files[0]; if (!f) return;
-  try { use(JSON.parse(await f.text()), f.name, `Editing ${f.name}.`); } catch (err) { say(`${f.name} is not valid JSON: ${err.message}`); }
+  if (/\.(csv|tsv)$/i.test(f.name)) await importCsv(f);
+  else try { use(JSON.parse(await f.text()), f.name, `Editing ${f.name}.`); } catch (err) { say(`${f.name} is not valid JSON: ${err.message}`); }
   e.target.value = '';
 });
+
+// A CSV is a list of servers (csv.js). It goes into the file being edited: the halls and their layout stay, and the servers are
+// replaced by the list or merged into the existing ones by hostname. With no servers yet it simply fills the file.
+async function importCsv(f) {
+  const res = parseServers(await f.text());
+  if (res.error || !res.records.length) { await choose(`${f.name} could not be used`, res.error || 'No rows with a hostname were found.', [], res.problems, 'Close'); return; }
+  const n = res.records.length;
+  let mode = 'replace';
+  if (site.servers.length) {
+    mode = await choose(`${n} server${n === 1 ? '' : 's'} read from ${f.name}`, `The file being edited already has ${site.servers.length} server${site.servers.length === 1 ? '' : 's'}. The halls and layout are kept either way.`,
+      [{ id: 'replace', label: 'Replace all servers' }, { id: 'merge', label: 'Merge by hostname', primary: true }], res.problems);
+    if (!mode) return;
+  }
+  const out = applyServers(site, res.records, mode, res.problems).site;
+  site.servers = out.servers; if (out.importNotes) site.importNotes = out.importNotes; else delete site.importNotes; delete site.racks;
+  say(`${n} servers read from ${f.name} (${mode === 'merge' ? 'merged by hostname' : 'replacing the old list'}). Place any racks they name that are not on a grid yet.`);
+  refresh(true);
+}
 
 start();

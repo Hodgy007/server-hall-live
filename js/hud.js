@@ -4,6 +4,8 @@ import { W, G, UI, SV } from './state.js';
 import { racks, iloUrl, DOMAIN, freeCount, highlight, unhighlight } from './racks.js';
 import { fmtGB, fmtMem } from './site.js';
 import { describe, rackFaults, SHORT } from './faults.js';
+import { INV } from './mode.js';
+import { CB } from './rackcolor.js';
 
 // Set by main.js: open a server (pull it out)
 export const hooks = { open: null };
@@ -68,14 +70,14 @@ function renderSpecs(sv) {
   specFor = sv;
   const n = sv.rec, m = sv.spec, tag = n.family === 'dell' ? 'Service Tag' : 'Serial';
   const dpc = m.dimms / (m.channels * m.sockets), per = n.memory.gb / m.dimms;
-  const local = n.localDisks.length ? n.localDisks.map(diskLine).join('<br>') + ` <span>· ${sv.driveTB.toFixed(1)} TB raw, ${Math.round(sv.diskUsed * 100)}% used</span>` : '<span>None recorded</span>';
+  const local = n.localDisks.length ? n.localDisks.map(diskLine).join('<br>') + ` <span>· ${sv.driveTB.toFixed(1)} TB raw${INV ? '' : `, ${Math.round(sv.diskUsed * 100)}% used`}</span>` : '<span>None recorded</span>';
   const nics = n.nics.length ? n.nics : [];
   $('sSpecs').innerHTML =
     row('Server', `${esc(sv.host)}.${esc(DOMAIN)} <span>· ${esc(sv.model)} · ${tag} ${esc(sv.serial)}${n.installed ? ' · in service ' + esc(n.installed) : ''}</span>`) +
     row('Location', `${esc(n.building || '—')} / ${esc(n.room || '—')} <span>· rack ${esc(n.rack)} · ${uSpan(sv)}${n.role ? ' · ' + esc(n.role) : ''}</span>`) +
     row('Processor', `${esc(sv.cpu)} <span>· ${esc(sv.cpuNote)}</span>`) +
     row('OS', `${esc(sv.os[0])}${sv.os[1] ? ` <span>· kernel ${esc(sv.os[1])}</span>` : ''}`) +
-    row('Memory', `${fmtMem(n.memory.gb)} ${esc(n.memory.type)} <span>· ${m.dimms} × ${fmtMem(per)}${Number.isInteger(dpc) && dpc <= 2 ? `, ${dpc === 1 ? 'one DIMM' : 'two DIMMs'} on each of ${m.channels} channels per socket` : ''} · <b id="spMemUse"></b> in use</span>`) +
+    row('Memory', `${fmtMem(n.memory.gb)} ${esc(n.memory.type)} <span>· ${m.dimms} × ${fmtMem(per)}${Number.isInteger(dpc) && dpc <= 2 ? `, ${dpc === 1 ? 'one DIMM' : 'two DIMMs'} on each of ${m.channels} channels per socket` : ''} ${INV ? '' : ' · <b id="spMemUse"></b> in use'}</span>`) +
     row('Local disks', local) +
     row('Attached', n.attachedDisks.length ? n.attachedDisks.map(sanLine).join('<br>') : '<span>None</span>') +
     row('Network', n.ips.length ? n.ips.map(a => `${a.iface ? esc(a.iface) + ' ' : ''}${esc(a.address)} <span>· ${sub([a.vlan !== undefined && a.vlan !== '' ? 'VLAN ' + a.vlan : '', a.gateway && 'gateway ' + a.gateway])}</span>`).join('<br>') : '<span>No addresses recorded</span>') +
@@ -85,7 +87,31 @@ function renderSpecs(sv) {
   ilo.textContent = `Open ${sv.oobName} console ↗`; ilo.setAttribute('aria-label', `Open the ${sv.oobName} console for ${sv.host} at ${sv.ilo}`);
 }
 
+// Inventory mode: the rack panel is just its Inventory tab, and nothing on it moves
+let markRev = -1;
+function markRows() {
+  markRev = CB.rev;
+  const on = !!CB.svHits;
+  $('invBody').parentElement.classList.toggle('filtering', on);
+  for (const row of invRows) if (row.kind === 'sv') row.tr.classList.toggle('hit', on && CB.svHits.has(row.sv));
+}
+function updateInvHud() {
+  if (SV.open && SV.sel) {
+    const sv = SV.sel;
+    if (specFor !== sv) renderSpecs(sv);
+    $('sHost').textContent = sv.host;
+    $('sMeta').textContent = [`Rack ${sv.r.id}`, uSpan(sv), sv.rec.role].filter(Boolean).join(' · ');
+    return;
+  }
+  const r = UI.selected; if (!r) return;
+  $('rId').textContent = 'Rack ' + r.id;
+  $('rRole').textContent = `Row ${r.row.id} · ${rackSummary(r)}`;
+  if (invRack !== r) { unhighlight(); buildInv(r); markRev = -1; }
+  if (markRev !== CB.rev) markRows();
+}
+
 export function updateHud() {
+  if (INV) return updateInvHud();
   const cpuL = G.cpu > 0.85 ? 2 : G.cpu > 0.7 ? 1 : 0;
   $('kCpu').textContent = Math.round(G.cpu * 100) + '%'; $('kCpu').className = 'v ' + lvlClass(cpuL);
   $('kNet').innerHTML = Math.round(G.net) + '<small>Gbps</small>';
@@ -103,7 +129,7 @@ export function updateHud() {
     if (specFor !== sv) renderSpecs(sv);
     $('sHost').textContent = sv.host;
     $('sMeta').textContent = `Rack ${sv.r.id} · ${uSpan(sv)} · ${sv.rec.role || sv.r.prof.role}`;
-    $('spMemUse').textContent = fmtMem(SV.mem * sv.memGB);
+    if ($('spMemUse')) $('spMemUse').textContent = fmtMem(SV.mem * sv.memGB);
     sv.rec.nics.forEach((c, k) => { const el = $('spLink' + k); if (el) el.textContent = k < 2 && sv.r.torDown[k] ? ' · link down' : ''; });
     const fl = $('sFaults'), all = sv.faults.concat(rackFaults(sv.r).filter(f => !f.sv));
     fl.hidden = !all.length; fl.innerHTML = all.map(f => `<li>${describe(f)}</li>`).join('');
@@ -179,23 +205,38 @@ export function drawCores() {
 }
 
 export function renderLegend() {
+  const bar = $('lgBar'), ticks = $('lgTicks'), sw = $('lgSwatch');
+  sw.hidden = true; bar.hidden = false; ticks.hidden = false; $('lgNote').textContent = '';
   if (UI.fit && !UI.thermal) {
-    $('lgBar').style.background = `linear-gradient(90deg, #1c2630 0 33%, ${COL.cold} 33% 67%, ${COL.ok} 67%)`;
-    $('lgTicks').innerHTML = [['No room', 0], ['Fits', 50], ['Best', 83.5]].map(([t, x]) => `<span style="left:${x}%">${t}</span>`).join('');
+    bar.style.background = `linear-gradient(90deg, #1c2630 0 33%, ${COL.cold} 33% 67%, ${COL.ok} 67%)`;
+    ticks.innerHTML = [['No room', 0], ['Fits', 50], ['Best', 83.5]].map(([t, x]) => `<span style="left:${x}%">${t}</span>`).join('');
+    return;
+  }
+  if (INV) {
+    const L = CB.legend; if (!L) return;
+    $('lgNote').textContent = L.note + (CB.hits ? '. Racks without a match are dark.' : '');
+    if (L.kind === 'cats') {
+      bar.hidden = true; ticks.hidden = true; sw.hidden = false;
+      sw.innerHTML = L.list.map(c => `<li><i style="background:${esc(c.colour)}"></i><span title="${esc(c.label)}">${esc(c.label)}</span><em>${c.count}</em></li>`).join('');
+      return;
+    }
+    const pct = v => ((v - L.lo) / (L.hi - L.lo) * 100).toFixed(1) + '%';
+    bar.style.background = `linear-gradient(90deg, ${L.stops.map(([v, c]) => `${c} ${pct(v)}`).join(', ')})`;
+    ticks.innerHTML = L.ticks.map(([v, t]) => `<span style="left:${pct(v)}">${esc(t)}</span>`).join('');
     return;
   }
   if (UI.thermal) {
     const s = STOPS.ir, lo = s[0][0], hi = s[s.length - 1][0], pct = v => ((v - lo) / (hi - lo) * 100).toFixed(1) + '%';
-    $('lgBar').style.background = `linear-gradient(90deg, ${s.map(([v, c]) => `${c} ${pct(v)}`).join(', ')})`;
-    $('lgTicks').innerHTML = [16, 26, 36, 46].map((v, i) => `<span style="left:${pct(v)}">${v}${i === 3 ? ' °C' : ''}</span>`).join('');
+    bar.style.background = `linear-gradient(90deg, ${s.map(([v, c]) => `${c} ${pct(v)}`).join(', ')})`;
+    ticks.innerHTML = [16, 26, 36, 46].map((v, i) => `<span style="left:${pct(v)}">${v}${i === 3 ? ' °C' : ''}</span>`).join('');
     return;
   }
   const s = STOPS[W.mode];
   const pctMode = W.mode !== 'heat', [lo, hi] = pctMode ? [0, 1] : [18, 33];
   const pct = v => ((v - lo) / (hi - lo) * 100).toFixed(1) + '%';
-  $('lgBar').style.background = `linear-gradient(90deg, ${s.map(([v, c]) => `${c} ${pct(v)}`).join(', ')})`;
-  const ticks = pctMode ? s.map(([v], i) => Math.round(v * 100) + '%' + (W.mode === 'power' && i === s.length - 1 ? ' of 12 kW' : '')) : s.map(([v], i) => v + (i === s.length - 1 ? ' °C' : ''));
-  $('lgTicks').innerHTML = s.map(([v], i) => `<span style="left:${pct(v)}">${ticks[i]}</span>`).join('');
+  bar.style.background = `linear-gradient(90deg, ${s.map(([v, c]) => `${c} ${pct(v)}`).join(', ')})`;
+  const tk = pctMode ? s.map(([v], i) => Math.round(v * 100) + '%' + (W.mode === 'power' && i === s.length - 1 ? ' of 12 kW' : '')) : s.map(([v], i) => v + (i === s.length - 1 ? ' °C' : ''));
+  ticks.innerHTML = s.map(([v], i) => `<span style="left:${pct(v)}">${tk[i]}</span>`).join('');
 }
 
 // ---------- Rack inventory (42U elevation, top down); hovering a row outlines that device in the rack ----------
@@ -225,7 +266,7 @@ ${n ? `→ ${n} servers' out-of-band ports` : 'no servers cabled'}`, '', () => h
   for (let u = 38; u >= 1;) {
     const sv = at.get(u);
     if (sv) {
-      const tr = add(uSpan(sv), sv.host, `${sv.model} · ${sv.drives}\n${sv.rec.family === 'dell' ? 'Service Tag' : 'Serial'} ${sv.serial} · in service ${sv.installed}`, 'sv', () => highlight(r, sv.u, sv.h, 1));
+      const tr = add(uSpan(sv), sv.host, `${sv.model} · ${sv.drives}\n${sv.rec.family === 'dell' ? 'Service Tag' : 'Serial'} ${sv.serial} · in service ${sv.installed}` + (INV ? `\n${[sv.rec.ips.map(a => a.address).join(', '), sv.ilo && 'OOB ' + sv.ilo].filter(Boolean).join(' · ') || 'no addresses recorded'}` : ''), 'sv', () => highlight(r, sv.u, sv.h, 1));
       tr.tabIndex = 0; tr.setAttribute('aria-label', `Pull out ${sv.host}`);
       tr.addEventListener('click', () => hooks.open(sv));
       tr.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); hooks.open(sv); } });
@@ -248,6 +289,7 @@ ${n ? `→ ${n} servers' out-of-band ports` : 'no servers cabled'}`, '', () => h
     `<b>2</b> ToR switches · <b>1</b> OOB switch · <b>2</b> PDUs · <b>1</b> patch panel · <b>${freeCount(r)}U</b> free of 42U`;
 }
 function updateInv(r) {
+  if (INV) return;
   if (invRack !== r) { unhighlight(); buildInv(r); }
   for (const row of invRows) {
     const c = row.tr.cells;
@@ -275,8 +317,10 @@ function setRackTab(inv) {
   $('tabInv').setAttribute('aria-selected', String(inv)); $('tabInv').tabIndex = inv ? 0 : -1;
   $('rLive').hidden = inv; $('rInv').hidden = !inv;
   if (!inv) unhighlight();
-  updateHud(); if (!inv) updateSparks();
+  updateHud(); if (!inv && !INV) updateSparks();
 }
+// Inventory mode has no Live tab: the rack panel opens on the Inventory tab
+if (INV) { $('rLive').hidden = true; $('rInv').hidden = false; }
 $('tabLive').addEventListener('click', () => setRackTab(false));
 $('tabInv').addEventListener('click', () => setRackTab(true));
 $('tabLive').parentElement.addEventListener('keydown', e => {

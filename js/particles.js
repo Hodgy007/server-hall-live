@@ -99,7 +99,7 @@ function pathAt(path, s, out, o) {
   const a = pts[k - 1], b = pts[k];
   out[o] = a.x + (b.x - a.x) * t; out[o + 1] = a.y + (b.y - a.y) * t; out[o + 2] = a.z + (b.z - a.z) * t;
 }
-const pk = makePoints(1600, 0.09); const pkd = []; const free = [];
+export const pk = makePoints(1600, 0.09); const pkd = []; const free = [];
 for (let i = 0; i < pk.n; i++) { pkd.push({ on: false }); free.push(i); pk.pos[i * 3 + 1] = -50; }
 const PK_OUT = lc(COL.cold), PK_IN = lc('#eaf6ff');
 

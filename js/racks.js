@@ -148,7 +148,7 @@ for (const list of faceMesh.values()) {
     mount(rm, j, r, -1, sv.y, 0.007); sv.slot.mr = m4.clone();
     svIdx.array[j] = sv.idx;
     // slight finish variation so no two chassis read as copies
-    tint.setScalar(0.86 + rnd() * 0.14); fm.setColorAt(j, tint); rm.setColorAt(j, tint);
+    sv.slot.k = 0.86 + rnd() * 0.14; tint.setScalar(sv.slot.k); fm.setColorAt(j, tint); rm.setColorAt(j, tint);
   });
 }
 for (const sv of allServers) for (let k = 0; k < 2; k++) {
@@ -189,6 +189,18 @@ export function updateCabling(cam) {
   if (fine === fineOn) return;
   fineOn = fine; coarseCables.visible = !fine;
   for (const m of fineCables) m.visible = fine;
+}
+
+// Rack filter marks: the servers of one rack that match (m.set) show brighter and the others dim, so the matches stand
+// out in rack view. null puts every server back to its own tint.
+let markedSet = [];
+export function markServers(m) {
+  const touched = new Set();
+  const put = (sv, k) => { const { fm, rm, j } = sv.slot; tint.setScalar(k); fm.setColorAt(j, tint); rm.setColorAt(j, tint); touched.add(fm); touched.add(rm); };
+  for (const sv of markedSet) put(sv, sv.slot.k);
+  markedSet = m ? m.rack.servers.slice() : [];
+  for (const sv of markedSet) put(sv, m.set.has(sv) ? Math.min(1.6, sv.slot.k * 1.6) : sv.slot.k * 0.3);
+  for (const o of touched) o.instanceColor.needsUpdate = true;
 }
 
 // Hide or restore a server's plates, LEDs and patch leads while it is pulled out

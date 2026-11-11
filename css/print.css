@@ -1,0 +1,17 @@
+/* Printing the rack elevation: only #printSheet is printed (built by js/print.js when Print elevation is pressed) */
+@page { size: A4 portrait; margin: 12mm; }
+html, body { height: auto !important; overflow: visible !important; background: #fff !important; color: #000 !important; }
+body > *:not(#printSheet) { display: none !important; }
+#printSheet, #printSheet[hidden] { display: block !important; font: 11pt/1.3 Arial, Helvetica, sans-serif; color: #000; }
+#printSheet h1 { all: unset; display: block; font: 700 22pt Arial, sans-serif; margin: 0 0 2mm; text-transform: none; }
+#printSheet .meta { margin: 0 0 4mm; font-size: 10pt; color: #333; }
+#printSheet table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+#printSheet th, #printSheet td { border: 0.4pt solid #666; padding: 0 2mm; height: 5.4mm; font-size: 8.5pt; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#printSheet th { background: #e6e6e6; text-align: left; font-size: 8pt; }
+#printSheet th.u, #printSheet td.u { width: 14mm; text-align: right; font-variant-numeric: tabular-nums; background: #f2f2f2; }
+#printSheet td.host { font-weight: 700; vertical-align: middle; }
+#printSheet td { vertical-align: middle; }
+#printSheet .meta:last-child { margin-top: 3mm; font-size: 8pt; }
+#printSheet td.fixed { background: #f7f7f7; color: #444; }
+#printSheet td.empty { color: #999; font-style: italic; }
+#printSheet tr { break-inside: avoid; }

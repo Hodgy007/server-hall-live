@@ -6,6 +6,8 @@
 <title>Server Hall Live</title>
 <link rel="stylesheet" href="vendor/fonts/fonts.css">
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/dialog.css">
+<link rel="stylesheet" href="css/print.css" media="print">
 </head>
 <body>
 
@@ -16,28 +18,31 @@
     <div class="brand">
       <div class="eyebrow" id="hallLine">—</div>
       <h1>Server Hall Live</h1>
-      <div class="meta"><span class="chip" id="liveChip">Simulated telemetry</span><button id="attnBtn" type="button" class="chip ok" aria-expanded="false" aria-controls="attnList" disabled>All OK</button><span class="hint">Drag to orbit · right-drag or WASD to move · scroll to zoom · click a rack to open its door, then a server</span></div>
+      <div class="meta"><span class="chip" id="modeChip" data-inv>Inventory mode</span><span class="chip" id="liveChip" data-mon>Simulated telemetry</span><button id="attnBtn" data-mon type="button" class="chip ok" aria-expanded="false" aria-controls="attnList" disabled>All OK</button><span class="hint">Drag to orbit · right-drag or WASD to move · scroll to zoom · click a rack to open its door, then a server</span></div>
       <div class="tools site">
         <label class="hallpick"><span class="vh">Hall</span><select id="hallPick" aria-label="Building and hall to show"></select></label>
-        <button id="loadFile" type="button" title="Load a site file (JSON) into this browser; you can also drop one on the page">Load file</button>
-        <input id="fileIn" type="file" accept=".json,application/json" hidden>
+        <button id="loadFile" type="button" title="Load a site file (JSON) or a server list (CSV) into this browser; you can also drop one on the page">Load file</button>
+        <input id="fileIn" type="file" accept=".json,.csv,application/json,text/csv" hidden>
         <span class="src" id="srcLine"></span>
         <button id="srcReset" type="button" class="linkish" hidden>Use server file</button>
         <button id="probBtn" type="button" class="chip warn" aria-expanded="false" aria-controls="probList" hidden></button>
         <a class="linkish" href="layout.html">Layout editor</a>
+        <button id="modeBtn" type="button" class="linkish"></button>
       </div>
       <ul class="probs" id="probList" hidden></ul>
       <div class="tools">
         <button id="hallView" type="button" title="Back to the whole-hall overview (Esc)">Reset view</button>
+        <button id="planBtn" type="button" aria-pressed="false" title="Flat top-down plan of the hall">Plan view</button>
+        <button id="invBtn" type="button" aria-haspopup="dialog" title="Every server in the site as a table (I)">Inventory table</button>
         <form id="findForm" class="find" role="search">
-          <input id="find" type="search" list="hosts" placeholder="Find host or rack  ( / )" aria-label="Find a server or rack, for example db-e04-07 or B03" autocomplete="off" spellcheck="false">
-          <datalist id="hosts"></datalist>
+          <input id="find" type="search" role="combobox" aria-expanded="false" aria-controls="findList" aria-autocomplete="list" placeholder="Find host, serial, IP, MAC…  ( / )" aria-label="Find a server or rack by hostname, rack, serial, IP or MAC address, model, make, role or OS" autocomplete="off" spellcheck="false">
+          <ul id="findList" class="findlist" role="listbox" aria-label="Matches" hidden></ul>
         </form>
         <span id="findMsg" class="findmsg" role="status"></span>
       </div>
-      <div class="attn" id="attnList" aria-label="Racks and servers that need attention" hidden></div>
+      <div class="attn" data-mon id="attnList" aria-label="Racks and servers that need attention" hidden></div>
     </div>
-    <div class="kpis">
+    <div class="kpis" data-mon>
       <div class="kpi"><span class="k">Avg CPU</span><span class="v" id="kCpu">—</span><canvas id="sCpu"></canvas></div>
       <div class="kpi"><span class="k">Network</span><span class="v" id="kNet">—</span><span class="sub" id="kNetSub">—</span></div>
       <div class="kpi"><span class="k">IT load</span><span class="v" id="kPow">—</span><span class="sub" id="kPowSub">—</span></div>
@@ -52,14 +57,14 @@
           <div class="eyebrow" id="rRole">—</div>
           <h2 id="rId">—</h2>
         </div>
-        <span class="pill ok" id="rStatus">OK</span>
+        <span class="pill ok" id="rStatus" data-mon>OK</span>
         <div class="nav">
           <button id="prevRack" aria-label="Previous rack">‹</button>
           <button id="nextRack" aria-label="Next rack">›</button>
           <button class="rmin" id="rackMin" aria-expanded="true" aria-controls="rackPanel" aria-label="Hide rack details">▾</button>
         </div>
       </div>
-      <div class="tabs" role="tablist" aria-label="Rack view">
+      <div class="tabs" data-mon role="tablist" aria-label="Rack view">
         <button role="tab" id="tabLive" aria-selected="true" aria-controls="rLive">Live</button>
         <button role="tab" id="tabInv" aria-selected="false" aria-controls="rInv" tabindex="-1">Inventory</button>
       </div>
@@ -84,6 +89,7 @@
       </div>
       <div id="rInv" role="tabpanel" aria-labelledby="tabInv" class="tabp" hidden>
         <div class="invsum" id="invSum">—</div>
+        <div class="invact"><button id="printElev" type="button">Print elevation</button></div>
         <div class="invwrap">
           <table class="inv">
             <thead><tr><th scope="col">U</th><th scope="col">Device</th><th scope="col" class="n">Load</th><th scope="col" class="n">Power</th></tr></thead>
@@ -99,20 +105,20 @@
           <div class="eyebrow" id="sMeta">—</div>
           <h2 id="sHost">—</h2>
         </div>
-        <span class="pill ok" id="sStatus">OK</span>
+        <span class="pill ok" id="sStatus" data-mon>OK</span>
         <div class="nav">
           <button id="sBack" aria-label="Back to the hall view">Back</button>
           <button class="rmin" id="srvMin" aria-expanded="true" aria-controls="srvPanel" aria-label="Hide server details">▾</button>
         </div>
       </div>
       <dl class="specs" id="sSpecs" aria-label="Server specification"></dl>
-      <ul class="faults" id="sFaults" hidden></ul>
+      <ul class="faults" id="sFaults" data-mon hidden></ul>
       <a class="btnlink" id="sIlo" href="#" target="_blank" rel="noopener">Open console ↗</a>
-      <div class="cores">
+      <div class="cores" data-mon>
         <div class="tl"><span id="sCoresL">Per-core load</span><span id="sCoresR">CPU0 · CPU1</span></div>
         <canvas id="sCores"></canvas>
       </div>
-      <dl class="facts f8">
+      <dl class="facts f8" data-mon>
         <div><dt>CPU</dt><dd id="sCpuV">—</dd></div>
         <div><dt>CPU0</dt><dd id="sT0">—</dd></div>
         <div><dt>CPU1</dt><dd id="sT1">—</dd></div>
@@ -122,9 +128,9 @@
         <div><dt>Net in/out</dt><dd id="sNet">—</dd></div>
         <div><dt>Power</dt><dd id="sPow">—</dd></div>
       </dl>
-      <div class="trend"><div class="tl"><span>CPU, last 2 min</span><span>dashed: 85% warn</span></div><canvas id="sSpark"></canvas></div>
+      <div class="trend" data-mon><div class="tl"><span>CPU, last 2 min</span><span>dashed: 85% warn</span></div><canvas id="sSpark"></canvas></div>
       <div class="btns">
-        <button id="sStress" aria-pressed="false">Run 20 s stress test</button>
+        <button id="sStress" data-mon aria-pressed="false">Run 20 s stress test</button>
         <button id="sNext">Next server ›</button>
       </div>
     </section>
@@ -133,26 +139,39 @@
       <details id="opsBox" open>
         <summary>Controls</summary>
         <div class="ctl">
-          <fieldset class="seg" id="modeSet">
+          <fieldset class="seg" id="colorSet" data-inv>
+            <legend>Color racks by</legend>
+            <input type="radio" name="colorby" id="byFill" value="fill" checked><label for="byFill">Fill</label>
+            <input type="radio" name="colorby" id="byRole" value="role"><label for="byRole">Role</label>
+            <input type="radio" name="colorby" id="byMaker" value="maker"><label for="byMaker">Make</label>
+            <input type="radio" name="colorby" id="byModel" value="model"><label for="byModel">Model</label>
+            <input type="radio" name="colorby" id="byAge" value="age"><label for="byAge">Age</label>
+          </fieldset>
+          <fieldset class="seg" id="modeSet" data-mon>
             <legend>Color racks by</legend>
             <input type="radio" name="mode" id="modeLoad" value="load" checked><label for="modeLoad">CPU load</label>
             <input type="radio" name="mode" id="modeHeat" value="heat"><label for="modeHeat">Inlet temp</label>
             <input type="radio" name="mode" id="modePower" value="power"><label for="modePower">Power</label>
           </fieldset>
-          <div class="legend"><div class="lgbar" id="lgBar"></div><div class="lgticks" id="lgTicks"></div></div>
+          <div class="legend"><div class="lgbar" id="lgBar"></div><div class="lgticks" id="lgTicks"></div><ul class="swatches" id="lgSwatch" hidden></ul><div class="lgnote" id="lgNote"></div></div>
+          <form id="filtForm" class="filt" role="search" aria-label="Highlight racks">
+            <label for="filt" class="fl">Highlight racks holding</label>
+            <div class="filtrow"><input id="filt" type="search" placeholder="R760, database, 2021…" autocomplete="off" spellcheck="false"><button type="button" id="filtClear" hidden>Clear</button></div>
+            <div id="filtOut" role="status"></div>
+          </form>
           <div class="fit">
             <form id="fitForm" class="fitf" aria-label="Find space for a server">
               <span class="fl">Find space for</span>
               <select id="fitU" aria-label="Server height"><option value="1">1U</option><option value="2" selected>2U</option><option value="3">3U</option><option value="4">4U</option></select>
-              <label><input id="fitW" type="number" min="50" max="5000" step="50" value="900" aria-label="Peak power in watts"> W peak</label>
+              <label data-mon><input id="fitW" type="number" min="50" max="5000" step="50" value="900" aria-label="Peak power in watts"> W peak</label>
               <button type="submit">Find</button>
             </form>
             <div id="fitOut" role="status"></div>
           </div>
-          <button id="thermal" class="tog off" aria-pressed="false" title="False-colour infrared view: every surface coloured by the air temperature where it stands">Thermal camera</button>
+          <button id="thermal" data-mon class="tog off" aria-pressed="false" title="False-colour infrared view: every surface coloured by the air temperature where it stands">Thermal camera</button>
           <div class="btns">
             <button id="orbit" class="tog off">Start rotation</button>
-            <button id="airflow" class="tog off">Show airflow</button>
+            <button id="airflow" data-mon class="tog off">Show airflow</button>
           </div>
           <fieldset class="seg" id="gfxSet" title="Lower settings run faster on slow machines; the page reloads to apply them">
             <legend>Graphics</legend>
@@ -166,7 +185,27 @@
   </div>
 </div>
 <div id="tip" hidden></div>
-<div id="dropZone" hidden><div>Drop a site file (JSON) to load it into this browser</div></div>
+<svg id="plan" class="plan" role="group" aria-label="Plan view of the hall" hidden></svg>
+<div id="planBar" class="planbar" role="toolbar" aria-label="Plan view" hidden>
+  <button type="button" id="planIn" aria-label="Zoom in">+</button><button type="button" id="planOut" aria-label="Zoom out">−</button>
+  <button type="button" id="planFit">Fit</button><button type="button" id="plan3d" class="primary">Back to 3D</button>
+</div>
+<section id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
+  <div class="sheethead">
+    <h2 id="sheetTitle">Inventory</h2>
+    <label class="vh" for="sheetFilter">Filter servers</label>
+    <input id="sheetFilter" type="search" placeholder="Filter: host, serial, IP, MAC, model, role, 2021…" autocomplete="off" spellcheck="false">
+    <span id="sheetCount" role="status" aria-live="polite"></span>
+    <button id="sheetExport" type="button">Export CSV</button>
+    <button id="sheetClose" type="button">Close</button>
+  </div>
+  <div class="sheetscroll" id="sheetScroll" tabindex="0" aria-label="Servers">
+    <table class="sheettbl" id="sheetTbl"><thead></thead><tbody id="sheetBody"></tbody></table>
+  </div>
+</section>
+<dialog id="choice" class="choice" aria-labelledby="choiceTitle"><form method="dialog"><h2 id="choiceTitle"></h2><p id="choiceBody"></p><ul id="choiceList" class="choicelist"></ul><div class="choicebtns" id="choiceBtns"></div></form></dialog>
+<div id="printSheet" class="printsheet" hidden></div>
+<div id="dropZone" hidden><div>Drop a site file (JSON) or a server list (CSV) to load it into this browser</div></div>
 
 <script type="importmap">
 { "imports": {

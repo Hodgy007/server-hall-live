@@ -1,0 +1,11 @@
+/* A small in-page choice dialog (replace or merge a CSV import), shared by the viewer and the layout editor */
+dialog.choice { max-width: min(480px, 92vw); padding: 16px 18px; color: var(--fg, #d9e5ec); background: var(--panel-solid, #0d1620); border: 1px solid var(--line, #233340); border-radius: 8px; font: 12px/1.5 var(--font-mono, monospace); }
+dialog.choice::backdrop { background: rgba(5, 8, 12, 0.7); }
+dialog.choice h2 { margin: 0 0 6px; font: 600 24px var(--font-display, sans-serif); letter-spacing: 0.03em; }
+dialog.choice p { margin: 0 0 8px; color: var(--muted, #8299a8); }
+.choicelist { margin: 0 0 10px; padding-left: 18px; max-height: 24vh; overflow: auto; font-size: 10.5px; color: var(--muted, #8299a8); }
+.choicebtns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+.choicebtns button { font: inherit; color: var(--fg, #d9e5ec); background: rgba(255,255,255,0.04); border: 1px solid var(--line, #233340); border-radius: 4px; padding: 6px 12px; cursor: pointer; }
+.choicebtns button:hover { border-color: var(--cold, #4fc3e8); color: var(--cold, #4fc3e8); }
+.choicebtns button:focus-visible { outline: 2px solid var(--cold, #4fc3e8); outline-offset: 2px; }
+.choicebtns button.primary { color: var(--bg, #0a1017); background: var(--cold, #4fc3e8); border-color: var(--cold, #4fc3e8); }

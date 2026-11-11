@@ -1,11 +1,13 @@
 // Optional live telemetry. When data/hall.json names a feed ("telemetry": { "url", "intervalSeconds" }),
 // it is polled and its figures replace the simulation for every server and rack it reports.
 // Anything it leaves out, or stops reporting for three intervals, falls back to the simulation.
-import { HALL } from './data.js';
+import { SITE, HALL } from './data.js';
+import { INV } from './mode.js';
 import { byHost, byId } from './racks.js';
 
-const T = HALL.telemetry || {}, EVERY = (T.intervalSeconds || 10) * 1000;
-export const live = { enabled: !!T.url, servers: 0, at: 0, error: null };
+// "telemetry" sits at the top of the site file; inventory mode does not poll it
+const T = SITE.telemetry || HALL.telemetry || {}, EVERY = (T.intervalSeconds || 10) * 1000;
+export const live = { enabled: !!T.url && !INV, servers: 0, at: 0, error: null };
 export const fresh = o => !!o && performance.now() - o.at < EVERY * 3;
 // Feeds often send numbers as strings; take those, and drop anything that is not a finite number
 // (one NaN reaching the renderer turns the view black)
