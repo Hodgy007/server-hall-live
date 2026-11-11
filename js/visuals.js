@@ -1,14 +1,14 @@
 // Per-frame visual updates driven by the telemetry: rack tint and light columns, LEDs, particles.
 import { THREE, lc, COL, clamp, grad, modeValue, modeHeight } from './core.js';
 import { W, G, UI } from './state.js';
-import { racks, leds, LED, swLeds } from './racks.js';
+import { racks, leds, LED, swLeds, setColumnMix } from './racks.js';
 import { perfMats, uplinkStripMat, tapLeds } from './hall.js';
 import { updateParticles } from './particles.js';
 import { INV } from './mode.js';
 import { CB, rackLook, syncMarks } from './rackcolor.js';
 import { MAX_U } from './site.js';
 
-let staticKey = '';
+let staticKey = '', mixKey = '';
 
 const tmp = new THREE.Color(), coldC = lc(COL.cold), okC = lc(COL.ok), offC = lc('#1c2630'), TAP_ON = lc('#46ff9a').multiplyScalar(2), TAP_WARN = LED.warn;
 export function updateVisuals(dt) {
@@ -18,6 +18,13 @@ export function updateVisuals(dt) {
   // Inventory mode: the LEDs and busway lights are steady (nothing simulated drives them); only the rack filter's marks change them
   const key = INV ? CB.rev + '|' + (marked ? UI.cutRack.id : '') : '', redo = !INV || key !== staticKey;
   staticKey = key;
+  // Inventory mode: a rack of mixed servers has its column stacked by what it holds (rackcolor.js). The capacity
+  // finder's colours, and racks the filter leaves dark, go back to one column.
+  const mk = INV ? CB.rev + '|' + (fit ? 'fit' : '') : '';
+  if (mk !== mixKey) {
+    mixKey = mk;
+    for (const r of racks) { const L = rackLook(r), on = INV && !fit && (!CB.hits || CB.hits.has(r)); setColumnMix(r, on ? L.segs : null, L.h); }
+  }
   racks.forEach((r, i) => {
     // The capacity finder takes over the colours: racks that fit in blue (the best in green), their columns as tall as
     // the room left; the rest dark. Then the rack filter: matching racks keep their colour, the rest go dark.
@@ -25,7 +32,7 @@ export function updateVisuals(dt) {
     let h;
     if (fit) { tmp.copy(!hit ? offC : r === fit.best ? okC : coldC); h = hit ? hit.frac : 0; }
     else if (CB.hits) {
-      if (fh) { if (INV) tmp.copy(rackLook(r).col); else grad(W.mode, modeValue(W.mode, r), tmp); h = Math.min(1, 0.15 + fh.u / MAX_U); } else { tmp.copy(offC); h = 0; }
+      if (fh) { if (INV) tmp.copy(rackLook(r).col); else grad(W.mode, modeValue(W.mode, r), tmp); h = Math.min(1, 0.15 + fh.u / MAX_U); } else { tmp.copy(offC); h = 0; }   // (in inventory mode rackLook has that height too)
     } else if (INV) { const L = rackLook(r); tmp.copy(L.col); h = L.h; }
     else { grad(W.mode, modeValue(W.mode, r), tmp); h = modeHeight(W.mode, r); }
     const ei = r === UI.hovered ? 0.2 : (r === UI.selected ? 0.12 : hit || fh ? 0.1 : 0.045);

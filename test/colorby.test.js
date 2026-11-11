@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseDate, ageYears, fillOf, oldest, rackCategory, buildCategories, PALETTE, OTHER, NONE } from '../js/colorby.js';
+import { parseDate, ageYears, fillOf, oldest, rackCategory, rackMix, ageMix, serverCategory, buildCategories, PALETTE, OTHER, NONE } from '../js/colorby.js';
 
 const sv = (h, o = {}) => ({ h, role: '', maker: 'Dell', model: 'R1', installed: '', ...o });
 
@@ -43,4 +43,23 @@ test('categories are capped with an Other bucket', () => {
   assert.equal(c.colourOf(null), NONE); assert.equal(c.colourOf('Not recorded'), NONE);
   assert.equal(c.list.at(-1).label, 'Not recorded');
   assert.equal(buildCategories(['a', 'b']).list.length, 2);
+});
+test('a rack of mixed servers is the mix of what it holds', () => {
+  assert.deepEqual(rackMix([], 'model'), []);
+  const mix = rackMix([sv(1, { model: 'R660' }), sv(2, { model: 'DL380' }), sv(1, { model: 'R660' }), sv(4, { model: '' })], 'model');
+  assert.deepEqual(mix, [{ label: 'Not recorded', u: 4, n: 1 }, { label: 'DL380', u: 2, n: 1 }, { label: 'R660', u: 2, n: 2 }]);
+  assert.equal(serverCategory(sv(1, { role: ' db ' }), 'role'), 'db');
+  assert.equal(serverCategory(sv(1, { maker: 'Generic' }), 'maker'), 'Not recorded');
+});
+test('ages are grouped by whole years, oldest first, undated last', () => {
+  const now = new Date(Date.UTC(2026, 0, 1));
+  const mix = ageMix([sv(1, { installed: '2025-06' }), sv(2, { installed: '2017' }), sv(1, { installed: '2019' }), sv(1), sv(2, { installed: '2025-03' })], now);
+  assert.deepEqual(mix.map(e => [e.u, e.n]), [[3, 2], [3, 2], [1, 1]]);
+  assert.ok(mix[0].years > 7.9 && mix[0].years < 8.1);   // 9 and 7 years, grouped as "6 and over"
+  assert.ok(mix[1].years > 0.5 && mix[1].years < 0.9);
+  assert.equal(mix[2].years, null);
+});
+test('categories keep their legend order for stacking', () => {
+  const c = buildCategories(['a', 'a', 'b', 'Not recorded', 'c'], 2);
+  assert.deepEqual(['a', 'b', 'c', 'Not recorded'].map(c.orderOf), [0, 1, 2, 3]);
 });

@@ -1,6 +1,7 @@
-// What colours a rack in inventory mode, without three.js or the DOM so it runs under `node --test`: fill level, role,
-// manufacturer, model and age. A rack gets a value (fill, age) or a category (the other three); categories beyond the
-// first few share an "Other" colour so the legend stays short.
+// What colours the racks and servers in inventory mode, without three.js or the DOM so it runs under `node --test`:
+// fill level, role, manufacturer, model and age. Fill is one value per rack. For the other four every server has its
+// own value (a category, or its age) and a rack is the mix of what it holds, since most racks hold more than one
+// model and role. Categories beyond the first few share an "Other" colour so the legend stays short.
 import { MAX_U } from './site.js';
 
 export const BY = [
@@ -13,6 +14,7 @@ export const FILL_STOPS = [[0, '#2f4d63'], [0.5, '#2a8fbf'], [1, '#9be7ff']];
 export const AGE_STOPS = [[0, '#2a8fbf'], [2, '#3fcf8e'], [4, '#f2b441'], [6, '#ff5a4f']];
 export const PALETTE = ['#4fc3e8', '#f2b441', '#3fcf8e', '#c77dff', '#ff7a90', '#9bd14b', '#ff9f5a', '#7b8cff'];
 export const OTHER = '#8a9aa6', NONE = '#34414c';   // "Other" categories; racks with nothing to show (empty, or no date)
+export const MIXED = '#566571';   // a cabinet holding more than one category: its servers and column carry the colours
 export const MAX_CATEGORIES = PALETTE.length;
 
 // ---------- Dates ----------
@@ -42,16 +44,36 @@ export function oldest(servers, now) {
 }
 const NOT_RECORDED = 'Not recorded';
 const label = { role: s => s.role, maker: s => (s.maker === 'Generic' ? '' : s.maker), model: s => s.model };
-// The category a rack falls in for role, make or model: the one taking the most U (ties: the first alphabetically).
-// A rack with no servers has none (null); one whose servers say nothing gets "Not recorded".
+// One server's category for role, make or model; "Not recorded" when its record says nothing
+export const serverCategory = (s, by) => String(label[by](s) || '').trim() || NOT_RECORDED;
+// What a rack holds for role, make or model: [{ label, u, n }] (rack units and servers per category), most U first
+// (ties: alphabetically). Empty for a rack with no servers.
+export function rackMix(servers, by) {
+  const m = new Map();
+  for (const s of servers) {
+    const k = serverCategory(s, by), e = m.get(k) || { label: k, u: 0, n: 0 };
+    e.u += s.h; e.n++; m.set(k, e);
+  }
+  return [...m.values()].sort((a, b) => b.u - a.u || a.label.localeCompare(b.label));
+}
+// The category taking the most U in a rack, or null for a rack with no servers
 export function rackCategory(servers, by) {
-  if (!servers.length) return null;
-  const u = new Map();
-  for (const s of servers) { const k = String(label[by](s) || '').trim() || NOT_RECORDED; u.set(k, (u.get(k) || 0) + s.h); }
-  return [...u].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0];
+  const mix = rackMix(servers, by);
+  return mix.length ? mix[0].label : null;
+}
+// The same for age: servers grouped by whole years in service (6 and over together), oldest first, then those with no
+// date. [{ years (the group's mean age, null for no date), u, n }]
+export function ageMix(servers, now) {
+  const m = new Map();
+  for (const s of servers) {
+    const a = ageYears(s.installed, now), k = a === null ? -1 : Math.min(6, Math.floor(a)), e = m.get(k) || { k, sum: 0, u: 0, n: 0 };
+    e.sum += a || 0; e.u += s.h; e.n++; m.set(k, e);
+  }
+  return [...m.values()].sort((a, b) => b.k - a.k).map(e => ({ years: e.k < 0 ? null : e.sum / e.n, u: e.u, n: e.n }));
 }
 // Colour for each category: the most common ones in palette order, everything past the cap sharing "Other".
-// values: one category (or null) per rack. Returns { list: [{ label, colour, count }], other: n, colourOf(label) }
+// values: one category (or null) per server. Returns { list: [{ label, colour, count }], colourOf(label), orderOf(label) }
+// (orderOf is the label's place in the legend, for stacking a rack's mix in the same order everywhere)
 export function buildCategories(values, cap = MAX_CATEGORIES) {
   const n = new Map();
   for (const v of values) if (v !== null && v !== undefined) n.set(v, (n.get(v) || 0) + 1);
@@ -63,5 +85,9 @@ export function buildCategories(values, cap = MAX_CATEGORIES) {
   const otherN = rest.reduce((t, [, c]) => t + c, 0);
   if (otherN) list.push({ label: `Other (${rest.length})`, colour: OTHER, count: otherN });
   if (n.has(NOT_RECORDED)) list.push({ label: NOT_RECORDED, colour: NONE, count: n.get(NOT_RECORDED) });
-  return { list, colourOf: v => v === null || v === undefined || v === NOT_RECORDED ? NONE : colours.get(v) || OTHER };
+  const order = new Map(keep.map(([k], i) => [k, i]));
+  return {
+    list, colourOf: v => v === null || v === undefined || v === NOT_RECORDED ? NONE : colours.get(v) || OTHER,
+    orderOf: v => v === NOT_RECORDED ? cap + 1 : order.has(v) ? order.get(v) : cap
+  };
 }

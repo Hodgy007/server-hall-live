@@ -156,7 +156,7 @@ summary { cursor: pointer; font-size: 10px; letter-spacing: 0.12em; text-transfo
 .inv th { position: sticky; top: 0; background: #0d1620; text-align: left; font-weight: 400; font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding: 4px; }
 .inv td { padding: 4px; border-top: 1px solid rgba(35, 51, 64, 0.6); vertical-align: top; }
 .inv .n { text-align: right; white-space: nowrap; }
-.inv td:first-child { color: var(--muted); white-space: nowrap; }
+.inv td:first-child { color: var(--muted); white-space: nowrap; padding-left: 8px; }
 .inv .dev { display: grid; gap: 1px; }
 .inv .dev b { font-weight: 500; }
 .inv .dev span { color: var(--muted); font-size: 9.5px; white-space: pre-line; }
@@ -226,6 +226,7 @@ html:not([data-mode="monitoring"]) .inv .n { display: none; }
 
 /* ---------- Legend swatches, rack filter ---------- */
 .swatches { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; font-size: 10.5px; color: var(--muted); }
+.swatches.wide { grid-template-columns: 1fr; }
 .swatches li { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .swatches i { flex: none; width: 10px; height: 10px; border-radius: 2px; border: 1px solid rgba(255,255,255,0.18); }
 .swatches span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -269,6 +270,7 @@ html:not([data-mode="monitoring"]) .inv .n { display: none; }
 .plan .rk { cursor: pointer; }
 .plan .rk:hover rect, .plan .rk:focus rect { stroke: #fff; stroke-width: 0.06; }
 .plan .rk:focus { outline: none; }
+.plan .rk rect.band, .plan .rk:hover rect.band, .plan .rk:focus rect.band { stroke: none; pointer-events: none; }
 .plan .rk.dim rect { fill: #1c2630; } .plan .rk.dim text { fill: #8299a8; }
 .plan .rk.sel rect { stroke: var(--cold); stroke-width: 0.07; }
 .plan .rk .front { stroke: #0a1017; stroke-width: 0.05; }
@@ -276,7 +278,8 @@ html:not([data-mode="monitoring"]) .inv .n { display: none; }
 .plan .tile-p { fill: rgba(79, 195, 232, 0.14); } .plan .tile-h { fill: rgba(255, 138, 92, 0.16); }
 .plan .room { fill: none; stroke: var(--line); stroke-width: 0.06; }
 .plan .north { fill: var(--muted); font-size: 0.55px; }
-.planbar { position: fixed; z-index: 3; right: max(16px, env(safe-area-inset-right)); top: 50%; transform: translateY(-50%); display: grid; gap: 6px; }
+/* along the bottom, between the rack panel and the controls (at the right edge it sat on top of the controls) */
+.planbar { position: fixed; z-index: 3; left: 50%; translate: -50% 0; bottom: max(16px, env(safe-area-inset-bottom)); display: grid; grid-auto-flow: column; gap: 6px; }
 .planbar button { background: var(--panel); min-width: 40px; min-height: 36px; }
 .planbar .primary { color: var(--bg); background: var(--cold); border-color: var(--cold); }
 html.planning .kpis { opacity: 0.9; }
@@ -290,6 +293,6 @@ html.planning .kpis { opacity: 0.9; }
   .findlist { width: 92vw; }
   .sheethead h2 { font-size: 22px; }
   .sheettbl td { height: 32px; }
-  .planbar { top: auto; bottom: 120px; transform: none; grid-auto-flow: column; right: 50%; translate: 50% 0; }
+  .planbar { bottom: 120px; }
   .swatches { grid-template-columns: 1fr; }
 }
