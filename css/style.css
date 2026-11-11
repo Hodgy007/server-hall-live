@@ -82,7 +82,8 @@ button { font: inherit; color: var(--fg); background: rgba(255,255,255,0.03); bo
 button:hover { border-color: var(--cold); color: var(--cold); }
 button:focus-visible, input:focus-visible + label, input[type="checkbox"]:focus-visible, summary:focus-visible { outline: 2px solid var(--cold); outline-offset: 2px; }
 .nav button { padding: 4px 9px; font-size: 14px; line-height: 1; }
-.rmin { display: none; }
+/* the fold button on the rack and server panels (all screen sizes); a folded panel keeps only its header */
+.rackp.min > :not(.ph), .srvp.min > :not(.ph) { display: none; }
 .meters { display: grid; gap: 8px; }
 .ml { display: flex; justify-content: space-between; margin-bottom: 4px; color: var(--muted); }
 .ml b { color: var(--fg); font-weight: 500; font-variant-numeric: tabular-nums; }
@@ -199,8 +200,6 @@ summary { cursor: pointer; font-size: 10px; letter-spacing: 0.12em; text-transfo
   .rackp, .ops, .srvp { width: 100%; box-sizing: border-box; padding: 10px; }
   .ops { max-height: 58vh; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
   .fitl { max-height: 92px; }
-  .rmin { display: block; }
-  .rackp.min > :not(.ph), .srvp.min > :not(.ph) { display: none; }
   .cores canvas { height: 48px; }
   .trend { display: none; }
   .invwrap { max-height: 180px; }

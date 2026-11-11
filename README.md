@@ -77,7 +77,7 @@ The demo hall's racks each hold twelve servers of one model, picked at random fr
 
 Power draw follows the model, from idle to flat out (for a model the catalogue does not know, it is estimated from the sockets, cores and memory). The rack panel names the rack's model, or how many models it holds.
 
-In monitoring mode, below that it shows per-core load for every core (one block per socket), CPU temperatures, fan speed, memory, IOPS, network and power, plus a 2-minute CPU trend. **Run 20 s stress test** pins the cores at 100% so you can watch the temperatures and fans respond. Click the pulled-out server again, press **Back** or <kbd>Esc</kbd> to slide it back in like a drawer; the camera stays where it is. Flying to a rack or opening a server stops the camera rotation until you press **Start rotation**.
+In monitoring mode, below that it shows per-core load for every core (one block per socket), CPU temperatures, fan speed, memory, IOPS, network and power, plus a 2-minute CPU trend. **Run 20 s stress test** pins the cores at 100% so you can watch the temperatures and fans respond. Click the pulled-out server again, press **Back** or <kbd>Esc</kbd> to slide it back in like a drawer; the camera stays where it is. Flying to a rack or opening a server stops the camera rotation until you press **Start rotation**. The **▾** button in the rack and server panels' headers folds a panel down to its header (**▴** opens it again), so the hall behind it shows; the panel stays folded as you move between racks and servers.
 
 ## Panels and controls
 
