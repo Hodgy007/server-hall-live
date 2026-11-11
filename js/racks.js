@@ -322,6 +322,7 @@ const doorMeshes = doorTexes.map((map, k) => {
   const m = new THREE.InstancedMesh(doorGeo, new THREE.MeshStandardMaterial({ map, alphaMap: doorAlphas[k], transparent: true, metalness: 0.6, roughness: 0.5, side: THREE.DoubleSide }),
     Math.max(1, racks.filter(r => doorStyle(r) === k).length));
   m.renderOrder = 1; m.count = 0;
+  m.userData.aoSolid = true;   // ambient occlusion treats a door as a solid sheet (post.js)
   return m;
 });
 const handles = new THREE.InstancedMesh(handleGeo, handleMat, racks.length);
