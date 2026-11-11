@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseDate, ageYears, fillOf, oldest, rackCategory, rackMix, ageMix, serverCategory, buildCategories, PALETTE, OTHER, NONE } from '../js/colorby.js';
+import { parseDate, ageYears, fillOf, oldest, rackCategory, rackMix, ageMix, serverCategory, buildCategories, tabValue, TAB_SCALE, PALETTE, OTHER, NONE } from '../js/colorby.js';
 
 const sv = (h, o = {}) => ({ h, role: '', maker: 'Dell', model: 'R1', installed: '', ...o });
 
@@ -62,4 +62,15 @@ test('ages are grouped by whole years, oldest first, undated last', () => {
 test('categories keep their legend order for stacking', () => {
   const c = buildCategories(['a', 'a', 'b', 'Not recorded', 'c'], 2);
   assert.deepEqual(['a', 'b', 'c', 'Not recorded'].map(c.orderOf), [0, 1, 2, 3]);
+});
+
+test('monitoring tabs show the server\'s own figure for the mode', () => {
+  const m = { load: 0.4, temp: 61, power: 300, spec: { w: [100, 600] } };
+  assert.equal(tabValue('load', m), 0.4);
+  assert.equal(tabValue('heat', m), 61);
+  assert.equal(tabValue('power', m), 0.5);
+  assert.equal(tabValue('power', { ...m, spec: { w: [0, 0] } }), 0);   // no flat-out figure
+  assert.equal(tabValue('power', { ...m, spec: undefined }), 0);
+  assert.equal(tabValue('heat', { ...m, temp: NaN }), 0);
+  assert.deepEqual(TAB_SCALE, { load: 'load', heat: 'cpu', power: 'power' });
 });

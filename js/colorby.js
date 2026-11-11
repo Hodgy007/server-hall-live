@@ -91,3 +91,20 @@ export function buildCategories(values, cap = MAX_CATEGORIES) {
     orderOf: v => v === NOT_RECORDED ? cap + 1 : order.has(v) ? order.get(v) : cap
   };
 }
+
+// ---------- Monitoring mode: each server's own figure for the tab beside its front ----------
+// A rack is coloured by its roll-up, but the busy or hot server in it is the point, so the tab shows the server's own
+// telemetry: CPU load (0-1) for load, its draw against its flat-out figure for power, and its CPU temperature for heat
+// (inlet temperature belongs to the rack; each server's temp is simulated, or reported by the feed, per server).
+export const TAB_SCALE = { load: 'load', heat: 'cpu', power: 'power' };
+export const TAB_NOTE = {
+  load: 'CPU load of each server',
+  heat: 'CPU temperature of each server (the racks show inlet air)',
+  power: 'draw of each server against its flat-out figure'
+};
+const fin = v => (Number.isFinite(v) ? v : 0);
+export function tabValue(mode, sv) {
+  if (mode === 'heat') return fin(sv.temp);
+  if (mode === 'power') { const w = sv.spec && sv.spec.w && sv.spec.w[1]; return w > 0 ? fin(sv.power / w) : 0; }
+  return fin(sv.load);
+}

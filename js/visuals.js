@@ -5,7 +5,7 @@ import { racks, leds, LED, swLeds, setColumnMix } from './racks.js';
 import { perfMats, uplinkStripMat, tapLeds } from './hall.js';
 import { updateParticles } from './particles.js';
 import { INV } from './mode.js';
-import { CB, rackLook, syncMarks } from './rackcolor.js';
+import { CB, rackLook, syncMarks, tickTabs } from './rackcolor.js';
 import { MAX_U } from './site.js';
 
 let staticKey = '', mixKey = '';
@@ -14,6 +14,7 @@ const tmp = new THREE.Color(), coldC = lc(COL.cold), okC = lc(COL.ok), offC = lc
 export function updateVisuals(dt) {
   const blink = (W.t * 2.5) % 1 < 0.5, fit = UI.fit;
   syncMarks();
+  tickTabs(blink);
   const marked = CB.svHits && UI.cutRack;
   // Inventory mode: the LEDs and busway lights are steady (nothing simulated drives them); only the rack filter's marks change them
   const key = INV ? CB.rev + '|' + (marked ? UI.cutRack.id : '') : '', redo = !INV || key !== staticKey;

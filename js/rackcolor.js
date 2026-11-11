@@ -4,10 +4,11 @@
 // hold more than one model and role; the cabinet itself is only tinted when everything in it is the same. In either
 // mode a filter query lights the racks that hold matching servers and dims the rest, the way the capacity finder does.
 // This module holds the state; visuals.js, hud.js and plan.js read it.
-import { THREE, lc, gradIn } from './core.js';
-import { UI } from './state.js';
-import { racks, allServers, markServers, paintTabs } from './racks.js';
-import { FILL_STOPS, AGE_STOPS, NONE, MIXED, fillOf, oldest, serverCategory, rackMix, ageMix, buildCategories, ageYears } from './colorby.js';
+import { THREE, lc, gradIn, grad } from './core.js';
+import { thermal } from './thermal.js';
+import { UI, W } from './state.js';
+import { racks, allServers, markServers, paintTabs, LED } from './racks.js';
+import { FILL_STOPS, AGE_STOPS, NONE, MIXED, fillOf, oldest, serverCategory, rackMix, ageMix, buildCategories, ageYears, TAB_SCALE, tabValue } from './colorby.js';
 import { matchRecord, tokens } from './search.js';
 import { MAX_U } from './site.js';
 import { INV } from './mode.js';
@@ -22,7 +23,7 @@ const NOTE = { role: 'role', maker: 'make', model: 'model' };
 export const CB = { by: 'fill', q: '', hits: null, svHits: null, nServers: 0, rev: 0, cats: null, legend: null };
 const look = new Map(), hexCache = new Map();
 const catColour = hex => { if (!hexCache.has(hex)) hexCache.set(hex, lc(hex)); return hexCache.get(hex); };
-const perServer = () => INV && CB.by !== 'fill';
+const perServer = () => INV && CB.by !== 'fill';   // (monitoring mode has its own tabs, see tickTabs)
 
 // How one rack looks for the servers `recs` (all of its own, or the ones the filter matches): the cabinet's colour,
 // its column's height h and, when the servers differ, the column's segments from the bottom up (shares of its height)
@@ -63,8 +64,8 @@ function rebuild() {
     : by === 'age'
       ? { kind: 'scale', stops: AGE_STOPS, lo: 0, hi: 6, ticks: [[0, 'new'], [2, '2 yr'], [4, '4 yr'], [6, '6+ yr']], note: 'Years in service. Each server\'s colour is on the left of its front; the column over a rack shows its mix by U and the cabinet takes its oldest server. Grey: no date recorded' + tail }
       : { kind: 'cats', list: CB.cats.list, note: `Number of servers of each ${NOTE[by]}. Each server's colour is on the left of its front; the column over a rack shows its mix by U. A cabinet is tinted only when it holds one ${NOTE[by]}` + tail };
-  // Servers the filter leaves out lose their colour; in fill mode (and monitoring mode) servers carry none
-  paintTabs(perServer() ? sv => (CB.svHits && !CB.svHits.has(sv) ? darkC : serverColour(sv)) : null);
+  // Servers the filter leaves out lose their colour; in fill mode servers carry none. (Monitoring mode repaints in tickTabs.)
+  if (INV) paintTabs(perServer() ? sv => (CB.svHits && !CB.svHits.has(sv) ? darkC : serverColour(sv)) : null);
   CB.rev++;
 }
 // A rack's look: { col, h, segs }. While the filter is on, a matching rack's is worked out from its matching servers.
@@ -108,4 +109,23 @@ export function syncMarks() {
   if (key === markedKey) return;
   markedKey = key;
   markServers(CB.svHits && UI.cutRack ? { set: CB.svHits, rack: UI.cutRack } : null);
+}
+
+// Monitoring mode: each server's tab takes its own telemetry on the colour mode's scale (see colorby.tabValue), a server
+// in critical state blinks red with the status LEDs, and the filter darkens servers that do not match. The figures
+// move all the time, so this repaints a few times a second (and on the blink's flips), not every frame, and at once
+// when the mode, the filter, the capacity finder or the thermal camera changes. The tabs are hidden while the thermal
+// camera is on (setThermal restores them) or the capacity finder is showing, whose colours the legend explains.
+let tabKey = '', tabAt = -1, tabBlink = null;
+const tabC = new THREE.Color();
+export function tickTabs(blink) {
+  if (INV || thermal.on) { tabKey = ''; return; }
+  const key = CB.rev + '|' + W.mode + '|' + (UI.fit ? 'fit' : '');
+  if (key === tabKey && blink === tabBlink && W.t - tabAt < 0.25 && W.t >= tabAt) return;
+  tabKey = key; tabAt = W.t; tabBlink = blink;
+  paintTabs(UI.fit ? null : sv => {
+    if (CB.svHits && !CB.svHits.has(sv)) return darkC;
+    if (sv.status === 2) return blink ? LED.crit : darkC;
+    return grad(TAB_SCALE[W.mode], tabValue(W.mode, sv), tabC);
+  });
 }

@@ -6,6 +6,7 @@ import { fmtGB, fmtMem } from './site.js';
 import { describe, rackFaults, SHORT } from './faults.js';
 import { INV } from './mode.js';
 import { CB, serverTag } from './rackcolor.js';
+import { TAB_NOTE } from './colorby.js';
 
 // Set by main.js: open a server (pull it out)
 export const hooks = { open: null };
@@ -239,6 +240,7 @@ export function renderLegend() {
     ticks.innerHTML = [16, 26, 36, 46].map((v, i) => `<span style="left:${pct(v)}">${v}${i === 3 ? ' °C' : ''}</span>`).join('');
     return;
   }
+  $('lgNote').textContent = `Server tabs: ${TAB_NOTE[W.mode]}. Red, blinking: critical`;
   const s = STOPS[W.mode];
   const pctMode = W.mode !== 'heat', [lo, hi] = pctMode ? [0, 1] : [18, 33];
   const pct = v => ((v - lo) / (hi - lo) * 100).toFixed(1) + '%';
