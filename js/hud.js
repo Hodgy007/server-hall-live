@@ -5,7 +5,8 @@ import { racks, iloUrl, DOMAIN, freeCount, highlight, unhighlight } from './rack
 import { fmtGB, fmtMem } from './site.js';
 import { describe, rackFaults, SHORT } from './faults.js';
 import { INV } from './mode.js';
-import { CB } from './rackcolor.js';
+import { CB, serverTag } from './rackcolor.js';
+import { TAB_NOTE } from './colorby.js';
 
 // Set by main.js: open a server (pull it out)
 export const hooks = { open: null };
@@ -93,7 +94,14 @@ function markRows() {
   markRev = CB.rev;
   const on = !!CB.svHits;
   $('invBody').parentElement.classList.toggle('filtering', on);
-  for (const row of invRows) if (row.kind === 'sv') row.tr.classList.toggle('hit', on && CB.svHits.has(row.sv));
+  for (const row of invRows) {
+    if (row.kind !== 'sv') continue;
+    row.tr.classList.toggle('hit', on && CB.svHits.has(row.sv));
+    // the server's colour in the hall (its model, role, make or age), as a bar down the left of its row
+    const tag = serverTag(row.sv), dark = on && !CB.svHits.has(row.sv);
+    row.tr.cells[0].style.boxShadow = tag && !dark ? `inset 4px 0 ${tag.css}` : '';
+    row.tr.title = tag ? tag.text : '';
+  }
 }
 function updateInvHud() {
   if (SV.open && SV.sel) {
@@ -214,10 +222,11 @@ export function renderLegend() {
   }
   if (INV) {
     const L = CB.legend; if (!L) return;
-    $('lgNote').textContent = L.note + (CB.hits ? '. Racks without a match are dark.' : '');
+    $('lgNote').textContent = L.note;
     if (L.kind === 'cats') {
       bar.hidden = true; ticks.hidden = true; sw.hidden = false;
-      sw.innerHTML = L.list.map(c => `<li><i style="background:${esc(c.colour)}"></i><span title="${esc(c.label)}">${esc(c.label)}</span><em>${c.count}</em></li>`).join('');
+      sw.classList.toggle('wide', CB.by === 'model');   // model names are long: one to a line
+      sw.innerHTML = L.list.map(c => `<li><i style="background:${esc(c.colour)}"></i><span title="${esc(c.label)}">${esc(c.label)}</span><em title="${c.count} server${c.count === 1 ? '' : 's'}">${c.count}</em></li>`).join('');
       return;
     }
     const pct = v => ((v - L.lo) / (L.hi - L.lo) * 100).toFixed(1) + '%';
@@ -231,6 +240,7 @@ export function renderLegend() {
     ticks.innerHTML = [16, 26, 36, 46].map((v, i) => `<span style="left:${pct(v)}">${v}${i === 3 ? ' °C' : ''}</span>`).join('');
     return;
   }
+  $('lgNote').textContent = `Server tabs: ${TAB_NOTE[W.mode]}. Red, blinking: critical`;
   const s = STOPS[W.mode];
   const pctMode = W.mode !== 'heat', [lo, hi] = pctMode ? [0, 1] : [18, 33];
   const pct = v => ((v - lo) / (hi - lo) * 100).toFixed(1) + '%';

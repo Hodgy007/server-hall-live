@@ -1,5 +1,6 @@
 // Plan view: a flat top-down map of the hall, north up, drawn as SVG (so rack IDs are real, focusable, crisp text).
-// Racks take the colours of the colour mode and dim for the rack filter; click or press Enter on one to open it in 3D.
+// Racks take the colours of the colour mode (banded by their mix when they hold more than one kind of server) and dim
+// for the rack filter; click or press Enter on one to open it in 3D.
 // Wheel or the +/− buttons zoom, drag pans, Fit puts the whole hall back.
 import { THREE, $, grad, modeValue, TILE, ROOM, RACK_W, RACK_D } from './core.js';
 import { HALL, LAYOUT } from './data.js';
@@ -54,6 +55,17 @@ export function initPlan({ openRack, onChange }) {
       if (INV) col = rackLook(r).col; else grad(W.mode, modeValue(W.mode, r), tmp), col = tmp;
       g.querySelector('rect').setAttribute('fill', css(col));
       g.classList.toggle('dim', dim);
+      // a rack of mixed servers is banded by what it holds, from its front to its rear in the legend's order
+      g.querySelectorAll('.band').forEach(b => b.remove());
+      const segs = INV && !dim && rackLook(r).segs;
+      if (segs) {
+        let d = 0;
+        for (const s of segs) {
+          const depth = s.frac * RACK_D, z = r.face > 0 ? r.z + RACK_D / 2 - d - depth : r.z - RACK_D / 2 + d;
+          g.insertBefore(el('rect', { class: 'band', x: r.x - RACK_W / 2, y: z, width: RACK_W, height: depth, fill: s.css }), g.querySelector('.front'));
+          d += depth;
+        }
+      }
       const n = r.servers.length, m = CB.hits && CB.hits.get(r);
       g.setAttribute('aria-label', `Rack ${r.id}, ${n} server${n === 1 ? '' : 's'}${m ? `, ${m.n} ${m.n === 1 ? 'match' : 'matches'}` : ''}. Open in 3D`);
     }

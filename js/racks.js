@@ -191,6 +191,48 @@ export function updateCabling(cam) {
   for (const m of fineCables) m.visible = fine;
 }
 
+// ---------- Colour tabs and the column's mix (rackcolor.js) ----------
+// Each server's own colour (its model, role, make or age) on a tab over the left mounting rail beside its front, so a
+// rack of mixed servers reads server by server. The tabs glow, and show through the door's perforations.
+const TAB_W = 0.03, TAB_D = 0.006;
+const tabs = new THREE.InstancedMesh(new THREE.BoxGeometry(TAB_W, 1, TAB_D), new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }), Math.max(1, allServers.length));
+tabs.userData.irHide = true; tabs.visible = false;
+for (const sv of allServers) {
+  const r = sv.r;
+  m4.makeScale(1, plateH(sv.h), 1).setPosition(r.x - r.face * 0.278, sv.y, r.z + r.face * (FRONT + 0.009 + TAB_D / 2));
+  tabs.setMatrixAt(sv.idx, m4); tabs.setColorAt(sv.idx, tint.setScalar(0));
+}
+if (!allServers.length) tabs.count = 0;
+scene.add(tabs);
+// colourOf(sv) gives each server's colour; null takes the tabs away (a colour mode with nothing to say per server)
+export function paintTabs(colourOf) {
+  tabs.visible = !!colourOf && allServers.length > 0;
+  if (!tabs.visible) return;
+  for (const sv of allServers) tabs.setColorAt(sv.idx, colourOf(sv));
+  tabs.instanceColor.needsUpdate = true;
+}
+// The light column over a rack as a stack of segments, one per kind of server in it, when it holds more than one;
+// otherwise the rack's single column (colMesh) stands
+const SEGS = 10;   // the legend's eight colours, "Other" and "Not recorded"
+const colSegs = new THREE.InstancedMesh(colGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, toneMapped: false, depthWrite: false }), Math.max(1, racks.length * SEGS));
+for (let i = 0; i < racks.length * SEGS; i++) { colSegs.setMatrixAt(i, ZERO); colSegs.setColorAt(i, tint.setScalar(0)); }
+if (!racks.length) colSegs.count = 0;
+colSegs.frustumCulled = false; scene.add(colSegs);
+// segs: [{ col, frac }] from the bottom up (null for a single column), h: the column's height, 0–1
+export function setColumnMix(r, segs, h) {
+  const i = racks.indexOf(r) * SEGS, p = r.colMesh.position, total = Math.max(0.02, h * 0.9);
+  r.colMesh.visible = !segs;
+  let y = p.y;
+  for (let k = 0; k < SEGS; k++) {
+    const s = segs && segs[k];
+    if (!s) { colSegs.setMatrixAt(i + k, ZERO); continue; }
+    m4.makeScale(1, s.frac * total, 1).setPosition(p.x, y, p.z);
+    colSegs.setMatrixAt(i + k, m4); colSegs.setColorAt(i + k, s.col);
+    y += s.frac * total;
+  }
+  colSegs.instanceMatrix.needsUpdate = true; colSegs.instanceColor.needsUpdate = true;
+}
+
 // Rack filter marks: the servers of one rack that match (m.set) show brighter and the others dim, so the matches stand
 // out in rack view. null puts every server back to its own tint.
 let markedSet = [];
